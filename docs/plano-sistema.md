@@ -1,6 +1,6 @@
 # Plano Técnico e de Produto — Sistema de Candidatura a Vagas com IA
 
-**Recrutamento com triagem por WhatsApp e entrevista conduzida por IA**
+**Recrutamento com triagem por WhatsApp (texto e áudio) e entrevista por voz em tempo real conduzida por IA**
 
 *Autor: Renato Souza (Product Owner / Desenvolvimento)*
 
@@ -10,115 +10,161 @@
 
 ## 1.1 Contexto
 
-O sistema é uma plataforma de recrutamento com duas visões dentro de um **único aplicativo React Native**:
+Plataforma de recrutamento com IA em um **único aplicativo React Native** (sem builds separados). Empresa, candidato e admin da plataforma usam o mesmo app; a visão exibida depende dos papéis do usuário logado.
 
-- **Visão da empresa** (quem contrata): cadastra vagas, define habilidades requeridas, monta o processo seletivo (com perguntas próprias ou sugeridas por IA), acompanha as fases e consulta o ranqueamento dos candidatos.
-- **Visão do candidato**: navega pelas vagas, preenche o perfil, envia o currículo (com OCR e extração automática), informa o link do LinkedIn, cadastra habilidades e acompanha suas candidaturas.
+- **Visão da empresa**: auto-cadastro com verificação, cadastro de vagas com prazo de inscrições obrigatório, habilidades requeridas, processo seletivo com perguntas (exigidas pela empresa ou sugeridas por IA) e limite de tempo por pergunta, pausar/fechar vaga, acompanhamento das fases, notificações e ranking dos candidatos.
+- **Visão do candidato**: lista de vagas, perfil, upload de currículo com OCR local, campo de link do LinkedIn, habilidades, candidatura (direta ou por convite de match) e acompanhamento **apenas do status/fase** das próprias candidaturas.
+- **Visão do admin da plataforma**: verificação de empresas, suporte, auditoria e acesso total (inclusive áudios e transcrições), sempre auditado.
 
 O processo seletivo padrão tem duas fases automatizadas:
 
-1. **1ª fase — Triagem via WhatsApp**: um bot envia as perguntas **por mensagem de texto** no WhatsApp cadastrado pelo candidato, e o candidato responde **por áudio** (mensagens de voz). Os áudios são transcritos (speech-to-text) e avaliados pela IA. **Não há ligação telefônica.**
-2. **2ª fase — Entrevista conduzida por IA**: a IA conduz a entrevista com as perguntas definidas para a vaga (geralmente 5), com perguntas de aprofundamento, e gera uma avaliação estruturada.
+1. **1ª fase — Triagem via WhatsApp (Uazapi)**: o bot envia as perguntas **por mensagem de texto** e o candidato responde **por áudio** (mensagens de voz). O contato é exclusivamente por mensagens. Os áudios são transcritos e avaliados pela IA. Se o candidato não responder ao convite, há **retry automático** antes de qualquer eliminação.
+2. **2ª fase — Entrevista por voz em tempo real com IA, dentro do app**: a IA conversa com o candidato por voz (WebRTC), seguindo as perguntas definidas para a vaga (geralmente 5), com **limite de tempo por pergunta**.
+
+Em ambas as fases vale a regra de **tentativa única**: a tentativa iniciada conta como usada.
 
 ## 1.2 Objetivos
 
-| # | Objetivo | Como medir (indicador sugerido) |
-|---|----------|---------------------------------|
+| # | Objetivo | Indicador sugerido |
+|---|----------|--------------------|
 | O1 | Reduzir o esforço manual de triagem | Tempo do recrutador por candidato triado |
-| O2 | Padronizar a avaliação técnica | % de candidaturas avaliadas com as mesmas perguntas e rubrica |
-| O3 | Dar transparência ao candidato | % de candidaturas com status atualizado e feedback disponível |
-| O4 | Explicar o ranqueamento | 100% dos scores com detalhamento por critério |
-| O5 | Suportar muitos processos simultâneos | Processos ativos por empresa e por candidato sem degradação |
-| O6 | Conformidade com LGPD | Consentimentos registrados; política de retenção aplicada |
+| O2 | Padronizar a avaliação técnica | % de candidaturas avaliadas com as mesmas perguntas, tempos e rubricas |
+| O3 | Ranking explicável e justo | 100% dos scores com detalhamento por componente; revisão humana registrada |
+| O4 | Transparência ao candidato sem expor concorrência | Status/fase sempre atualizados; zero exposição de score/posição |
+| O5 | Suportar muitos processos simultâneos | Processos e sessões de voz ativos sem degradação |
+| O6 | Conformidade com LGPD | Consentimentos registrados; auditoria de acessos; retenção aplicada |
 
-> As metas numéricas de cada indicador devem ser definidas pelo Renato após o piloto; este documento não assume valores.
+> As metas numéricas dos indicadores serão definidas pelo Renato após o piloto; este documento não assume valores.
 
-## 1.3 Fora do escopo (nesta versão)
+## 1.3 Fora do escopo nesta versão
 
-- Integração real com o LinkedIn (apenas o campo de URL é armazenado).
-- Ligações telefônicas/voz em tempo real pelo WhatsApp.
+- Integração real com o LinkedIn (apenas o campo de link é armazenado).
+- OCR em serviços de nuvem (o OCR é local, com Tesseract).
+- Contato com o candidato por telefonia; a 1ª fase usa apenas mensagens do WhatsApp.
 - Contratação, admissão e folha de pagamento.
-- Builds separados de app para empresa e candidato (há **um único app**).
+- Builds separados do app por perfil.
 
 # 2. Personas, papéis e permissões
 
 ## 2.1 Personas
 
-| Persona | Descrição | Principais necessidades |
-|---------|-----------|-------------------------|
-| **Admin da empresa** | Responsável pela conta da empresa (tenant) | Gerenciar usuários, configurações, consentimentos, integrações |
-| **Recrutador** | Cria e conduz processos seletivos | Cadastrar vagas, definir perguntas, acompanhar fases e ranking |
-| **Gestor / Avaliador técnico** | Avalia candidatos de uma vaga | Ver respostas, transcrições, scores e registrar revisão humana |
-| **Candidato** | Pessoa que se candidata | Encontrar vagas, manter perfil, responder entrevistas, acompanhar status |
-| **Admin da plataforma** | Operação do produto (time do Renato) | Suporte, auditoria, gestão de tenants, monitoramento |
+| Persona | Papel técnico | Descrição |
+|---------|---------------|-----------|
+| **Admin da plataforma** | `ADMIN_PLATAFORMA` (global) | Time do Renato. Verifica empresas, dá suporte, audita e tem acesso total, inclusive a áudios e transcrições de qualquer empresa. MFA obrigatório |
+| **Admin da empresa** | `ADMIN_EMPRESA` (por empresa) | Responsável que fez o auto-cadastro da empresa; gerencia membros e configurações |
+| **Recrutador** | `RECRUTADOR` (por empresa) | Cria vagas e perguntas, acompanha fases, pausa/fecha vagas |
+| **Avaliador** | `AVALIADOR` (por empresa) | Avalia candidatos das vagas atribuídas; revisão humana |
+| **Candidato** | `CANDIDATO` (global) | Perfil, currículo, candidaturas e entrevistas |
 
-## 2.2 Modelo de papéis (um usuário, vários papéis)
+Em permissões, "empresa" significa os membros da empresa dona da vaga, conforme o papel de cada um.
 
-- Um **Usuário** possui uma conta única (e-mail/telefone).
-- Ele pode ter um **PerfilCandidato** (papel global `CANDIDATO`) e, ao mesmo tempo, um ou mais vínculos **MembroEmpresa** (papéis `ADMIN_EMPRESA`, `RECRUTADOR`, `AVALIADOR` em uma empresa específica).
-- No app, o usuário com mais de um papel alterna entre as visões (seletor de visão/empresa). O backend **sempre** valida o papel e o tenant em cada requisição; a interface apenas reflete isso.
+## 2.2 Modelo de papéis no app único
 
-## 2.3 Matriz de permissões
+- Um **Usuário** tem conta única. Pode ter `CANDIDATO` (com perfil de candidato), vínculos `MembroEmpresa` com papéis em uma ou mais empresas e, para o time interno, `ADMIN_PLATAFORMA`.
+- O app mostra a visão conforme os papéis: grupos de rotas `(candidato)`, `(empresa)` e `(admin)`. Quem tem mais de um papel troca de visão no próprio app.
+- O backend valida papel, empresa ativa e status da empresa em **toda** requisição; a interface só reflete as permissões.
 
-| Ação | Candidato | Avaliador | Recrutador | Admin empresa | Admin plataforma |
-|------|:-:|:-:|:-:|:-:|:-:|
-| Ver vagas publicadas | ✔ | ✔ | ✔ | ✔ | ✔ |
-| Editar o próprio perfil / CV / habilidades | ✔ | — | — | — | — |
-| Candidatar-se a vaga | ✔ | — | — | — | — |
-| Criar/editar vaga e processo seletivo | — | — | ✔ | ✔ | — |
-| Gerar/aprovar perguntas com IA | — | — | ✔ | ✔ | — |
-| Ver candidaturas e ranking da vaga | — | ✔ (vagas atribuídas) | ✔ | ✔ | auditoria |
-| Mover candidatura de etapa / decidir | — | sugere | ✔ | ✔ | — |
-| Revisão humana de score | — | ✔ | ✔ | ✔ | — |
-| Gerenciar membros da empresa | — | — | — | ✔ | ✔ |
-| Configurar WhatsApp/IA do tenant | — | — | — | ✔ | ✔ |
+## 2.3 Matriz de permissões (Admin × Empresa × Candidato)
+
+| Recurso / ação | Admin plataforma | Empresa (dona da vaga) | Candidato |
+|----------------|:-:|:-:|:-:|
+| Aprovar/rejeitar/suspender verificação de empresa | ✔ | — | — |
+| Auto-cadastrar empresa | — | ✔ (qualquer usuário autenticado; vira ADMIN_EMPRESA) | — |
+| Gerenciar membros da empresa | ✔ | ✔ (ADMIN_EMPRESA) | — |
+| Criar/editar vaga, perguntas, tempos, prazo | ✔ | ✔ (RECRUTADOR+) | — |
+| Publicar vaga | ✔ | ✔ somente se empresa **VERIFICADA** | — |
+| Pausar/retomar/fechar vaga | ✔ | ✔ (RECRUTADOR+) | — |
+| Ver vagas publicadas e aceitando inscrições | ✔ | ✔ | ✔ |
+| Editar o próprio perfil, CV, habilidades, LinkedIn | — | — | ✔ |
+| Candidatar-se / aceitar convite de match | — | — | ✔ |
+| Ver status/fase da própria candidatura | — | — | ✔ |
+| Ver score, posição e componentes do ranking | ✔ (todas as empresas) | ✔ (só vagas próprias) | **✘ nunca** |
+| Ver respostas, áudios, gravações e transcrições | ✔ (todas, **auditado**) | ✔ (só vagas próprias, auditado) | ✘ de terceiros; os próprios via exportação LGPD |
+| Revisão humana de notas | ✔ | ✔ (AVALIADOR+) | — |
+| Configurar WhatsApp/IA/notificações do tenant | ✔ | ✔ (ADMIN_EMPRESA) | — |
+| Conectar/reconectar o WhatsApp da empresa (QR da instância Uazapi) | ✔ (apoio) | ✔ (ADMIN_EMPRESA) | — |
+| Ver status da instância WhatsApp | ✔ (todas) | ✔ (a própria) | — |
+| Exceção manual de tentativa (queda involuntária) | em aberto (§18) | em aberto (§18) | — |
+| Consultar trilha de auditoria | ✔ | ✔ (eventos da própria empresa) | — |
+
+## 2.4 Regras do admin da plataforma
+
+- **Bypass do isolamento multi-tenant somente para admin**: a política de Row-Level Security permite leitura cruzada apenas quando a sessão tem `app.is_admin = true`, definido pelo backend após validar o papel `ADMIN_PLATAFORMA` **e** o MFA da sessão.
+- **Auditoria de todo acesso do admin** a áudios, gravações e transcrições: quem, quando, qual recurso, de qual empresa e motivo informado. Acessos da empresa a esses dados também são auditados.
+- **MFA obrigatório para admin** (TOTP com códigos de recuperação); sessões de admin mais curtas e reautenticação para ações sensíveis.
+- O admin navega no mesmo app, no grupo `(admin)`; não há app separado.
 
 # 3. Requisitos funcionais
 
-## 3.1 Visão da empresa
-
-| ID | Requisito | Detalhes |
-|----|-----------|----------|
-| RF-E01 | Cadastro de empresa e membros | Admin convida membros por e-mail; papéis por empresa |
-| RF-E02 | Cadastro de vaga | Título, descrição, senioridade, modelo (remoto/híbrido/presencial), localidade, tipo de contrato, faixa salarial (opcional), benefícios, quantidade de posições, prazo, status (rascunho, publicada, pausada, encerrada) |
-| RF-E03 | Habilidades requeridas | Seleção de habilidades do catálogo (linguagens, plataformas de cloud, bancos, frameworks, ferramentas, soft skills), com **nível mínimo**, **peso** e flag **obrigatória/desejável** |
-| RF-E04 | Processo seletivo | Criado por vaga a partir de um modelo padrão (Triagem WhatsApp → Entrevista IA → Revisão humana), com etapas configuráveis e ordenáveis |
-| RF-E05 | Número de perguntas | Definido por etapa por quem cria a vaga (padrão: **5**) |
-| RF-E06 | Perguntas exigidas pela empresa | Recrutador cadastra perguntas obrigatórias antecipadamente (texto, critério de avaliação/rubrica, peso) |
-| RF-E07 | Perguntas sugeridas por IA | A IA sugere perguntas com base no perfil da vaga (ex.: vaga de arquiteto → perguntas de arquitetura, trade-offs, escalabilidade). Recrutador aceita, edita ou descarta; perguntas obrigatórias completam o total definido |
-| RF-E08 | Banco de perguntas | Perguntas reutilizáveis por empresa, com tags de habilidade |
-| RF-E09 | Candidatura direta | Recebe candidaturas feitas pelo candidato na página da vaga |
-| RF-E10 | Fluxo de match | Sistema sugere candidatos compatíveis (com perfil público/opt-in); recrutador convida; candidato aceita ou recusa o convite |
-| RF-E11 | Ranqueamento | Lista de candidatos por vaga ordenada por score composto, com explicação por critério e filtros |
-| RF-E12 | Acompanhamento das fases | Kanban/lista por etapa, status de cada entrevista (enviada, em andamento, aguardando resposta, concluída, expirada), transcrições e avaliações |
-| RF-E13 | Revisão humana | Avaliador pode ajustar nota, comentar e aprovar/reprovar; toda decisão final é humana |
-| RF-E14 | Comunicação | Notificações ao candidato em mudanças de etapa (push no app, e-mail; WhatsApp apenas com template aprovado e consentimento) |
-
-## 3.2 Visão do candidato
-
-| ID | Requisito | Detalhes |
-|----|-----------|----------|
-| RF-C01 | Lista de vagas | Busca e filtros (habilidade, senioridade, modelo, localidade); indicador de compatibilidade com o perfil |
-| RF-C02 | Perfil | Dados pessoais, contato, **WhatsApp** (com verificação), localidade, pretensão, disponibilidade, resumo, experiências, formação, idiomas |
-| RF-C03 | Upload de currículo com OCR | PDF, DOCX ou imagem; extração de texto (OCR quando necessário) e preenchimento sugerido do perfil, que o candidato revisa e confirma |
-| RF-C04 | Link do LinkedIn | Apenas campo de URL validado (sem integração nesta versão) |
-| RF-C05 | Habilidades | Cadastro de habilidades do catálogo com nível autodeclarado e anos de experiência; sugestões vindas do CV |
-| RF-C06 | Candidatura | Candidatar-se a uma vaga, aceitar convites do fluxo de match e desistir |
-| RF-C07 | Consentimentos | Aceite explícito para contato por WhatsApp, processamento de áudio/transcrição e avaliação por IA, por candidatura |
-| RF-C08 | Acompanhamento | Ver todas as candidaturas em andamento (multiprocesso), etapa atual, prazos e pendências |
-| RF-C09 | Entrevista por IA | Realizar a 2ª fase dentro do app (chat; voz opcional em fase posterior) |
-| RF-C10 | Privacidade | Exportar e excluir dados; controlar visibilidade do perfil para o match |
-
-## 3.3 Requisitos não funcionais
+## 3.1 Empresa: auto-cadastro e verificação
 
 | ID | Requisito |
 |----|-----------|
-| RNF01 | Multi-tenant com isolamento de dados por empresa (ver §8) |
-| RNF02 | Processamento assíncrono (OCR, transcrição, IA, WhatsApp) com retentativas e idempotência |
-| RNF03 | Rastreabilidade: toda avaliação de IA guarda modelo, versão do prompt e entradas |
-| RNF04 | Disponibilidade e escalabilidade horizontal dos workers |
-| RNF05 | Acessibilidade e internacionalização (pt-BR inicialmente) no app |
+| RF-EV01 | Usuário autenticado faz o **auto-cadastro** da empresa: razão social, nome fantasia, CNPJ, site/domínio, endereço, telefone e dados do **responsável** (nome, cargo, e-mail corporativo) |
+| RF-EV02 | **Confirmação de e-mail** do responsável por link/código |
+| RF-EV03 | **Confirmação de domínio**: e-mail do responsável no domínio declarado (padrão) ou registro DNS TXT (alternativa) |
+| RF-EV04 | **Validação de CNPJ**: dígitos verificadores, situação cadastral ativa e razão social em fonte de dados cadastrais (provedor em aberto, §18) |
+| RF-EV05 | **Revisão manual opcional pelo admin**: configurável (sempre, só quando alguma checagem falhar, ou nunca) |
+| RF-EV06 | Estados: `PENDENTE` → `VERIFICADA` / `REJEITADA`; `VERIFICADA` ↔ `SUSPENSA` |
+| RF-EV07 | **Sem verificação não publica vagas**: pendente/rejeitada só cria rascunhos; suspensa tem vagas pausadas automaticamente |
+| RF-EV08 | Após o cadastro, o admin da empresa convida membros (recrutador/avaliador); a empresa em si nunca entra por convite |
+| RF-EV09 | **Conectar o WhatsApp da empresa**: etapa do onboarding em que a própria empresa conecta o seu número lendo o **QR da instância Uazapi** criada para ela; o status da instância (conectada/desconectada, última conexão) fica visível para a empresa e para o admin. Sem instância conectada, a empresa pode publicar vagas, mas **não consegue iniciar a 1ª fase** (bloqueio com alerta) |
+
+## 3.2 Visão da empresa
+
+| ID | Requisito |
+|----|-----------|
+| RF-E01 | Cadastro de vaga: título, descrição, senioridade, modelo (remoto/híbrido/presencial), localidade, contrato, faixa salarial (opcional), benefícios, posições |
+| RF-E02 | **Prazo de inscrições obrigatório** para publicar (`prazoInscricoes`); rascunho pode ficar sem prazo. Ao expirar, a entrada de candidaturas é encerrada automaticamente (§7) |
+| RF-E03 | Habilidades requeridas do catálogo (linguagens, plataformas de cloud, bancos, frameworks, ferramentas, soft skills) com nível mínimo, peso e flag obrigatória/desejável |
+| RF-E04 | Processo seletivo por vaga: Triagem WhatsApp → Entrevista por voz com IA → Revisão humana (etapas configuráveis) |
+| RF-E05 | **Número de perguntas** por etapa definido por quem cria a vaga (padrão: **5**) |
+| RF-E06 | Perguntas **exigidas pela empresa** antecipadamente (enunciado, rubrica, peso) |
+| RF-E07 | Perguntas **sugeridas por IA** conforme o perfil da vaga (ex.: vaga de arquiteto → perguntas de arquitetura); o recrutador aceita, edita ou descarta |
+| RF-E08 | **Limite de tempo por pergunta** na 2ª fase: padrão do processo (`tempoPadraoPorPergunta`) + override por pergunta (`tempoLimiteSegundos`) |
+| RF-E09 | **Política de retry** da 1ª fase configurável por processo (tentativas, intervalo, prazo total, horário comercial), com padrão sugerido |
+| RF-E10 | **Pausar**, **retomar** e **fechar** vaga (fechar exige motivo); **prorrogar** o prazo de inscrições antes de expirar |
+| RF-E11 | Duas formas de candidatura: **candidatura direta** pela vaga e **fluxo de match** (o sistema sugere candidatos e a empresa convida) |
+| RF-E12 | Acompanhamento das fases por vaga: status de cada entrevista, retry, abandono, transcrições, gravações e notas |
+| RF-E13 | **Ranking** por vaga com score composto, explicação por componente e revisão humana |
+| RF-E14 | **Notificações**: candidato novo e match forte sugerido pela IA (push + central in-app, e-mail opcional), com preferências |
+
+## 3.3 Visão do candidato
+
+| ID | Requisito |
+|----|-----------|
+| RF-C01 | Lista de vagas **publicadas e aceitando inscrições** (filtros: habilidade, senioridade, modelo, localidade), com prazo exibido em America/Sao_Paulo |
+| RF-C02 | Perfil: dados pessoais, contato, WhatsApp verificado, localidade, disponibilidade, resumo, experiências, formação, idiomas |
+| RF-C03 | **Upload de currículo** (PDF, DOCX, imagem) com extração de texto nativo e **OCR local (Tesseract)** para escaneados/imagens; dados sugeridos revisados pelo candidato |
+| RF-C04 | **Campo de link do LinkedIn** (apenas URL validada; sem integração) |
+| RF-C05 | Cadastro de habilidades (nível, anos de experiência), com sugestões do CV |
+| RF-C06 | Candidatar-se diretamente, aceitar/recusar convites de match e desistir |
+| RF-C07 | Consentimentos: contato por WhatsApp, processamento de áudio, **gravação da entrevista por voz**, avaliação por IA |
+| RF-C08 | Ver **apenas status e fase** das próprias candidaturas, prazos e pendências. **Nunca** score, posição, número de concorrentes ou percentil |
+| RF-C09 | Fazer a 2ª fase por **voz em tempo real** no app, com pré-checagem de microfone/rede e aviso e aceite da tentativa única |
+| RF-C10 | Exportar e excluir dados; controlar a visibilidade do perfil para o match |
+
+## 3.4 Visão do admin
+
+| ID | Requisito |
+|----|-----------|
+| RF-A01 | Fila de verificação de empresas; aprovar, rejeitar (com motivo), suspender e reativar |
+| RF-A02 | Acesso a qualquer vaga, candidatura, áudio, gravação e transcrição, com motivo e auditoria |
+| RF-A03 | Consulta da trilha de auditoria e relatórios de uso |
+| RF-A04 | Pausar/fechar vagas de qualquer empresa (moderação), com motivo |
+| RF-A05 | Configurações globais (catálogo de habilidades, textos padrão do bot, limites) e **visão de todas as instâncias Uazapi das empresas** (status, histórico de desconexões, apoio à reconexão por QR) |
+
+## 3.5 Requisitos não funcionais
+
+| ID | Requisito |
+|----|-----------|
+| RNF01 | Multi-tenant com isolamento por empresa; bypass apenas para admin, auditado |
+| RNF02 | Processamento assíncrono com retentativa e idempotência (OCR, transcrição, IA, WhatsApp, notificações) |
+| RNF03 | Entrevista por voz com latência percebida de resposta **abaixo de ~1 s** (meta, §8.6.3) |
+| RNF04 | Datas armazenadas em **UTC** e exibidas em **America/Sao_Paulo** |
+| RNF05 | Rastreabilidade de toda avaliação de IA (modelo, versão do prompt, entradas) |
 | RNF06 | LGPD: consentimento, minimização, retenção, direitos do titular |
+| RNF07 | Acessibilidade e pt-BR no app |
 
 # 4. Arquitetura
 
@@ -127,29 +173,36 @@ O processo seletivo padrão tem duas fases automatizadas:
 ```mermaid
 flowchart LR
   subgraph Cliente
-    APP["App React Native único<br/>(Expo) — visões Empresa e Candidato"]
+    APP["App React Native único (Expo)<br/>visões candidato, empresa, admin"]
   end
   subgraph Borda
-    GW["API Gateway / Load Balancer<br/>TLS, rate limit"]
+    GW["Load balancer / API Gateway<br/>TLS, rate limit"]
   end
   subgraph Backend["Backend Node.js (NestJS)"]
-    API["API REST<br/>Auth, RBAC, Tenancy"]
-    WH["Webhook WhatsApp<br/>(recebimento)"]
+    API["API REST<br/>Auth, MFA, RBAC, Tenancy"]
+    WH["Webhook WhatsApp"]
     WK["Workers BullMQ"]
+    VA["Agente de voz<br/>(participante da sala)"]
+  end
+  subgraph Midia["Tempo real"]
+    LK["Servidor de mídia/sessão<br/>(ex.: LiveKit, WebRTC)"]
   end
   subgraph Dados
-    PG[("PostgreSQL<br/>+ pgvector")]
-    RD[("Redis<br/>filas, cache, locks")]
-    S3[("Armazenamento S3-compatível<br/>CVs, áudios")]
+    PG[("PostgreSQL + pgvector")]
+    RD[("Redis<br/>filas, locks, cache")]
+    S3[("S3-compatível<br/>CVs, áudios, gravações")]
   end
-  subgraph IA["Serviços de IA"]
-    OCR["OCR local<br/>(Tesseract/PaddleOCR)"]
-    STT["Speech-to-text<br/>(Whisper — local ou API)"]
-    LLM["LLM<br/>perguntas, extração, avaliação, entrevista"]
-    EMB["Embeddings<br/>(match semântico)"]
+  subgraph IA
+    OCR["OCR local<br/>Tesseract"]
+    STT["STT<br/>Whisper (lote) e streaming"]
+    LLM["LLM"]
+    TTS["TTS streaming<br/>ou modelo speech-to-speech"]
   end
-  WA["WhatsApp Business<br/>Cloud API / Twilio"]
+  WA["Uazapi<br/>(instância WhatsApp conectada por QR)"]
+  PUSH["Expo Push<br/>(FCM / APNs)"]
   APP --> GW --> API
+  APP <-- "WebRTC (áudio)" --> LK
+  LK <--> VA
   WA -- webhook --> GW --> WH
   API --> PG
   API --> RD
@@ -160,121 +213,142 @@ flowchart LR
   WK --> OCR
   WK --> STT
   WK --> LLM
-  WK --> EMB
-  WK -- envia mensagens --> WA
+  WK --> WA
+  WK --> PUSH
+  VA --> STT
+  VA --> LLM
+  VA --> TTS
+  VA --> PG
+  LK -- gravação --> S3
 ```
 
-## 4.2 Stack sugerida e justificativa
+## 4.2 Stack e justificativa
 
-| Camada | Escolha sugerida | Justificativa |
-|--------|------------------|---------------|
-| App (frontend) | **React Native com Expo** (TypeScript), **Expo Router**, TanStack Query, Zustand, React Hook Form + Zod | Um único código para iOS e Android (e web via react-native-web, se desejado); roteamento por arquivos facilita separar as visões por grupos de rotas; tipagem compartilhada com o backend |
-| Backend | **Node.js + NestJS** (TypeScript) | Modularidade (módulos por domínio), injeção de dependência, guards para RBAC/tenancy, integração nativa com BullMQ |
-| ORM | **Prisma** | Migrações versionadas, tipagem forte, produtividade; suporte a extensões (ex.: pgvector via SQL bruto) |
-| Banco | **PostgreSQL** + **pgvector** | Relacional robusto, JSONB para dados semiestruturados (extração do CV, rubricas), Row-Level Security para multi-tenant, busca vetorial no mesmo banco |
-| Filas / cache | **Redis + BullMQ** | Jobs assíncronos com retentativa, backoff, atraso (lembretes/timeouts), prioridade e concorrência controlada |
-| Arquivos | **S3-compatível** (AWS S3, Cloudflare R2, MinIO local) | CVs e áudios fora do banco; URLs pré-assinadas; ciclo de vida para retenção |
-| OCR | **Local**: extração de texto nativo de PDF/DOCX primeiro; OCR com **Tesseract** ou **PaddleOCR** para imagens/PDF escaneado | Dados sensíveis não saem da infraestrutura; custo previsível |
-| Extração do CV | LLM com saída estruturada (JSON Schema) sobre o texto extraído | Mapeia experiências, formação e habilidades para o catálogo |
-| Speech-to-text | **Whisper** — local (**faster-whisper** ou **whisper.cpp**) ou API gerenciada | Boa qualidade em pt-BR; execução local mantém coerência com o OCR local (**decisão em aberto**, §16) |
-| LLM | Provedor via camada de abstração (`LlmProvider`) | Trocar de modelo/provedor sem alterar domínio; versionar prompts |
-| WhatsApp | **WhatsApp Business Cloud API** (Meta) ou **Twilio** (BSP) | API oficial com templates, webhooks e mídia; Twilio simplifica onboarding e faturamento (**decisão em aberto**) |
-| Áudio | **ffmpeg** nos workers | Converter OGG/Opus para WAV 16 kHz mono para o STT; medir duração |
-| Notificações | Expo Push Notifications + e-mail transacional | Avisos de etapas e prazos no app |
-| Infra | Containers (Docker), deploy em serviço gerenciado; IaC (Terraform) | Workers escalam separadamente da API |
-| Observabilidade | OpenTelemetry, logs estruturados (pino), Prometheus/Grafana ou equivalente, Sentry | Ver §12 |
+| Camada | Escolha | Justificativa |
+|--------|---------|---------------|
+| App | **React Native (Expo) em app único**, Expo Router, TanStack Query, Zustand, React Hook Form + Zod, SDK cliente do LiveKit | Um código para iOS/Android; grupos de rota por papel; WebRTC via SDK |
+| Backend | **Node.js + NestJS** (TypeScript) | Módulos por domínio, guards para RBAC/tenancy, integração com BullMQ |
+| ORM | **Prisma** (schema em múltiplos arquivos por domínio) | Migrações versionadas e tipagem; arquivos separados reduzem conflitos entre agentes |
+| Banco | **PostgreSQL + pgvector** | JSONB, Row-Level Security, busca vetorial para o match |
+| Filas | **Redis + BullMQ** | Retentativa, backoff, **jobs atrasados** (retry, prazos, timeouts), prioridade |
+| Arquivos | **S3-compatível** (S3, R2, MinIO) | CVs, áudios e gravações; URLs pré-assinadas; ciclo de vida |
+| OCR | **Tesseract local** (por + eng), após extração de texto nativo de PDF/DOCX | Dados sensíveis não saem da infraestrutura; sem OCR em nuvem |
+| STT da 1ª fase | **Whisper**: local (faster-whisper/whisper.cpp) ou API (**decisão em aberto**) | Qualidade em pt-BR; a opção local mantém coerência com o OCR local |
+| Voz em tempo real | **WebRTC** com servidor de mídia (ex.: **LiveKit**) + agente de voz; pipeline STT streaming → LLM → TTS streaming **ou** modelo speech-to-speech realtime (**decisão em aberto**) | Baixa latência, VAD, barge-in, gravação (§8.6) |
+| LLM | Abstração `LlmProvider` | Troca de provedor/modelo sem tocar no domínio; prompts versionados |
+| WhatsApp | **Uazapi** (mesmo provedor do SaaS sof), atrás da interface `WhatsappProvider` | Padrão já validado no sof: instância conectada por QR, envio de texto/mídia/menu, webhook de mensagens recebidas (inclusive áudio) e download de mídia; a interface permite trocar de provedor no futuro (§4.6) |
+| Áudio | **ffmpeg** | OGG/Opus → WAV 16 kHz mono; duração |
+| Push | **Expo Push** (FCM/APNs) + central in-app; e-mail opcional | Notificações à empresa e ao candidato |
+| Observabilidade | OpenTelemetry, pino, Prometheus/Grafana ou equivalente, Sentry | §15 |
 
-## 4.3 Módulos do backend (NestJS)
+## 4.3 Módulos do backend
 
 | Módulo | Responsabilidade |
 |--------|------------------|
-| `auth` | Login (e-mail + senha / OTP), JWT de acesso + refresh, verificação de telefone |
-| `tenancy` | Resolução do tenant ativo, guards, contexto de RLS |
-| `usuarios` / `membros` | Usuário, papéis, convites, vínculo com empresas |
-| `empresas` | Dados e configurações do tenant (WhatsApp, IA, retenção) |
-| `vagas` | CRUD de vagas, habilidades da vaga, publicação |
-| `habilidades` | Catálogo, sinônimos, normalização (ex.: "JS" → "JavaScript") |
-| `processos` | Processo seletivo, etapas, perguntas, banco de perguntas |
-| `candidatos` | Perfil, habilidades do candidato, consentimentos |
-| `curriculos` | Upload, OCR, extração, revisão |
-| `candidaturas` | Candidatura direta, convites de match, máquina de estados |
-| `entrevistas-whatsapp` | Orquestração da 1ª fase (envio, webhook, áudio, transcrição) |
-| `entrevistas-ia` | Condução da 2ª fase |
+| `auth` | Cadastro, login, refresh, recuperação, **MFA (TOTP)** |
+| `tenancy` | Empresa ativa, guards, contexto RLS, bypass do admin |
+| `empresas` | **Auto-cadastro e verificação** (e-mail, domínio, CNPJ, revisão manual), estados |
+| `membros` | Vínculos e convites de membros da empresa |
+| `admin` | Fila de verificação, moderação, acesso auditado |
+| `auditoria` | Registro de acessos sensíveis e ações administrativas |
+| `vagas` | CRUD e **máquina de estados da vaga** (prazo, pausa, fechamento, prorrogação) |
+| `habilidades` | Catálogo e normalização |
+| `processos` | Processo seletivo, etapas, perguntas, **tempos por pergunta**, **política de retry** |
+| `candidatos` | Perfil, habilidades, LinkedIn, consentimentos |
+| `curriculos` | Upload, extração nativa, **OCR Tesseract**, extração estruturada |
+| `candidaturas` | Direta, convites de match, máquina de estados, unicidade |
+| `whatsapp` | `WhatsappProvider` + `UazapiProvider` (portado do sof), instâncias, webhook, monitoramento de conexão, cadência/rate limit |
+| `triagem-whatsapp` | 1ª fase: envio de texto, recebimento de áudio, retry, abandono |
+| `entrevista-voz` | 2ª fase: sessões, tokens, agente de voz, cronômetro por pergunta, reconexão |
 | `avaliacao` | Avaliação por IA, rubricas, revisão humana |
-| `match-ranking` | Embeddings, cálculo de compatibilidade e score composto |
-| `notificacoes` | Push, e-mail, templates WhatsApp |
-| `auditoria` / `lgpd` | Trilhas de auditoria, exportação/exclusão, retenção |
+| `ranking` / `match` | Score composto, pesos, explicação, embeddings |
+| `notificacoes` | Notificações, preferências, dispositivos, agrupamento |
+| `lgpd` | Exportação, exclusão, retenção |
 
 ## 4.4 Filas (BullMQ)
 
-| Fila | Jobs | Observações |
-|------|------|-------------|
-| `cv-processamento` | extrair texto, OCR, extração estruturada, gerar embedding | Concorrência limitada pela CPU dos workers de OCR |
-| `ia-perguntas` | sugerir perguntas para vaga | Baixa latência desejada (recrutador aguardando) |
-| `whatsapp-saida` | enviar template / mensagem de texto | Rate limit por número remetente; idempotência por `mensagemId` |
-| `whatsapp-entrada` | processar evento de webhook | Ordem por conversa (chave de grupo = telefone + entrevista) |
-| `audio-transcricao` | baixar mídia, converter, transcrever | Workers com CPU/GPU dedicados se STT local |
-| `ia-avaliacao` | avaliar resposta, consolidar entrevista | Retentativa com backoff; resultado versionado |
-| `entrevista-timers` | lembretes, timeouts, expiração | Jobs com atraso (`delay`), cancelados ao receber resposta |
-| `ranking` | recalcular score da candidatura e posição na vaga | Debounce por vaga |
-| `match` | sugerir candidatos para vaga / vagas para candidato | Executado ao publicar vaga e ao atualizar perfil |
-| `notificacoes` | push, e-mail | — |
+| Fila | Jobs |
+|------|------|
+| `cv-processamento` | Extração de texto nativo, OCR Tesseract, extração estruturada, embedding |
+| `ia-perguntas` | Sugestão de perguntas para a vaga |
+| `whatsapp-saida` / `whatsapp-entrada` | Envio de texto/menu pela instância Uazapi (com rate limit e cadência humana); processamento de webhooks (ordenado por conversa) |
+| `whatsapp-instancias` | Monitoramento periódico do status das instâncias (`/instance/status`), alerta de desconexão e ressincronização do webhook |
+| `triagem-retry` | **Jobs atrasados** do retry do convite e do prazo de inatividade |
+| `audio-transcricao` | Download, ffmpeg, Whisper |
+| `ia-avaliacao` | Avaliação de respostas e consolidação de entrevistas |
+| `voz-pos-sessao` | Finalização da gravação, transcrição completa, avaliação |
+| `vagas-prazos` | **Encerramento das inscrições** no prazo |
+| `vagas-efeitos` | Efeitos de pausar/retomar/fechar (suspender/retomar jobs, notificar, transições) |
+| `ranking` / `match` | Recálculo com debounce; sugestões |
+| `notificacoes` | Push, central in-app, e-mail; agrupamento |
+| `lgpd-retencao` | Expurgo periódico |
 
-## 4.5 App React Native único: estrutura, navegação e controle de acesso
-
-O app é **um só binário** (iOS/Android). As visões de empresa e candidato são grupos de rotas dentro do mesmo app, e a visão exibida depende dos papéis do usuário logado.
-
-**Estrutura de pastas sugerida (Expo Router):**
+## 4.5 App único: estrutura, navegação e controle de acesso
 
 ```text
 app/
-  _layout.tsx                 # providers: auth, query client, tema, i18n
-  (auth)/                     # login, cadastro, OTP, recuperação
-  (onboarding)/               # escolha inicial: "Quero me candidatar" / "Sou empresa"
-  (candidato)/                # guard: possui PerfilCandidato
-    _layout.tsx               # tabs: Vagas | Candidaturas | Perfil
-    vagas/index.tsx, vagas/[id].tsx
-    candidaturas/index.tsx, candidaturas/[id].tsx
-    entrevista/[id].tsx       # 2ª fase (chat com IA)
-    perfil/ (dados, curriculo, habilidades, linkedin, privacidade)
-  (empresa)/                  # guard: possui MembroEmpresa na empresa ativa
-    _layout.tsx               # tabs: Vagas | Candidatos | Processos | Configurações
-    vagas/nova.tsx, vagas/[id]/(editar|perguntas|ranking|kanban).tsx
-    candidaturas/[id].tsx     # respostas, áudios, transcrições, avaliações
-    configuracoes/ (membros, whatsapp, ia)  # somente ADMIN_EMPRESA
-  trocar-visao.tsx            # seletor de visão/empresa
-src/
-  features/ (vagas, candidaturas, perfil, entrevistas, ranking...)
-  api/ (cliente gerado a partir do OpenAPI)
-  auth/ (sessão, papéis, hook usePermissao)
-  ui/ (design system compartilhado)
+  _layout.tsx                 # providers: auth, query, tema, i18n, notificações
+  (auth)/                     # login, cadastro, recuperação, MFA
+  (onboarding)/               # "Quero me candidatar" / "Cadastrar minha empresa"
+  (candidato)/                # guard: papel CANDIDATO
+    _layout.tsx               # tabs: Vagas | Candidaturas | Notificações | Perfil
+    vagas/, candidaturas/     # candidaturas mostram só status e fase
+    entrevista-voz/[id].tsx   # 2ª fase: pré-checagem, aceite, sala de voz
+    perfil/                   # dados, currículo, habilidades, LinkedIn, privacidade
+  (empresa)/                  # guard: MembroEmpresa na empresa ativa
+    _layout.tsx               # tabs: Vagas | Candidatos | Notificações | Empresa
+    cadastro-empresa/, verificacao/
+    vagas/[id]/               # editar, perguntas, ranking, fases
+    candidaturas/[id].tsx     # áudios, gravação, transcrições, notas
+  (admin)/                    # guard: ADMIN_PLATAFORMA + MFA
+    verificacoes/, empresas/, auditoria/, vagas/
+  trocar-visao.tsx
 ```
 
 ```mermaid
 flowchart TD
   A[Abrir app] --> B{Sessão válida?}
-  B -- não --> L["Login / Cadastro (auth)"]
+  B -- não --> L["Login / Cadastro"]
   L --> B
-  B -- sim --> C["GET /me<br/>papéis + empresas"]
-  C --> D{Papéis do usuário}
-  D -- só candidato --> CAND["(candidato) Tabs"]
-  D -- só membro de empresa --> EMP["(empresa) Tabs<br/>empresa ativa"]
-  D -- ambos --> U{Última visão usada}
-  U -- candidato --> CAND
-  U -- empresa --> EMP
+  B -- sim --> C["GET /me<br/>papéis, empresas, MFA"]
+  C --> D{Papéis}
+  D -- ADMIN_PLATAFORMA --> M{MFA ok?}
+  M -- não --> MF["Desafio MFA"]
+  MF --> M
+  M -- sim --> ADM["Visão admin"]
+  D -- CANDIDATO --> CAND["Visão candidato"]
+  D -- membro de empresa --> EMP["Visão empresa<br/>empresa ativa"]
   D -- nenhum --> ON["Onboarding"]
-  CAND <-- "trocar-visao" --> EMP
-  EMP -- "várias empresas" --> SEL[Selecionar empresa ativa]
+  ON -- "Cadastrar empresa" --> CE["Auto-cadastro + verificação"]
+  ON -- "Candidatar-me" --> CAND
+  CAND <-- "trocar visão" --> EMP
+  EMP <-- "trocar visão" --> ADM
 ```
 
-**Regras de controle de acesso no app:**
+- `GET /me` retorna papéis globais, vínculos por empresa (com o status de verificação), status do MFA e visão preferida.
+- Header `X-Empresa-Id` nas rotas da visão empresa; o backend valida vínculo e status.
+- Layouts de grupo redirecionam quem não tem o papel; `usePermissao()` oculta ações. **O backend é a barreira de segurança.**
+- Cache do TanStack Query segmentado por visão e empresa.
+- Deep links (convite de match, entrevista, notificação) abrem a visão correta.
 
-- `GET /me` retorna `papeisGlobais` (ex.: `CANDIDATO`), `membros: [{empresaId, nome, papeis}]` e `visaoPreferida`.
-- A empresa ativa é enviada em todas as chamadas da visão empresa (header `X-Empresa-Id`); o backend valida o vínculo e aplica o tenant.
-- Layouts de grupo (`(empresa)/_layout.tsx`, `(candidato)/_layout.tsx`) redirecionam se o papel não existir; componentes usam `usePermissao('vaga:editar')` para ocultar ações. **A interface não é a barreira de segurança** — o backend rejeita com 403.
-- Ao trocar de visão/empresa, o cache do TanStack Query é segmentado por `empresaId` para não exibir dados de outro tenant.
-- Deep links (ex.: convite de match, link de entrevista) levam à rota correta e solicitam troca de visão se necessário.
-- Recursos exclusivos de recrutador que exigem tela grande (ex.: kanban detalhado) podem ganhar versão web via react-native-web em fase posterior, sem novo app.
+## 4.6 Integração WhatsApp via Uazapi
+
+**Decisão:** a integração de WhatsApp usa a **Uazapi**, o mesmo provedor do SaaS sof do Renato, reaproveitando o padrão já implementado lá (`whatsapp-api.service.ts`, `whatsapp.controller.ts`, `uazapi-text.ts`/`uazapi-menu.ts`, `account-whatsapp.controller.ts`). O código é portado/adaptado para este repositório; o repositório do sof não é alterado.
+
+| Aspecto | Padrão (baseado no sof) |
+|---------|-------------------------|
+| Instância | **Uma instância Uazapi por empresa** (um número de WhatsApp por empresa). A plataforma cria a instância com o `admintoken` (`/instance/init`) no onboarding da empresa e guarda o **token de instância cifrado**; a própria empresa conecta o aparelho por **QR code** ou código de pareamento (`/instance/connect`); status por `/instance/status`; desconexão por `/instance/disconnect` |
+| Envio | Sempre pelo **número da empresa dona da vaga**: `/send/text` (perguntas, lembretes), `/send/menu` (botões como "Começar" / "Agora não", com fallback para resposta numérica), `/send/media` quando necessário; autenticação pelo header `token` da instância da empresa |
+| Recebimento e roteamento | Webhook configurado em cada instância (`/webhook`, eventos `messages`, excluindo mensagens enviadas pela própria API e de grupos) apontando para `/webhooks/whatsapp/uazapi/{instanciaId}` com segredo compartilhado (`x-webhook-secret`). O backend identifica a **instância → empresa** pela URL e confere o token do payload; a mensagem é roteada para a entrevista ativa daquele candidato **naquela empresa** |
+| Áudio | Webhook com `messageType` de áudio → `/message/download` com o id da mensagem para obter o arquivo (link ou base64) → S3 → ffmpeg → transcrição no `SttProvider` (Whisper local ou API, decisão em aberto). A transcrição embutida da Uazapi existe, mas não é a opção padrão, para manter o controle do STT e o armazenamento do áudio |
+| Dedup | A Uazapi pode entregar eventos em pares: dedup por id da mensagem (Redis + índice único no banco), em vez do cache em memória usado no sof, porque aqui há várias instâncias de API/workers |
+| Interface | `WhatsappProvider` (`enviarTexto`, `enviarMenu`, `baixarMidia`, `statusInstancia`, `conectarInstancia`, `normalizarWebhook`) com `UazapiProvider` como implementação e `FakeWhatsappProvider` para testes; trocar de provedor no futuro não muda o domínio |
+| Gestão de instância | Na visão empresa (`(empresa)/whatsapp`): conectar por QR, ver status, última conexão e histórico de desconexões, desconectar/trocar número. Na visão admin (`(admin)/whatsapp`): todas as instâncias, com filtro por status, e apoio à reconexão |
+| Monitoramento | Job periódico consulta `/instance/status` de cada instância; ao detectar desconexão, **alerta a empresa e o admin** (push, central in-app, e-mail), **pausa os retries e envios daquela empresa** sem consumir tentativas dos candidatos (o tempo desconectado não conta no prazo) e, após a reconexão por QR, ressincroniza o webhook e retoma os envios com a cadência normal |
+| Cadência | Regras próprias da plataforma: **rate limiting por instância (por empresa)**, atraso aleatório entre mensagens, distribuição dos envios no horário comercial e rampa de aquecimento para números novos |
+| Consentimento | **Opt-in obrigatório (LGPD)** antes de qualquer mensagem; opt-out com "PARAR" respeitado imediatamente |
+
+Por ser uma **API não oficial**, há risco de bloqueio/banimento do número. Como cada empresa usa o próprio número, **o risco fica isolado por empresa**: um bloqueio afeta só as triagens daquela empresa. As mitigações estão em §17.
 
 # 5. Modelo de dados
 
@@ -283,8 +357,10 @@ flowchart TD
 ```mermaid
 erDiagram
   USUARIO ||--o| CANDIDATO : "possui perfil"
-  USUARIO ||--o{ MEMBRO_EMPRESA : "vincula-se"
-  EMPRESA ||--o{ MEMBRO_EMPRESA : "tem membros"
+  USUARIO ||--o{ MEMBRO_EMPRESA : vincula
+  EMPRESA ||--o{ MEMBRO_EMPRESA : tem
+  EMPRESA ||--o{ VERIFICACAO_EMPRESA : "passa por"
+  EMPRESA ||--o| INSTANCIA_WHATSAPP : "conecta seu numero"
   EMPRESA ||--o{ VAGA : publica
   EMPRESA ||--o{ PERGUNTA : "banco de perguntas"
   VAGA ||--o{ VAGA_HABILIDADE : requer
@@ -293,60 +369,98 @@ erDiagram
   HABILIDADE ||--o{ CANDIDATO_HABILIDADE : ""
   CANDIDATO ||--o{ CURRICULO : envia
   VAGA ||--|| PROCESSO_SELETIVO : tem
-  PROCESSO_SELETIVO ||--o{ ETAPA : "composto de"
+  PROCESSO_SELETIVO ||--o{ ETAPA : compoe
   ETAPA ||--o{ ETAPA_PERGUNTA : usa
   PERGUNTA ||--o{ ETAPA_PERGUNTA : ""
   CANDIDATO ||--o{ CANDIDATURA : faz
   VAGA ||--o{ CANDIDATURA : recebe
-  CANDIDATURA ||--o{ ENTREVISTA : "realiza por etapa"
+  CANDIDATURA ||--o{ ENTREVISTA : "uma por fase"
   ETAPA ||--o{ ENTREVISTA : ""
-  ENTREVISTA ||--o{ RESPOSTA : contém
+  ENTREVISTA ||--o{ RESPOSTA : contem
+  ENTREVISTA ||--o{ SESSAO_VOZ : "sessoes da 2a fase"
+  ENTREVISTA ||--o{ MENSAGEM_WHATSAPP : "mensagens da 1a fase"
+  INSTANCIA_WHATSAPP ||--o{ MENSAGEM_WHATSAPP : "envia e recebe"
   ETAPA_PERGUNTA ||--o{ RESPOSTA : responde
-  ENTREVISTA ||--o{ MENSAGEM_WHATSAPP : troca
-  RESPOSTA ||--o{ AVALIACAO : "avaliada por"
-  ENTREVISTA ||--o{ AVALIACAO : "consolidada em"
-  CANDIDATURA ||--o{ SCORE : "ranqueada por"
+  RESPOSTA ||--o{ AVALIACAO : avaliada
+  CANDIDATURA ||--o{ SCORE : ranqueada
   CANDIDATURA ||--o{ HISTORICO_STATUS : registra
   CANDIDATO ||--o{ CONSENTIMENTO : concede
   VAGA ||--o{ SUGESTAO_MATCH : gera
   CANDIDATO ||--o{ SUGESTAO_MATCH : ""
+  USUARIO ||--o{ NOTIFICACAO : recebe
+  USUARIO ||--o{ PREFERENCIA_NOTIFICACAO : define
+  USUARIO ||--o{ DISPOSITIVO_PUSH : registra
+  USUARIO ||--o{ AUDITORIA_ACESSO : "gera eventos"
 
-  USUARIO { uuid id PK
+  USUARIO {
+    uuid id PK
     string email UK
-    string telefone
     string senhaHash
     string[] papeisGlobais
+    bool mfaAtivo
+    string mfaSecretCifrado
     string visaoPreferida
-    timestamp criadoEm }
-  EMPRESA { uuid id PK
-    string nome
+  }
+  EMPRESA {
+    uuid id PK
+    string razaoSocial
+    string nomeFantasia
     string cnpj UK
+    string dominio
+    string responsavelNome
+    string responsavelEmail
+    string statusVerificacao
+    timestamp verificadaEm
     jsonb configuracoes
-    int retencaoDias }
-  MEMBRO_EMPRESA { uuid id PK
+  }
+  VERIFICACAO_EMPRESA {
+    uuid id PK
+    uuid empresaId FK
+    string tipo
+    string resultado
+    jsonb detalhes
+    uuid revisorAdminId
+    string motivo
+  }
+  MEMBRO_EMPRESA {
+    uuid id PK
     uuid usuarioId FK
     uuid empresaId FK
     string[] papeis
-    string status }
-  VAGA { uuid id PK
+    string status
+  }
+  VAGA {
+    uuid id PK
     uuid empresaId FK
     string titulo
     text descricao
     string senioridade
     string modelo
-    string localidade
     string status
-    vector embedding }
-  HABILIDADE { uuid id PK
+    timestamp prazoInscricoes
+    timestamp inscricoesEncerradasEm
+    timestamp pausadaEm
+    string statusAntesDaPausa
+    timestamp fechadaEm
+    string motivoFechamento
+    jsonb pesosRanking
+    vector embedding
+  }
+  HABILIDADE {
+    uuid id PK
     string nome UK
     string categoria
-    string[] sinonimos }
-  VAGA_HABILIDADE { uuid vagaId FK
+    string[] sinonimos
+  }
+  VAGA_HABILIDADE {
+    uuid vagaId FK
     uuid habilidadeId FK
     int nivelMinimo
     float peso
-    bool obrigatoria }
-  CANDIDATO { uuid id PK
+    bool obrigatoria
+  }
+  CANDIDATO {
+    uuid id PK
     uuid usuarioId FK
     string nome
     string whatsapp
@@ -354,60 +468,94 @@ erDiagram
     string linkedinUrl
     jsonb perfil
     bool visivelParaMatch
-    vector embedding }
-  CANDIDATO_HABILIDADE { uuid candidatoId FK
+    vector embedding
+  }
+  CANDIDATO_HABILIDADE {
+    uuid candidatoId FK
     uuid habilidadeId FK
     int nivel
     float anosExperiencia
-    string origem }
-  CURRICULO { uuid id PK
+    string origem
+  }
+  CURRICULO {
+    uuid id PK
     uuid candidatoId FK
     string arquivoKey
+    string metodoExtracao
     string statusProcessamento
+    float confiancaOcr
     text textoExtraido
     jsonb dadosExtraidos
-    bool ativo }
-  PROCESSO_SELETIVO { uuid id PK
+  }
+  PROCESSO_SELETIVO {
+    uuid id PK
     uuid vagaId FK
     uuid empresaId FK
-    string status }
-  ETAPA { uuid id PK
+    int tempoPadraoPorPergunta
+    jsonb politicaRetry
+    int janelaReconexaoSegundos
+  }
+  ETAPA {
+    uuid id PK
     uuid processoId FK
     int ordem
     string tipo
     int numeroPerguntas
-    jsonb config }
-  PERGUNTA { uuid id PK
+  }
+  PERGUNTA {
+    uuid id PK
     uuid empresaId FK
     text enunciado
     jsonb rubrica
     string origem
-    string[] tags }
-  ETAPA_PERGUNTA { uuid id PK
+    int tempoLimiteSegundos
+  }
+  ETAPA_PERGUNTA {
+    uuid id PK
     uuid etapaId FK
     uuid perguntaId FK
     int ordem
     float peso
-    bool obrigatoria }
-  CANDIDATURA { uuid id PK
+    int tempoLimiteSegundos
+  }
+  CANDIDATURA {
+    uuid id PK
     uuid empresaId FK
     uuid vagaId FK
     uuid candidatoId FK
     string origem
     string status
+    string statusAntesDaEspera
     uuid etapaAtualId FK
-    float scoreFinal }
-  ENTREVISTA { uuid id PK
+  }
+  ENTREVISTA {
+    uuid id PK
     uuid empresaId FK
     uuid candidaturaId FK
     uuid etapaId FK
     string canal
     string status
+    int retryAtual
     int perguntaAtual
-    int lembretesEnviados
-    timestamp expiraEm
-    timestamp ultimaInteracaoEm }
-  RESPOSTA { uuid id PK
+    timestamp iniciadaEm
+    timestamp ultimaInteracaoEm
+    timestamp proximoRetryEm
+    timestamp aceiteTentativaEm
+    bool excecaoConcedida
+  }
+  SESSAO_VOZ {
+    uuid id PK
+    uuid entrevistaId FK
+    string salaId
+    string status
+    timestamp inicioEm
+    timestamp fimEm
+    timestamp desconectadoEm
+    string motivoFim
+    string gravacaoKey
+  }
+  RESPOSTA {
+    uuid id PK
     uuid empresaId FK
     uuid entrevistaId FK
     uuid etapaPerguntaId FK
@@ -418,645 +566,986 @@ erDiagram
     string statusTranscricao
     text transcricao
     float confiancaTranscricao
-    string idioma
-    timestamp recebidaEm }
-  MENSAGEM_WHATSAPP { uuid id PK
+    int tempoUsado
+    bool expirou
+    bool parcial
+  }
+  INSTANCIA_WHATSAPP {
+    uuid id PK
+    uuid empresaId FK
+    string provedor
+    string instanciaIdProvedorCifrado
+    string tokenCifrado
+    string numero
+    string status
+    timestamp ultimaConexaoEm
+    timestamp desconectadaEm
+  }
+  MENSAGEM_WHATSAPP {
+    uuid id PK
     uuid entrevistaId FK
-    string waMessageId UK
+    string mensagemIdProvedor UK
     string direcao
     string tipo
     string status
-    jsonb payload }
-  AVALIACAO { uuid id PK
-    uuid empresaId FK
+  }
+  AVALIACAO {
+    uuid id PK
     uuid respostaId FK
-    uuid entrevistaId FK
     string avaliador
     float nota
     jsonb criterios
     text justificativa
     string modelo
-    string versaoPrompt }
-  SCORE { uuid id PK
+    string versaoPrompt
+  }
+  SCORE {
+    uuid id PK
     uuid candidaturaId FK
+    float scorePerfil
     float scoreHabilidades
+    float scoreCurriculo
+    float scoreLinkedin
     float scoreTriagem
     float scoreEntrevista
     float scoreFinal
+    float completude
     jsonb explicacao
-    int versaoAlgoritmo }
-  HISTORICO_STATUS { uuid id PK
+    int versaoAlgoritmo
+  }
+  HISTORICO_STATUS {
+    uuid id PK
     uuid candidaturaId FK
     string de
     string para
     uuid autorId
-    string motivo }
-  CONSENTIMENTO { uuid id PK
+    string motivo
+  }
+  CONSENTIMENTO {
+    uuid id PK
     uuid candidatoId FK
     uuid candidaturaId FK
     string tipo
     bool concedido
     string versaoTermo
-    timestamp registradoEm }
-  SUGESTAO_MATCH { uuid id PK
+  }
+  SUGESTAO_MATCH {
+    uuid id PK
     uuid vagaId FK
     uuid candidatoId FK
     float compatibilidade
     jsonb explicacao
-    string status }
+    string status
+    timestamp notificadoEm
+  }
+  NOTIFICACAO {
+    uuid id PK
+    uuid usuarioId FK
+    uuid empresaId FK
+    string tipo
+    string chaveDedup UK
+    jsonb dados
+    int agrupadas
+    timestamp lidaEm
+  }
+  PREFERENCIA_NOTIFICACAO {
+    uuid id PK
+    uuid usuarioId FK
+    uuid empresaId FK
+    string tipo
+    bool push
+    bool email
+    bool inApp
+    float limiarMatch
+  }
+  DISPOSITIVO_PUSH {
+    uuid id PK
+    uuid usuarioId FK
+    string token UK
+    string plataforma
+    timestamp ultimoUsoEm
+  }
+  AUDITORIA_ACESSO {
+    uuid id PK
+    uuid usuarioId FK
+    uuid empresaId FK
+    string papel
+    string acao
+    string recursoTipo
+    uuid recursoId
+    string motivo
+    timestamp criadoEm
+  }
 ```
 
-## 5.2 Notas sobre entidades
+## 5.2 Notas sobre entidades e campos-chave
 
-| Entidade | Notas |
-|----------|-------|
-| `Usuario` | Conta única. `papeisGlobais` inclui `CANDIDATO` e `ADMIN_PLATAFORMA`. `visaoPreferida` lembra a última visão usada no app |
-| `MembroEmpresa` | Vínculo usuário ↔ empresa com papéis `ADMIN_EMPRESA`, `RECRUTADOR`, `AVALIADOR`; `status` (convidado, ativo, removido). Um usuário pode estar em várias empresas |
-| `Candidato` | Perfil do candidato, **global** (não pertence a um tenant). Empresas só veem o perfil via candidatura ou se `visivelParaMatch = true` |
-| `Habilidade` | Catálogo global com categoria (`LINGUAGEM`, `CLOUD`, `BANCO_DADOS`, `FRAMEWORK`, `FERRAMENTA`, `SOFT_SKILL`...) e sinônimos para normalização |
-| `CandidatoHabilidade.origem` | `DECLARADA`, `EXTRAIDA_CV` (confirmada pelo candidato), `INFERIDA_ENTREVISTA` (apenas informativa) |
-| `Etapa.tipo` | `TRIAGEM_WHATSAPP`, `ENTREVISTA_IA`, `REVISAO_HUMANA`, `PERSONALIZADA` |
-| `Pergunta.origem` | `EMPRESA` (exigida antecipadamente) ou `IA` (sugerida e aprovada); `rubrica` descreve o que é uma boa resposta |
-| `Candidatura.origem` | `DIRETA` ou `MATCH` (convite) |
-| `Resposta.tipo` | `AUDIO`, `TEXTO`, `CHAT_IA` |
-| `Resposta.statusTranscricao` | `NAO_APLICAVEL`, `PENDENTE`, `PROCESSANDO`, `CONCLUIDA`, `FALHOU`, `BAIXA_CONFIANCA` |
-| `Resposta.audioUrl` | Chave/URL do objeto no S3 (acesso apenas por URL pré-assinada de curta duração) |
-| Tabelas com `empresaId` | Todas as tabelas de dados do processo (vaga, processo, etapa, candidatura, entrevista, resposta, avaliação, score) carregam `empresaId` para RLS e índices |
+| Entidade / campo | Nota |
+|------------------|------|
+| `Empresa.statusVerificacao` | `PENDENTE`, `VERIFICADA`, `REJEITADA`, `SUSPENSA` |
+| `VerificacaoEmpresa.tipo` | `EMAIL`, `DOMINIO`, `CNPJ`, `REVISAO_MANUAL`; histórico de cada checagem |
+| `Vaga.status` | `RASCUNHO`, `PUBLICADA`, `PAUSADA`, `INSCRICOES_ENCERRADAS`, `FECHADA` |
+| `Vaga.prazoInscricoes` | Obrigatório para publicar; armazenado em **UTC** (`timestamptz`) e exibido em **America/Sao_Paulo** |
+| `Vaga.inscricoesEncerradasEm` | Momento real do encerramento automático (UTC) |
+| `Vaga.statusAntesDaPausa` | Permite retomar para o estado anterior |
+| `ProcessoSeletivo.tempoPadraoPorPergunta` | Segundos; padrão do processo para a 2ª fase |
+| `ProcessoSeletivo.politicaRetry` | JSON: tentativas, intervalo, prazo total, horário comercial, prazo de inatividade |
+| `Pergunta.tempoLimiteSegundos` | Override da pergunta (banco de perguntas); `EtapaPergunta.tempoLimiteSegundos` permite override por vaga. Precedência: EtapaPergunta → Pergunta → Processo |
+| `Entrevista.status` | Ver §8.5.4 (1ª fase) e §8.6.5 (2ª fase) |
+| `Entrevista.iniciadaEm` | **Marco de início**: na 1ª fase, a primeira resposta do candidato; na 2ª fase, o início da primeira sessão após o aceite |
+| Unicidade de `Entrevista` | `UNIQUE (candidaturaId, etapaId)`: uma única tentativa por candidatura e fase |
+| `Resposta.tipo` | `AUDIO_WHATSAPP`, `TEXTO_WHATSAPP`, `VOZ_TEMPO_REAL` |
+| `Resposta.tempoUsado` / `expirou` | Tempo efetivo da pergunta (inclui follow-ups) e flag de expiração |
+| `Resposta.parcial` | Resposta incompleta (expirada, abandonada ou desconectada) |
+| `SessaoVoz` | Cada conexão; a reconexão dentro da janela reaproveita a mesma sessão |
+| `Score` | Componentes e explicação; aparece **somente** em DTOs da empresa e do admin |
+| `Notificacao.chaveDedup` | Ex.: `MATCH_FORTE:{vagaId}:{candidatoId}`, para evitar repetição |
+| `AuditoriaAcesso` | Imutável (append-only), com retenção própria |
+| `InstanciaWhatsapp` | **Uma por empresa** (`empresaId` único e obrigatório); provedor `UAZAPI`; id e token da instância **cifrados**; `numero`; `status` `AGUARDANDO_QR`, `CONECTADA`, `DESCONECTADA`; `ultimaConexaoEm`, `desconectadaEm` |
 
-# 6. Fluxos detalhados
-
-## 6.1 Cadastro de vaga e geração de perguntas por IA
+# 6. Empresa: auto-cadastro e verificação
 
 ```mermaid
 sequenceDiagram
   autonumber
-  actor R as Recrutador (app, visão empresa)
-  participant API as API NestJS
+  actor U as Responsável (app)
+  participant API as API
+  participant Q as BullMQ
+  participant CN as Fonte de dados de CNPJ
+  actor AD as Admin plataforma
+  U->>API: POST /empresas/cadastro (dados, CNPJ, responsável, domínio)
+  API->>API: valida dígitos do CNPJ e unicidade
+  API-->>U: empresa PENDENTE, usuário vira ADMIN_EMPRESA
+  API->>U: e-mail de confirmação
+  U->>API: POST /empresas/{id}/verificacao/email (código)
+  API->>API: confere domínio do e-mail com o domínio declarado
+  opt Domínio genérico
+    U->>API: POST /empresas/{id}/verificacao/dominio (DNS TXT)
+  end
+  API->>Q: verificar-cnpj(empresaId)
+  Q->>CN: consulta situação cadastral e razão social
+  CN-->>Q: resultado
+  Q->>API: registra VerificacaoEmpresa
+  alt Checagens ok e revisão manual não exigida
+    API-->>U: VERIFICADA (notificação)
+  else Revisão manual exigida ou checagem falhou
+    API-->>AD: item na fila de verificação
+    AD->>API: POST /admin/empresas/{id}/aprovar ou /rejeitar (motivo)
+    API-->>U: VERIFICADA ou REJEITADA (motivo)
+  end
+```
+
+```mermaid
+stateDiagram-v2
+  [*] --> PENDENTE: auto-cadastro
+  PENDENTE --> VERIFICADA: checagens ok e revisão manual, se exigida
+  PENDENTE --> REJEITADA: checagem ou revisão reprovada
+  REJEITADA --> PENDENTE: correção e reenvio
+  VERIFICADA --> SUSPENSA: admin suspende (motivo)
+  SUSPENSA --> VERIFICADA: admin reativa
+```
+
+- `PENDENTE` e `REJEITADA`: criam rascunhos de vagas, mas **não** publicam.
+- `SUSPENSA`: vagas publicadas são **pausadas** automaticamente (regras de pausa, §7.3) e só voltam após a reativação.
+
+## 6.1 Conectar o WhatsApp da empresa (instância Uazapi)
+
+Etapa do onboarding, feita pela **própria empresa** (ADMIN_EMPRESA), em paralelo ou após a verificação.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as Admin da empresa (app)
+  participant API as API
+  participant UZ as Uazapi
   participant DB as PostgreSQL
-  participant Q as BullMQ (ia-perguntas)
-  participant W as Worker IA
-  participant LLM as LLM
-  R->>API: POST /vagas (dados + habilidades)
-  API->>DB: cria Vaga (rascunho) + VagaHabilidade
-  R->>API: POST /vagas/{id}/processo (etapas, nº de perguntas = 5)
-  API->>DB: cria ProcessoSeletivo + Etapas
-  R->>API: POST /etapas/{id}/perguntas (perguntas exigidas pela empresa)
-  API->>DB: grava Perguntas origem=EMPRESA
-  R->>API: POST /etapas/{id}/perguntas/sugestoes
-  API->>Q: job sugerir(vaga, etapa, faltantes = 5 - exigidas)
-  Q->>W: processa
-  W->>LLM: prompt com título, senioridade, descrição, habilidades e perguntas existentes
-  LLM-->>W: JSON {perguntas[], rubricas[], habilidadesAlvo[]}
-  W->>DB: grava sugestões (pendentes de aprovação)
-  W-->>R: notificação (push / polling)
-  R->>API: PATCH sugestões (aceitar/editar/descartar)
-  R->>API: POST /vagas/{id}/publicar
-  API->>DB: valida nº de perguntas por etapa, status=PUBLICADA
-  API->>Q: job match(vaga)
+  participant MON as Job de monitoramento
+  actor AD as Admin plataforma
+  U->>API: POST /empresas/{id}/whatsapp/instancia
+  API->>UZ: /instance/init (admintoken)
+  UZ-->>API: id e token da instância
+  API->>DB: InstanciaWhatsapp AGUARDANDO_QR (id e token cifrados)
+  U->>API: POST /empresas/{id}/whatsapp/conectar
+  API->>UZ: /instance/connect (token da instância)
+  UZ-->>API: QR code ou código de pareamento
+  API-->>U: exibe o QR
+  U->>U: lê o QR no WhatsApp do número da empresa
+  API->>UZ: /instance/status
+  UZ-->>API: conectada (número)
+  API->>UZ: /webhook (URL com instanciaId, eventos messages)
+  API->>DB: CONECTADA, numero, ultimaConexaoEm
+  loop Periodicamente
+    MON->>UZ: /instance/status
+    alt Desconectada
+      MON->>DB: DESCONECTADA, desconectadaEm, pausa envios e retries da empresa
+      MON-->>U: alerta para reconectar por QR
+      MON-->>AD: alerta
+    end
+  end
 ```
 
-**Regras:**
+- Status da instância visível para a **empresa** (tela de WhatsApp e banner nas vagas) e para o **admin** (todas as empresas).
+- **Bloqueio**: iniciar a 1ª fase exige instância `CONECTADA`. Sem ela, a candidatura aguarda em `INSCRITA` com alerta para a empresa ("conecte o WhatsApp para iniciar as triagens"); nenhuma tentativa é consumida.
 
-- O total de perguntas da etapa é `numeroPerguntas` (padrão 5). Perguntas exigidas pela empresa entram primeiro; a IA sugere apenas as faltantes.
-- O prompt orienta a IA pelo perfil da vaga: ex. *Arquiteto de Software* → perguntas sobre decisões de arquitetura, trade-offs, escalabilidade, integração; *Dev Backend Node.js + AWS* → perguntas sobre Node, filas, serviços AWS citados.
-- Cada pergunta sugerida vem com rubrica (critérios e o que diferencia respostas fracas/médias/fortes) e habilidades-alvo.
-- Perguntas da 1ª fase (WhatsApp) devem ser adequadas a resposta por áudio curto; a 2ª fase admite perguntas mais profundas.
-- A vaga só pode ser publicada com todas as etapas completas e perguntas aprovadas por um humano.
 
-## 6.2 Candidatura direta
+# 7. Ciclo de vida da vaga: prazo, pausa e fechamento
+
+## 7.1 Estados da vaga
+
+```mermaid
+stateDiagram-v2
+  [*] --> RASCUNHO
+  RASCUNHO --> PUBLICADA: publicar (exige prazo futuro e empresa VERIFICADA)
+  PUBLICADA --> PUBLICADA: prorrogar prazo
+  PUBLICADA --> INSCRICOES_ENCERRADAS: prazo expirou (job e checagem na API)
+  PUBLICADA --> PAUSADA: pausar
+  INSCRICOES_ENCERRADAS --> PAUSADA: pausar
+  PAUSADA --> PUBLICADA: retomar com prazo ainda futuro
+  PAUSADA --> INSCRICOES_ENCERRADAS: retomar com prazo já vencido
+  PUBLICADA --> FECHADA: fechar (motivo)
+  INSCRICOES_ENCERRADAS --> FECHADA: fechar (motivo)
+  PAUSADA --> FECHADA: fechar (motivo)
+  FECHADA --> [*]
+```
+
+| Estado | Na lista de vagas / no match | Novas candidaturas | Fases dos inscritos |
+|--------|:-:|:-:|---|
+| `RASCUNHO` | não | não | — |
+| `PUBLICADA` | sim | sim | seguem normalmente |
+| `INSCRICOES_ENCERRADAS` | não | **não** | **seguem normalmente** |
+| `PAUSADA` | não | não | **congeladas** (`EM_ESPERA`) |
+| `FECHADA` | não | não | encerradas (`ENCERRADA_VAGA_FECHADA`) |
+
+## 7.2 Prazo de inscrições obrigatório
+
+- **A publicação exige `prazoInscricoes`** no futuro; o rascunho pode ficar sem prazo.
+- O prazo é armazenado em **UTC**; a interface recebe e exibe em **America/Sao_Paulo** (o recrutador escolhe, por exemplo, "até 20/11, 23:59" no horário de Brasília e o backend converte).
+- **Encerramento automático da entrada**: job atrasado em `vagas-prazos` agendado para `prazoInscricoes` (reagendado na prorrogação) **e** checagem na API em toda candidatura ou aceite de convite, como defesa caso o job atrase. Uma varredura periódica encontra vagas vencidas sem job.
+- Ao expirar: `status = INSCRICOES_ENCERRADAS` e `inscricoesEncerradasEm` = agora (UTC); a vaga sai da lista e do match; convites ainda não aceitos expiram; **os inscritos seguem as fases**.
+- **Prorrogação** pela empresa enquanto a vaga está `PUBLICADA` (o novo prazo deve ser maior que o atual).
+- Em aberto (§18): reabrir inscrições após expirar e congelar o prazo durante a pausa (**padrão: não congela**).
+
+## 7.3 Pausar e retomar (suspensão temporária)
+
+- Pausar (empresa dona ou admin): a vaga sai da lista e do match; **nenhuma candidatura é encerrada**.
+- Candidaturas ativas vão para `EM_ESPERA`, guardando `statusAntesDaEspera` (a fase em que estavam).
+- **Jobs de retry da 1ª fase são suspensos** e seus prazos **congelados**: o tempo de pausa não consome tentativas nem prazo total. Convites ainda não enviados não saem.
+- **Entrevistas em curso terminam**: uma triagem já iniciada pode ser concluída e uma sessão de voz em andamento vai até o fim; depois disso, o candidato **não avança** de fase até a retomada.
+- Nenhuma entrevista nova começa: o app bloqueia o início da 2ª fase com aviso de vaga pausada.
+- Retomar: as candidaturas voltam ao `statusAntesDaEspera`, os retries são reagendados com o tempo restante e a vaga volta a `PUBLICADA` (ou a `INSCRICOES_ENCERRADAS`, se o prazo venceu durante a pausa).
+- Candidatos ativos recebem notificações de pausa e de retomada; nenhuma notificação de "candidato novo" ou "match forte" é gerada para vaga pausada.
+- Em aberto: duração máxima de pausa.
+
+## 7.4 Fechar (encerramento definitivo)
+
+- A qualquer momento, pela empresa dona ou pelo admin, com **motivo obrigatório** (`motivoFechamento`).
+- A vaga sai da lista e do match; **jobs de convite e de retry são cancelados**.
+- **Entrevistas em curso terminam a sessão atual e depois encerram**: na voz, a sessão vai até o fim; no WhatsApp, o bot recebe a resposta pendente, agradece e encerra.
+- Candidaturas ativas viram `ENCERRADA_VAGA_FECHADA`, que **não é reprovação nem abandono**.
+- Candidatos são notificados; os **dados são preservados** (respostas, avaliações, scores), conforme a retenção.
+- Em aberto: reabertura de vaga fechada.
 
 ```mermaid
 sequenceDiagram
   autonumber
-  actor C as Candidato (app)
+  actor R as Recrutador
+  participant API as API
+  participant Q as BullMQ (vagas-efeitos)
+  participant W as Worker
+  participant DB as PostgreSQL
+  participant N as Notificações
+  R->>API: POST /vagas/{id}/fechar (motivo)
+  API->>DB: status=FECHADA, fechadaEm, motivoFechamento
+  API->>Q: efeitos-fechamento(vagaId)
+  Q->>W: processa
+  W->>Q: remove jobs de convite e retry da vaga
+  W->>DB: candidaturas sem entrevista em curso viram ENCERRADA_VAGA_FECHADA
+  W->>DB: entrevistas em curso marcadas encerrarAoFim=true
+  Note over W,DB: ao fim da sessão atual, a candidatura vira ENCERRADA_VAGA_FECHADA
+  W->>N: notifica candidatos ativos
+```
+
+# 8. Fluxos detalhados
+
+## 8.1 Cadastro de vaga e perguntas (exigidas ou sugeridas por IA)
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor R as Recrutador
+  participant API as API
+  participant Q as BullMQ (ia-perguntas)
+  participant LLM as LLM
+  participant DB as PostgreSQL
+  R->>API: POST /vagas (dados, habilidades, prazoInscricoes)
+  API->>DB: Vaga RASCUNHO
+  R->>API: PUT /vagas/{id}/processo (etapas, 5 perguntas, tempoPadraoPorPergunta, politicaRetry)
+  R->>API: POST /etapas/{id}/perguntas (exigidas, tempoLimiteSegundos opcional)
+  R->>API: POST /etapas/{id}/perguntas/sugestoes
+  API->>Q: sugerir(faltantes = total - exigidas)
+  Q->>LLM: perfil da vaga, habilidades e perguntas existentes
+  LLM-->>Q: perguntas, rubricas e tempo sugerido
+  Q->>DB: sugestões pendentes
+  R->>API: aceitar, editar ou descartar sugestões
+  R->>API: POST /vagas/{id}/publicar
+  API->>DB: valida empresa VERIFICADA, prazo futuro, perguntas completas
+  API->>Q: agenda encerramento de inscrições e match(vaga)
+```
+
+- O total de perguntas por etapa é `numeroPerguntas` (padrão 5). As exigidas entram primeiro; a IA completa as faltantes conforme o perfil da vaga (ex.: arquiteto → decisões de arquitetura, trade-offs, escalabilidade).
+- Cada pergunta tem rubrica e, na 2ª fase, tempo-limite (padrão do processo ou override).
+- A publicação só ocorre depois da aprovação humana de todas as perguntas.
+
+## 8.2 Candidatura direta
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor C as Candidato
   participant API as API
   participant DB as PostgreSQL
   participant Q as BullMQ
-  C->>API: GET /vagas?filtros
-  API-->>C: vagas publicadas + compatibilidade estimada
-  C->>API: GET /vagas/{id}
-  C->>API: POST /vagas/{id}/candidaturas (consentimentos)
-  API->>DB: valida perfil mínimo (CV ou habilidades, WhatsApp verificado)
-  API->>DB: cria Candidatura (origem=DIRETA, status=INSCRITA) + Consentimentos
-  API->>Q: ranking.calcular(candidatura)
-  API->>Q: entrevista.iniciarEtapa(candidatura, etapa 1)
-  API-->>C: 201 Candidatura criada
+  C->>API: POST /vagas-publicas/{id}/candidaturas (consentimentos)
+  API->>DB: vaga PUBLICADA e agora antes de prazoInscricoes (UTC)?
+  alt Inscrições encerradas, vaga pausada ou fechada
+    API-->>C: 409 inscrições não disponíveis
+  else Aceitando inscrições
+    API->>DB: Candidatura INSCRITA (UNIQUE vaga + candidato)
+    API->>Q: ranking.calcular, notificar empresa (CANDIDATO_NOVO), iniciar 1ª fase
+    API-->>C: 201 (DTO sem score)
+  end
 ```
 
-- Unicidade: um candidato tem no máximo uma candidatura ativa por vaga (`UNIQUE (vagaId, candidatoId)`).
-- Se faltar consentimento de WhatsApp, a candidatura fica em `PENDENTE_CONSENTIMENTO` e a 1ª fase não é iniciada.
-
-## 6.3 Fluxo de match
+## 8.3 Fluxo de match
 
 ```mermaid
 sequenceDiagram
   autonumber
   participant Q as BullMQ (match)
-  participant W as Worker Match
+  participant W as Worker
   participant DB as PostgreSQL + pgvector
+  participant N as Notificações
   actor R as Recrutador
   actor C as Candidato
-  Q->>W: match(vaga)
-  W->>DB: filtra candidatos visivelParaMatch com habilidades obrigatórias
-  W->>DB: busca vetorial (embedding vaga × candidato)
-  W->>W: calcula compatibilidade + explicação
-  W->>DB: grava SugestaoMatch (status=SUGERIDA)
-  R->>DB: vê sugestões na vaga (via API)
-  R->>DB: POST /sugestoes/{id}/convidar
-  DB-->>C: push "Você foi convidado para a vaga X"
-  C->>DB: POST /convites/{id}/aceitar (consentimentos)
-  DB->>DB: cria Candidatura origem=MATCH, status=INSCRITA
-  Note over C,R: A partir daqui o fluxo é igual à candidatura direta
+  Q->>W: match(vaga PUBLICADA)
+  W->>DB: candidatos visíveis para match, habilidades obrigatórias, busca vetorial
+  W->>DB: SugestaoMatch com compatibilidade e explicação
+  alt Compatibilidade acima do limiar de match forte
+    W->>N: MATCH_FORTE (dedup por vaga e candidato)
+  end
+  R->>DB: convida candidato sugerido
+  N-->>C: push de convite
+  C->>DB: aceita (se a vaga ainda aceita inscrições)
+  DB->>DB: Candidatura origem=MATCH, INSCRITA
 ```
 
-- Sentido inverso: o candidato vê **vagas recomendadas** com base no mesmo cálculo.
-- A empresa só vê dados do candidato sugerido em formato resumido (habilidades, senioridade, localidade) até ele aceitar o convite; os dados completos aparecem após a candidatura.
+- Vagas pausadas, com inscrições encerradas ou fechadas não entram no match.
+- Até o aceite do convite, a empresa vê só um resumo do candidato.
+- O candidato também recebe **vagas recomendadas** pelo mesmo cálculo.
 
-## 6.4 Upload de currículo com OCR e extração
+## 8.4 Currículo: extração nativa e OCR local (Tesseract)
 
 ```mermaid
 sequenceDiagram
   autonumber
   actor C as Candidato
   participant API as API
-  participant S3 as Storage S3
+  participant S3 as Storage
   participant Q as BullMQ (cv-processamento)
   participant W as Worker CV
-  participant OCR as OCR local
+  participant T as Tesseract (local)
   participant LLM as LLM
-  C->>API: POST /curriculos/upload-url (nome, tipo, tamanho)
-  API-->>C: URL pré-assinada
-  C->>S3: PUT arquivo
+  C->>API: POST /curriculos/upload-url
+  C->>S3: PUT do arquivo (URL pré-assinada)
   C->>API: POST /curriculos (arquivoKey)
   API->>Q: processar(curriculoId)
   Q->>W: job
-  W->>S3: baixa arquivo
-  alt PDF com texto / DOCX
-    W->>W: extrai texto nativo
-  else Imagem ou PDF escaneado
-    W->>OCR: OCR (pt + en)
-    OCR-->>W: texto + confiança
+  W->>S3: baixa o arquivo
+  alt PDF com camada de texto ou DOCX
+    W->>W: extração de texto nativo (metodoExtracao=NATIVO)
+  else PDF escaneado ou imagem
+    W->>W: rasteriza e pré-processa (binarização, deskew)
+    W->>T: OCR (por + eng)
+    T-->>W: texto e confiança (metodoExtracao=OCR)
   end
-  W->>LLM: texto → JSON Schema (experiências, formação, idiomas, habilidades)
-  LLM-->>W: dados estruturados
-  W->>W: normaliza habilidades no catálogo (sinônimos)
-  W->>API: status=EXTRAIDO
-  API-->>C: push "Revise os dados extraídos"
-  C->>API: PUT /candidatos/me (confirma/edita) e habilidades
-  API->>Q: atualizar embedding + match(candidato)
+  W->>LLM: texto para JSON Schema (experiências, formação, idiomas, habilidades)
+  W->>W: normaliza habilidades no catálogo
+  W-->>C: push para revisar os dados extraídos
+  C->>API: confirma ou edita perfil e habilidades
 ```
 
-- Formatos: PDF, DOCX, PNG/JPG; limite de tamanho a definir (ex.: alguns MB). Antivírus/validação de tipo MIME antes de processar.
-- Nada extraído é gravado no perfil sem confirmação do candidato.
-- Campo **LinkedIn**: apenas URL validada (`https://www.linkedin.com/in/...`), sem chamadas externas.
+- **OCR somente local**, com Tesseract na imagem Docker do worker; nenhum serviço de OCR em nuvem.
+- O OCR roda **só para escaneados/imagens**. Em PDF misto, usa o texto nativo e faz OCR apenas nas páginas sem texto.
+- Com baixa confiança do OCR, o candidato é avisado para revisar/editar manualmente.
+- Nada é gravado no perfil sem confirmação do candidato.
+- **LinkedIn**: apenas o campo `linkedinUrl` validado (`https://www.linkedin.com/in/...`), sem chamadas externas.
 
-## 6.5 1ª fase — Triagem via WhatsApp (bot envia texto, candidato responde por áudio)
+## 8.5 1ª fase — Triagem via WhatsApp (bot envia texto, candidato responde por áudio)
 
-**Princípios:**
+### 8.5.1 Princípios
 
-- O bot **envia as perguntas em mensagens de texto**; o candidato **responde por mensagens de voz**. Não há ligação.
-- Iniciar conversa fora da janela de atendimento de 24 horas exige **template aprovado** (mensagem modelo) pela Meta; dentro da janela, mensagens de texto livres são permitidas. Cada resposta do candidato reabre a janela de 24 h.
-- O contato só ocorre com **opt-in** registrado (consentimento de contato por WhatsApp e de processamento de áudio).
+- O bot **envia as perguntas por texto**; o candidato **responde por áudio**. O contato é só por mensagens.
+- O envio sai sempre pela **instância Uazapi da empresa dona da vaga** (§4.6), ou seja, pelo número da própria empresa: texto livre e menus com botões, sem aprovação prévia de mensagens pelo provedor. A plataforma aplica **regras próprias de cadência e horário comercial** (§8.5.2) e rate limiting por instância, para reduzir o risco de bloqueio do número.
+- Só há contato com **opt-in** registrado (WhatsApp + processamento de áudio).
+- **Pré-condição**: instância da empresa `CONECTADA`. Sem ela, a 1ª fase não começa (bloqueio com alerta à empresa); se a instância cair durante a fase, envios e retries daquela empresa ficam pausados até a reconexão, **sem consumir tentativas do candidato**.
+- **Marco de início = primeira resposta do candidato** a uma pergunta (áudio, ou texto aceito). Tocar em "Começar" no menu do convite (ou responder "1") ainda não é início.
+
+### 8.5.2 Política de retry (antes de qualquer eliminação)
+
+Se o candidato **ainda não começou**, o sistema reenvia automaticamente antes de marcar `SEM_RESPOSTA`. Os valores padrão abaixo são **SUGESTÃO** e configuráveis por processo. **A política final é ponto a detalhar na implementação (Fase 7).**
+
+| Parâmetro | Padrão (SUGESTÃO) | Observação |
+|-----------|-------------------|------------|
+| Tentativas de retry após o convite | 3 | Total de 4 envios |
+| Intervalo entre tentativas | 24 h | Se o próximo envio cair fora do horário comercial, é adiado |
+| Prazo total da fase antes de `SEM_RESPOSTA` | 96 h | Congelado durante a pausa da vaga |
+| Horário comercial para envios | seg–sex, 9h–18h (America/Sao_Paulo) | Envios fora da janela vão para o próximo horário válido |
+| Cadência e limites de envio | Máx. de mensagens por minuto/hora por instância (valores a calibrar com o aquecimento do número), atraso aleatório de alguns segundos entre envios, sem rajadas para muitos candidatos ao mesmo tempo | Regras próprias da plataforma, aplicadas por instância |
+| Textos de convite e lembrete | Variações de texto (`convite_triagem`, `lembrete_triagem`) com o nome da vaga e da empresa | Evita mensagens idênticas em massa |
+| Prazo de inatividade após o início | 24 h desde a última interação | Ultrapassado → `ABANDONADA` |
+| Lembrete de inatividade após o início | 1, na metade do prazo | Não reinicia a tentativa |
+
+- Implementação com **jobs atrasados no BullMQ** (`triagem-retry`) e `jobId` determinístico por entrevista e tentativa. Os jobs são cancelados ao chegar resposta, suspensos na pausa (e reagendados com o tempo restante na retomada) e removidos no fechamento da vaga.
+- `SEM_RESPOSTA` **não é reprovação automática**: a candidatura fica sinalizada para decisão humana.
+
+### 8.5.3 Tentativa consumida e abandono
+
+- O retry vale **só para quem ainda não começou**.
+- Depois da primeira resposta, a tentativa está **consumida** e não há reinício. Inatividade além do prazo → `ABANDONADA`, e a avaliação usa as **respostas parciais** (perguntas não respondidas ficam sem nota e sinalizadas).
+- Unicidade no backend: uma `Entrevista` por `(candidaturaId, etapaId)`; qualquer nova tentativa é rejeitada.
+- A mensagem inicial avisa que a triagem não pode ser refeita depois de iniciada; o aceite (botão "Começar") é registrado.
+
+### 8.5.4 Estados da entrevista da 1ª fase
+
+```mermaid
+stateDiagram-v2
+  [*] --> AGENDADA
+  AGENDADA --> AGUARDANDO_INICIO: convite enviado
+  AGUARDANDO_INICIO --> RETRY_N: sem resposta no intervalo (retry N de 3)
+  RETRY_N --> RETRY_N: nova tentativa
+  RETRY_N --> SEM_RESPOSTA: tentativas e prazo total esgotados
+  AGUARDANDO_INICIO --> EM_ANDAMENTO: primeira resposta (marco de início)
+  RETRY_N --> EM_ANDAMENTO: primeira resposta
+  EM_ANDAMENTO --> AGUARDANDO_RESPOSTA: pergunta enviada
+  AGUARDANDO_RESPOSTA --> PROCESSANDO: áudio ou texto recebido
+  PROCESSANDO --> AGUARDANDO_RESPOSTA: próxima pergunta
+  PROCESSANDO --> CONCLUIDA: última resposta
+  AGUARDANDO_RESPOSTA --> ABANDONADA: inatividade além do prazo
+  AGUARDANDO_INICIO --> SUSPENSA_PAUSA: vaga pausada
+  RETRY_N --> SUSPENSA_PAUSA: vaga pausada
+  SUSPENSA_PAUSA --> RETRY_N: vaga retomada com tempo restante
+  AGUARDANDO_INICIO --> SUSPENSA_INSTANCIA: instância da empresa desconectada
+  RETRY_N --> SUSPENSA_INSTANCIA: instância da empresa desconectada
+  SUSPENSA_INSTANCIA --> RETRY_N: instância reconectada (tempo restante)
+  AGUARDANDO_INICIO --> RECUSADA: Agora não ou opt-out
+  AGUARDANDO_RESPOSTA --> CANCELADA: opt-out ou vaga fechada
+  CONCLUIDA --> [*]
+  ABANDONADA --> [*]
+  SEM_RESPOSTA --> [*]
+  RECUSADA --> [*]
+  CANCELADA --> [*]
+```
+
+### 8.5.5 Sequência
 
 ```mermaid
 sequenceDiagram
   autonumber
   participant Q as BullMQ
-  participant W as Worker Entrevista
-  participant WA as WhatsApp Business API
+  participant W as Worker Triagem
+  participant WA as Uazapi (instância da empresa)
   actor C as Candidato (WhatsApp)
-  participant WH as Webhook (API)
-  participant S3 as Storage S3
-  participant STT as Whisper (STT)
+  participant WH as Webhook
+  participant S3 as Storage
+  participant STT as Whisper
   participant LLM as LLM
   participant DB as PostgreSQL
-  Q->>W: iniciarEtapa(candidatura, TRIAGEM_WHATSAPP)
-  W->>DB: verifica consentimento e cria Entrevista (status=CONVITE_ENVIADO)
-  W->>WA: template "convite_triagem" (vaga, empresa, botões Começar / Agora não)
-  WA->>C: mensagem template
-  C->>WA: toca "Começar"
-  WA->>WH: webhook (mensagem interativa)
-  WH->>WH: valida assinatura (X-Hub-Signature-256), dedup por waMessageId
-  WH->>Q: whatsapp-entrada (evento)
-  Q->>W: processa
-  W->>DB: status=EM_ANDAMENTO, perguntaAtual=1
-  W->>WA: texto: instruções + Pergunta 1 ("responda por áudio")
-  W->>Q: agenda lembrete e timeout da pergunta 1
-  C->>WA: mensagem de voz (OGG/Opus)
-  WA->>WH: webhook (type=audio, media id)
+  Q->>W: iniciarTriagem(candidatura)
+  W->>DB: consentimento ok, instância da empresa CONECTADA, Entrevista AGUARDANDO_INICIO
+  W->>WA: POST /send/menu convite_triagem (vaga, aviso de tentativa única, botão Começar)
+  WA->>C: convite
+  W->>Q: agenda retry 1 (intervalo sugerido, horário comercial)
+  alt Sem resposta
+    Q->>W: retry N
+    W->>WA: POST /send/text lembrete_triagem (cadência e horário comercial)
+    Note over W,Q: após a última tentativa e o prazo total, SEM_RESPOSTA
+  end
+  C->>WA: toca Começar
+  WA->>WH: webhook messages (segredo validado, dedup por id da mensagem)
   WH->>Q: whatsapp-entrada
   Q->>W: processa
-  W->>Q: cancela lembrete/timeout da pergunta 1
-  W->>WA: GET media id → URL temporária
-  W->>WA: download do áudio (com token)
-  W->>S3: grava audio (chave por empresa/entrevista/resposta)
-  W->>DB: Resposta(tipo=AUDIO, audioUrl, statusTranscricao=PENDENTE)
-  W->>WA: texto: "Recebido! Pergunta 2..."
-  W->>Q: audio-transcricao(respostaId)
-  Q->>STT: ffmpeg OGG→WAV 16 kHz e transcreve (pt-BR)
-  STT-->>DB: transcricao, duracaoSegundos, confianca, status=CONCLUIDA
-  DB->>Q: ia-avaliacao(respostaId)
-  Q->>LLM: pergunta + rubrica + transcrição
-  LLM-->>DB: Avaliacao(nota, critérios, justificativa)
-  Note over W,C: Repete até a última pergunta
-  W->>WA: texto: encerramento e próximos passos
-  W->>DB: Entrevista status=CONCLUIDA → consolidação + ranking
+  W->>WA: POST /send/text Pergunta 1 de 5 (responda por áudio)
+  C->>WA: áudio OGG/Opus
+  WA->>WH: webhook messages, messageType de áudio (id da mensagem)
+  WH->>Q: whatsapp-entrada
+  Q->>W: processa
+  W->>Q: cancela retries e marca iniciadaEm (marco de início)
+  W->>WA: POST /message/download (id, return_link) e baixa o arquivo
+  W->>S3: grava o áudio
+  W->>DB: Resposta AUDIO_WHATSAPP, statusTranscricao=PENDENTE
+  W->>WA: POST /send/text Pergunta 2 de 5
+  W->>Q: agenda prazo de inatividade
+  Q->>STT: ffmpeg de OGG para WAV 16 kHz e transcrição pt-BR
+  STT-->>DB: transcricao, duracaoSegundos, confiança
+  DB->>Q: ia-avaliacao
+  Q->>LLM: pergunta, rubrica e transcrição
+  LLM-->>DB: Avaliacao
+  Note over W,C: repete até a última pergunta, depois CONCLUIDA e ranking
 ```
 
-**Estado da entrevista por candidato** (`Entrevista.status`, `perguntaAtual`, `ultimaInteracaoEm`, `lembretesEnviados`, `expiraEm`):
-
-```mermaid
-stateDiagram-v2
-  [*] --> AGENDADA
-  AGENDADA --> CONVITE_ENVIADO: template enviado
-  CONVITE_ENVIADO --> EM_ANDAMENTO: candidato aceita
-  CONVITE_ENVIADO --> RECUSADA: "Agora não" / opt-out
-  CONVITE_ENVIADO --> EXPIRADA: sem resposta no prazo
-  EM_ANDAMENTO --> AGUARDANDO_RESPOSTA: pergunta enviada
-  AGUARDANDO_RESPOSTA --> PROCESSANDO_RESPOSTA: áudio/texto recebido
-  PROCESSANDO_RESPOSTA --> AGUARDANDO_RESPOSTA: próxima pergunta
-  PROCESSANDO_RESPOSTA --> CONCLUIDA: última pergunta respondida
-  AGUARDANDO_RESPOSTA --> PAUSADA: timeout da pergunta
-  PAUSADA --> AGUARDANDO_RESPOSTA: candidato retoma
-  PAUSADA --> EXPIRADA: prazo total esgotado
-  EM_ANDAMENTO --> CANCELADA: candidatura encerrada
-  AGUARDANDO_RESPOSTA --> CANCELADA: opt-out ("PARAR")
-  CONCLUIDA --> [*]
-  EXPIRADA --> [*]
-  RECUSADA --> [*]
-  CANCELADA --> [*]
-```
-
-**Regras de tratamento:**
+### 8.5.6 Tratamentos
 
 | Situação | Comportamento |
 |----------|---------------|
-| Candidato responde em **texto** em vez de áudio | Configurável por empresa: (a) **padrão**: aceitar o texto como resposta (`tipo=TEXTO`, `statusTranscricao=NAO_APLICAVEL`) e sinalizar na avaliação; ou (b) pedir gentilmente que reenvie por áudio, aceitando texto após a segunda tentativa. Mensagens curtas como "ok", "oi" ou dúvidas não contam como resposta: o bot reexplica e repete a pergunta |
-| Vários áudios para a mesma pergunta | Aguarda uma janela curta (ex.: alguns segundos, configurável) após o último áudio e concatena as transcrições em uma única resposta |
-| Áudio muito curto/longo | Abaixo do mínimo: pede para repetir; acima do máximo configurado: aceita e trunca a avaliação ao limite, informando o candidato |
-| Transcrição falha ou baixa confiança | `statusTranscricao=FALHOU` / `BAIXA_CONFIANCA`; retentativa automática; persistindo, marca para revisão humana (o áudio fica disponível ao avaliador) e **não** penaliza automaticamente o candidato |
-| Outro tipo de mídia (imagem, documento, vídeo) | Responde que apenas áudio ou texto é aceito e repete a pergunta |
-| **Lembretes** | Job atrasado após X horas sem resposta (dentro da janela de 24 h, texto livre); fora da janela, template de lembrete aprovado. Máximo de lembretes configurável |
-| **Timeout** | Sem resposta após o prazo da pergunta → `PAUSADA`; após prazo total da etapa → `EXPIRADA` e candidatura segue regra da empresa (encerrar ou revisão manual) |
-| **Retomada** | Candidato envia qualquer mensagem (ou toca botão "Continuar" do template de retomada) → bot reenvia a pergunta pendente (`perguntaAtual`) e o progresso ("Pergunta 3 de 5") |
-| Candidato em **vários processos** | Cada conversa é ligada à `Entrevista`. Se houver mais de uma triagem ativa para o mesmo número, o bot conduz **uma por vez** (fila por telefone) e identifica a vaga em cada mensagem; as demais aguardam até a atual terminar ou pausar |
-| Opt-out ("PARAR", "SAIR") | Registra revogação do consentimento de contato, cancela a entrevista e confirma por mensagem |
-| Idempotência | Eventos de webhook deduplicados por `waMessageId`; jobs com `jobId` determinístico |
-| Status de entrega | Webhooks de status (enviada, entregue, lida, falha) atualizam `MensagemWhatsapp.status`; falhas de envio vão para retentativa e alerta |
+| Resposta em **texto** em vez de áudio | Configurável. Padrão: pedir áudio uma vez e, se vier texto de novo, aceitar (`TEXTO_WHATSAPP`, sinalizado). "Ok", "oi" e dúvidas não contam como resposta |
+| Vários áudios para a mesma pergunta | Agregados em uma resposta se chegarem numa janela curta configurável |
+| Áudio curto demais | Pede para repetir (não consome a pergunta) |
+| Mídia inválida (imagem, vídeo, documento) | Informa que só aceita áudio/texto e repete a pergunta |
+| Transcrição falhou ou baixa confiança | Retentativa; persistindo, revisão humana com o áudio, **sem penalidade automática** |
+| Candidato em várias triagens | Empresas diferentes usam números diferentes, então as triagens de empresas distintas correm em paralelo. Na mesma empresa, uma conversa ativa por candidato de cada vez; cada mensagem identifica a vaga; as demais aguardam, e o retry delas não corre enquanto aguardam |
+| Opt-out ("PARAR") | Revoga o consentimento, cancela e confirma |
+| Webhook duplicado (a Uazapi pode entregar o mesmo evento em pares) | Ignorado por `mensagemIdProvedor` único no banco + chave no Redis |
+| Mensagens enviadas pela própria API (`wasSentByApi`/`fromMe`) | Ignoradas no processamento |
+| Instância da empresa desconectada | Envios e retries **daquela empresa** ficam retidos/pausados (sem consumir tentativas nem prazo dos candidatos); **empresa e admin são alertados** para reconectar por QR; ao reconectar, a fila é retomada respeitando a cadência. As demais empresas não são afetadas |
 
-**Pipeline de áudio:** download da mídia pela API (a URL temporária expira; baixar imediatamente) → armazenamento S3 com criptografia → `ffmpeg` (OGG/Opus → WAV 16 kHz mono) → Whisper (idioma `pt`) → transcrição com segmentos e confiança → avaliação pela IA contra a rubrica.
+## 8.6 2ª fase — Entrevista por voz em tempo real com IA (no app)
 
-## 6.6 2ª fase — Entrevista conduzida por IA
+### 8.6.1 Arquitetura de voz
 
-Ocorre **no app** (chat), após aprovação na 1ª fase (automática por nota mínima ou manual, conforme configuração da etapa).
+- **Transporte**: WebRTC entre o app e o servidor de mídia/sessão (ex.: **LiveKit**, self-hosted ou gerenciado: **em aberto**). Alternativa: WebSocket com chunks de áudio (mais simples, porém com maior latência e menos robusto a perda de pacotes).
+- O **agente de voz** (processo Node.js dedicado) entra na sala como participante e conduz a entrevista.
+- **Duas opções de pipeline (decisão em aberto, a definir pela POC):**
+
+| Critério | A) STT streaming → LLM → TTS streaming | B) Modelo speech-to-speech realtime |
+|----------|----------------------------------------|-------------------------------------|
+| Latência | Soma das etapas; exige streaming em todas | Tende a ser menor (uma etapa) |
+| Controle de roteiro, guardrails e tempo | Alto: texto intermediário inspecionável | Menor; depende das ferramentas do provedor |
+| Transcrição para avaliação | Natural (sai do STT) | Exige transcrição em paralelo |
+| Troca de provedor | Fácil, por componente | Acoplado ao provedor |
+| Execução local | Possível por componente (ex.: Whisper streaming, TTS local) | Geralmente gerenciado |
+| Custo | Variável por componente | Variável, por minuto de áudio |
+
+- **Local × gerenciado** (STT, TTS, LLM, servidor de mídia): **em aberto**, a decidir com dados de latência, qualidade em pt-BR, custo e LGPD.
+- **VAD e turnos**: detecção de atividade de voz para identificar o fim da fala; **barge-in** (se o candidato fala, o TTS é interrompido); tolerância ajustável a pausas de raciocínio.
+
+### 8.6.2 Sequência
 
 ```mermaid
 sequenceDiagram
   autonumber
   actor C as Candidato (app)
   participant API as API
-  participant ORQ as Orquestrador Entrevista IA
-  participant LLM as LLM
+  participant LK as Servidor de mídia (LiveKit)
+  participant AG as Agente de voz
+  participant P as Pipeline de voz
   participant DB as PostgreSQL
-  participant Q as BullMQ
-  API-->>C: push "Sua entrevista está disponível até DD/MM"
-  C->>API: POST /entrevistas/{id}/iniciar (consentimento)
-  API->>ORQ: inicia sessão (perguntas definidas, rubricas, vaga)
-  loop Para cada pergunta definida (ex.: 5)
-    ORQ-->>C: pergunta i
-    C->>API: resposta (texto, voz opcional em fase futura)
-    API->>ORQ: resposta
-    ORQ->>LLM: avaliar se precisa de aprofundamento (máx. N follow-ups)
-    LLM-->>ORQ: follow-up ou "suficiente"
-    ORQ-->>C: follow-up (opcional)
-    ORQ->>DB: grava Resposta (tipo=CHAT_IA) e turnos
+  participant S3 as Storage
+  C->>API: GET /entrevistas/{id} (regras, tempos, aviso de tentativa única)
+  C->>C: pré-checagem de microfone e rede
+  C->>API: POST /entrevistas/{id}/aceite (gravação e tentativa única)
+  API->>DB: valida unicidade e vaga não pausada nem fechada, cria SessaoVoz
+  API-->>C: token de sala (curta duração)
+  C->>LK: conecta (WebRTC)
+  API->>AG: despacha o agente para a sala
+  AG->>LK: entra na sala e inicia a gravação (egress para S3)
+  AG->>DB: iniciadaEm (tentativa consumida)
+  loop Para cada pergunta definida
+    AG->>DB: inicia o cronômetro da pergunta no servidor
+    AG->>P: fala a pergunta (TTS)
+    P-->>C: áudio
+    C->>P: resposta falada (VAD, barge-in)
+    P->>AG: transcrição parcial e final
+    AG->>P: follow-up opcional (conta no tempo da pergunta)
+    alt Aviso antes de expirar
+      AG-->>C: indicador visual e aviso falado
+    end
+    alt Tempo da pergunta expirou
+      AG-->>C: encerra educadamente e avança
+      AG->>DB: Resposta parcial, expirou=true, tempoUsado
+    else Resposta concluída
+      AG->>DB: Resposta e tempoUsado
+    end
   end
-  ORQ->>Q: ia-avaliacao(entrevista)
-  Q->>LLM: avalia cada resposta com rubrica + consolida
-  LLM-->>DB: Avaliacoes + resumo (pontos fortes, lacunas, evidências citadas)
-  DB->>Q: ranking.calcular(candidatura)
+  AG->>LK: encerra a sala e a gravação
+  AG->>API: fim da sessão
+  API->>S3: gravação completa
+  API->>DB: Entrevista CONCLUIDA, fila voz-pos-sessao (transcrição completa, avaliação, ranking)
 ```
 
-- A IA **não improvisa perguntas fora do escopo**: segue as perguntas definidas, e os follow-ups são limitados em número e restritos ao tema da pergunta.
-- Guardrails: o prompt proíbe perguntas sobre características protegidas (idade, gênero, religião, estado civil, saúde etc.) e conselhos fora do contexto; filtros validam a saída antes de enviar.
-- Sessão retomável: o candidato pode sair e voltar até o prazo; o estado fica no banco (não em memória).
-- Avaliador humano vê a conversa completa, notas por critério e justificativas.
+O pipeline de voz é STT → LLM → TTS ou speech-to-speech, conforme a decisão em aberto.
 
-## 6.7 Ranqueamento
+### 8.6.3 Orçamento de latência (estimativas)
+
+Objetivo: **resposta percebida abaixo de ~1 s** entre o fim da fala do candidato e o início da fala da IA. Os valores por etapa são **estimativas** a validar na POC.
+
+| Etapa | Meta estimada |
+|-------|---------------|
+| Detecção de fim de fala (VAD/turno) | ~200–300 ms |
+| STT final após o fim da fala | ~100–200 ms |
+| LLM até o primeiro token | ~250–400 ms |
+| TTS até o primeiro áudio | ~100–200 ms |
+| Rede/transporte (ida e volta) | ~50–150 ms |
+| **Total percebido** | **< ~1 s** (p50); p95 a definir na POC |
+
+- Técnicas: streaming em todas as etapas, frases curtas, pré-geração da próxima pergunta enquanto o candidato fala, hospedagem em região próxima dos usuários e reuso de conexões.
+- **POC de latência cedo**, em paralelo às primeiras fases, comparando as opções A e B e as variantes local × gerenciada.
+
+### 8.6.4 Limite de tempo por pergunta
+
+| Item | Regra |
+|------|-------|
+| Escopo | Limite **por pergunta**, não por entrevista |
+| Padrão | `ProcessoSeletivo.tempoPadraoPorPergunta`; **sugestão: 180 s** |
+| Override | `Pergunta.tempoLimiteSegundos` / `EtapaPergunta.tempoLimiteSegundos`; **sugestão: entre 60 s e 600 s** |
+| Follow-ups | **Contam no tempo da pergunta** |
+| Cronômetro | No **servidor** (agente de voz); o app só exibe o valor sincronizado |
+| Indicador | Barra/contador visível e **aviso antes de expirar** (sugestão: 30 s antes, visual + frase curta da IA) |
+| Ao expirar | A IA encerra a pergunta educadamente ("Obrigado, vamos para a próxima"), salva a resposta **parcial** com `expirou = true` e `tempoUsado`, e avança |
+| Eliminação | **Nenhuma eliminação automática** por expiração; a avaliação considera o conteúdo respondido |
+
+### 8.6.5 Tentativa consumida, saída e reconexão
+
+- Antes de iniciar, há uma tela de **aviso e aceite** ("a entrevista só pode ser feita uma vez; sair encerra a tentativa") com o consentimento de gravação.
+- **Sair ou fechar o app** (saída voluntária) consome a tentativa: a entrevista vira `ABANDONADA` e é avaliada com as respostas parciais.
+- **Queda involuntária** (rede, app suspenso pelo sistema): há uma janela curta de **reconexão na mesma sessão** (sugestão: 60 s, em `janelaReconexaoSegundos`). Ao reconectar, a entrevista continua **de onde parou**, com o cronômetro da pergunta pausado durante a queda (sugestão a confirmar na implementação). Passada a janela → `ABANDONADA`.
+- Voluntária × involuntária: botão "Encerrar" ou fechamento explícito = voluntária; perda de conexão sem sinal de saída = involuntária. A heurística fica registrada em `SessaoVoz.motivoFim`.
+- **Em aberto**: exceção manual por admin/empresa para queda involuntária (`Entrevista.excecaoConcedida`), com auditoria.
+- Unicidade no backend por `(candidaturaId, etapaId)`; o token de sala só é emitido para a sessão ativa ou para a reconexão dentro da janela.
+
+```mermaid
+stateDiagram-v2
+  [*] --> DISPONIVEL
+  DISPONIVEL --> ACEITE_REGISTRADO: aviso e aceite
+  ACEITE_REGISTRADO --> EM_SESSAO: conecta (tentativa consumida)
+  EM_SESSAO --> RECONECTANDO: queda involuntária
+  RECONECTANDO --> EM_SESSAO: reconecta dentro da janela (mesma sessão)
+  RECONECTANDO --> ABANDONADA: janela expirada
+  EM_SESSAO --> ABANDONADA: saída voluntária ou app fechado
+  EM_SESSAO --> CONCLUIDA: última pergunta finalizada
+  DISPONIVEL --> EXPIRADA: prazo da fase esgotado sem início
+  DISPONIVEL --> EM_ESPERA: vaga pausada
+  EM_ESPERA --> DISPONIVEL: vaga retomada
+  CONCLUIDA --> [*]
+  ABANDONADA --> [*]
+  EXPIRADA --> [*]
+```
+
+### 8.6.6 Gravação, transcrição, rede e dispositivo
+
+- **Gravação completa** da sessão (áudio dos dois lados) e **transcrição completa**, marcada por pergunta e com timestamps, armazenadas no S3 e no banco; acesso por URL pré-assinada e auditado.
+- **Consentimento de gravação** obrigatório antes do aceite.
+- Requisitos (sugestão): microfone funcional com permissão concedida, conexão estável (teste de banda e latência na pré-checagem), fone recomendado para reduzir eco, cancelamento de eco do WebRTC ativo.
+- **Escalabilidade de sessões simultâneas**: servidor de mídia escalável horizontalmente; agentes de voz em pool com limite por instância; fila de admissão quando o limite for atingido ("aguarde, sua entrevista começa em instantes"); cotas por tenant.
+
+## 8.7 Notificações à empresa
 
 ```mermaid
 flowchart LR
-  E1[Mudança de perfil / CV] --> J[Job ranking.calcular]
-  E2[Resposta avaliada] --> J
-  E3[Revisão humana] --> J
-  E4[Alteração de pesos da vaga] --> JV[Recalcular todas da vaga]
-  JV --> J
-  J --> S["Score: habilidades + triagem + entrevista<br/>+ ajustes humanos"]
-  S --> X[Explicação por critério]
-  S --> DB[(Tabela Score versionada)]
-  DB --> R[Ranking da vaga ordenado]
+  E1[Candidatura criada] --> F{Vaga publicada ou com inscrições encerradas?}
+  E2["SugestaoMatch acima do limiar"] --> F
+  F -- "não: pausada ou fechada" --> X[Descarta]
+  F -- sim --> D{chaveDedup já existe?}
+  D -- sim --> X
+  D -- não --> P{Preferências do membro}
+  P --> G["Agrupamento na janela<br/>(ex.: 5 novos candidatos na vaga X)"]
+  G --> C1[Central in-app]
+  G --> C2["Push (Expo, FCM, APNs)"]
+  G --> C3[E-mail opcional]
 ```
 
-# 7. Algoritmo de match e ranqueamento
+| Item | Regra |
+|------|-------|
+| Tipos para a empresa | `CANDIDATO_NOVO` e `MATCH_FORTE`, além de operacionais (verificação aprovada/rejeitada, inscrições encerradas) |
+| Limiar de match forte | Configurável por empresa/vaga; **sugestão: compatibilidade ≥ 80/100** |
+| Deduplicação | `chaveDedup` única por tipo + vaga + candidato |
+| Agrupamento anti-spam | Janela configurável (**sugestão: 15 min**); acima de N eventos, envia um resumo |
+| Canais | Push (Expo Push → FCM/APNs), central in-app (sempre) e e-mail opcional |
+| Preferências | Por membro, tipo e canal (`PreferenciaNotificacao`) |
+| Vagas pausadas/fechadas | **Nada é enviado** |
+| Dispositivos | `DispositivoPush` com token; tokens inválidos são removidos após falha do provedor |
+| Candidato | Recebe só eventos de status/fase da própria candidatura (nunca posição ou score) |
 
-## 7.1 Score de habilidades (S_hab), 0–100
+# 9. Ranqueamento
 
-Para cada habilidade *h* requerida pela vaga, com peso *w_h*, nível mínimo *n_min* e nível do candidato *n_c* (0 se ausente):
+## 9.1 Componentes do score (todos os dados do MVP)
 
-- `cobertura_h = min(n_c / n_min, 1)` (com bônus limitado se `n_c > n_min`, ex.: até +10%).
-- Habilidade obrigatória ausente → **flag eliminatória sugerida** (não reprova automaticamente; aparece destacada para o recrutador).
-- Nível considerado: declarado pelo candidato, ajustado por evidência do CV (anos de experiência, menções) — habilidades confirmadas no CV têm fator de confiança maior.
-- `S_hab = 100 × Σ(w_h × cobertura_h × confiança_h) / Σ w_h`
+| Componente | Fonte | Cálculo (0–100) | Peso padrão (SUGESTÃO, configurável por vaga) |
+|------------|-------|-----------------|:-:|
+| Perfil | Dados do perfil | Aderência a senioridade, modelo/localidade, disponibilidade e idiomas exigidos | 10% |
+| Habilidades | `CandidatoHabilidade` × `VagaHabilidade` | Cobertura ponderada por peso e nível mínimo; obrigatória ausente vira sinal destacado | 25% |
+| Currículo (OCR) | `Curriculo.dadosExtraidos` | Experiência relevante: anos nas habilidades da vaga, similaridade semântica CV × vaga, evidências confirmadas | 10% |
+| LinkedIn | `linkedinUrl` | **Só a presença do link** no MVP (100 se presente e válido, 0 se ausente) | 2% |
+| 1ª fase (triagem WhatsApp) | Avaliações das respostas | Média ponderada das notas por pergunta | 23% |
+| 2ª fase (voz) | Avaliações das respostas | Média ponderada das notas por pergunta | 30% |
 
-## 7.2 Similaridade semântica (S_sem), 0–100
+- Pesos em `Vaga.pesosRanking` (soma = 100, validada); a empresa ajusta por vaga.
+- Fórmula: `scoreFinal = Σ(peso_i × score_i) / Σ(peso_i dos componentes disponíveis)`.
 
-- Cosseno entre o embedding da vaga (descrição + habilidades) e do candidato (resumo + experiências + habilidades), normalizado para 0–100.
-- Usada principalmente no **match** (descoberta) e como componente menor no ranking.
+## 9.2 Dados ausentes e recálculo
 
-## 7.3 Scores das fases
+- Componente ainda indisponível (fase não ocorreu): fica fora da soma e o score é **renormalizado**; o ranking mostra a **completude** (ex.: "parcial — 4 de 6 componentes").
+- Exceção: LinkedIn ausente vale **0**, porque é um sinal de presença com peso mínimo.
+- Fase `ABANDONADA` ou com perguntas expiradas: usa as respostas parciais; perguntas sem resposta valem 0 naquela fase, com sinalização. `SEM_RESPOSTA` na 1ª fase: componente zerado e sinalizado para decisão humana.
+- Transcrição sem qualidade: a resposta fica fora da média até a revisão humana.
+- **Recálculo** por eventos (perfil/CV atualizados, resposta avaliada, revisão humana, mudança de pesos), com **debounce por vaga**; `Score` versionado (`versaoAlgoritmo`).
 
-- **S_triagem** (1ª fase) e **S_entrevista** (2ª fase): média ponderada das notas por pergunta (`peso` de `EtapaPergunta`), cada nota em 0–100 conforme a rubrica.
-- Se uma resposta tiver revisão humana, a nota humana **substitui** a da IA.
-- Respostas não avaliáveis (transcrição falhou) ficam fora da média e são sinalizadas — não contam como zero.
+## 9.3 Explicabilidade
 
-## 7.4 Score composto
+`Score.explicacao` guarda a contribuição de cada componente e habilidade; a nota e a justificativa por pergunta, com trechos citados da transcrição; flags (expirou, parcial, texto em vez de áudio); e as versões de modelo, prompt e algoritmo. Exemplo na visão empresa: *"78/100 (completo) — Habilidades 85 (Node.js ✔, AWS ✔, Kubernetes parcial); CV 70; Triagem 72; Voz 80 (forte em design de APIs; Pergunta 3 expirou)."*
 
-| Componente | Peso padrão (**estimativa inicial, configurável por vaga**) | Disponível quando |
-|------------|:-:|---|
-| S_hab (habilidades) | 35% | Desde a candidatura |
-| S_sem (semântico) | 5% | Desde a candidatura |
-| S_triagem (1ª fase) | 25% | Após 1ª fase |
-| S_entrevista (2ª fase) | 35% | Após 2ª fase |
+## 9.4 Ranking invisível ao candidato
 
-- **Renormalização**: enquanto uma fase não ocorreu, o score é calculado só com os componentes disponíveis, e o ranking exibe a **completude** (ex.: "parcial — 2 de 4 componentes").
-- **Match (descoberta)** usa `0,7 × S_hab + 0,3 × S_sem` (**estimativa**, a calibrar no piloto) após filtro de habilidades obrigatórias e preferências (localidade/modelo).
-- Os pesos padrão devem ser revisados com dados do piloto.
+- Posição, score e componentes ficam visíveis só para a **empresa dona da vaga** e para o **admin**.
+- O candidato vê **apenas status e fase** da própria candidatura: sem número de concorrentes, percentil ou posição.
+- DTOs dedicados (`CandidaturaCandidatoDto`) com lista branca de campos; **nunca** expõem score.
+- **Teste automatizado** (contrato/E2E) percorre todos os endpoints acessíveis ao papel `CANDIDATO` e falha se aparecer qualquer campo de score ou ranking (`score*`, `posicao`, `ranking`, `percentil`, `totalCandidatos`).
+- As notificações ao candidato também não mencionam posição.
+- **Em aberto**: como atender o art. 20 da LGPD (direito de solicitar revisão de decisões tomadas com base em tratamento automatizado) sem expor o ranking. Exemplo: canal de solicitação de revisão e explicação dos critérios gerais.
 
-## 7.5 Explicabilidade
+## 9.5 Revisão humana e viés
 
-Cada `Score.explicacao` (JSONB) armazena:
+- O sistema recomenda; avanço e reprovação são **decisões humanas**. A nota humana substitui a da IA.
+- Atributos sensíveis (foto, idade, gênero, estado civil, endereço completo) ficam fora dos prompts e do score; avaliação cega opcional.
+- A IA avalia conteúdo, não sotaque, dicção ou qualidade do áudio.
+- Auditoria periódica: distribuição de notas, concordância IA × humano e efeito das expirações.
 
-- Contribuição de cada componente e de cada habilidade (atendida, parcial, ausente).
-- Por pergunta: nota, critérios da rubrica atendidos, justificativa e trechos (citações da transcrição/resposta) que sustentam a nota.
-- Versão do algoritmo, modelo de IA e versão do prompt usados.
-
-Exemplo de exibição no app (visão empresa): *"78/100 — Habilidades 85 (Node.js ✔, AWS ✔, Kubernetes parcial); Triagem 72; Entrevista 76 (forte em design de APIs; lacuna em observabilidade)."*
-
-## 7.6 Revisão humana e viés
-
-- O sistema **recomenda**; a decisão de avançar ou reprovar é sempre de um humano.
-- Dados sensíveis (foto, idade, gênero, estado civil, endereço completo) **não** entram nos prompts de avaliação nem no score.
-- Modo opcional de **avaliação cega** (oculta nome/foto até a revisão).
-- Auditoria periódica de distribuição de scores (ver §11.4).
-
-# 8. Máquina de estados da candidatura
+# 10. Máquina de estados da candidatura
 
 ```mermaid
 stateDiagram-v2
   [*] --> CONVIDADA: convite de match
-  CONVIDADA --> INSCRITA: candidato aceita
-  CONVIDADA --> CONVITE_RECUSADO: candidato recusa
+  CONVIDADA --> INSCRITA: aceita com a vaga aceitando inscrições
+  CONVIDADA --> CONVITE_EXPIRADO: inscrições encerradas ou recusa
   [*] --> INSCRITA: candidatura direta
-  INSCRITA --> PENDENTE_CONSENTIMENTO: falta opt-in
-  PENDENTE_CONSENTIMENTO --> INSCRITA: consentimento dado
-  INSCRITA --> TRIAGEM_WHATSAPP: inicia 1ª fase
-  TRIAGEM_WHATSAPP --> TRIAGEM_CONCLUIDA
-  TRIAGEM_WHATSAPP --> EXPIRADA: sem resposta no prazo
-  TRIAGEM_CONCLUIDA --> ENTREVISTA_IA: aprovado (auto/manual)
-  TRIAGEM_CONCLUIDA --> REPROVADA: decisão humana
-  ENTREVISTA_IA --> ENTREVISTA_CONCLUIDA
-  ENTREVISTA_IA --> EXPIRADA
+  INSCRITA --> TRIAGEM_WHATSAPP: inicia a 1ª fase
+  TRIAGEM_WHATSAPP --> TRIAGEM_CONCLUIDA: concluída
+  TRIAGEM_WHATSAPP --> TRIAGEM_ABANDONADA: abandono após o início
+  TRIAGEM_WHATSAPP --> SEM_RESPOSTA: retries esgotados
+  TRIAGEM_CONCLUIDA --> ENTREVISTA_VOZ: aprovada (auto ou manual)
+  TRIAGEM_CONCLUIDA --> EM_REVISAO: revisão humana
+  TRIAGEM_ABANDONADA --> EM_REVISAO: avaliação parcial
+  SEM_RESPOSTA --> EM_REVISAO: decisão humana
+  ENTREVISTA_VOZ --> ENTREVISTA_CONCLUIDA
+  ENTREVISTA_VOZ --> ENTREVISTA_ABANDONADA
   ENTREVISTA_CONCLUIDA --> EM_REVISAO
+  ENTREVISTA_ABANDONADA --> EM_REVISAO
   EM_REVISAO --> APROVADA: decisão humana
   EM_REVISAO --> REPROVADA: decisão humana
   APROVADA --> CONTRATADA
+  INSCRITA --> EM_ESPERA: vaga pausada
+  TRIAGEM_WHATSAPP --> EM_ESPERA: vaga pausada
+  ENTREVISTA_VOZ --> EM_ESPERA: vaga pausada
+  EM_ESPERA --> INSCRITA: retomada ao estado anterior
+  INSCRITA --> ENCERRADA_VAGA_FECHADA: vaga fechada
+  EM_ESPERA --> ENCERRADA_VAGA_FECHADA: vaga fechada
+  EM_REVISAO --> ENCERRADA_VAGA_FECHADA: vaga fechada
   INSCRITA --> DESISTENCIA: candidato desiste
-  TRIAGEM_WHATSAPP --> DESISTENCIA
-  ENTREVISTA_IA --> DESISTENCIA
-  EXPIRADA --> EM_REVISAO: reabertura manual
   REPROVADA --> [*]
   CONTRATADA --> [*]
   DESISTENCIA --> [*]
-  CONVITE_RECUSADO --> [*]
+  ENCERRADA_VAGA_FECHADA --> [*]
+  CONVITE_EXPIRADO --> [*]
 ```
 
-- Transições implementadas num serviço de domínio único (`CandidaturaStateMachine`), com validação de transição, autor, motivo e registro em `HistoricoStatus`.
-- Vaga encerrada → candidaturas ativas vão para `ENCERRADA_PELA_VAGA` (estado terminal adicional), com notificação ao candidato.
-- Reprovação automática **não** é permitida; a IA pode apenas sugerir.
+- `EM_ESPERA` guarda `statusAntesDaEspera` e volta exatamente a ele na retomada (o diagrama mostra um exemplo).
+- `ENCERRADA_VAGA_FECHADA` pode ser alcançado a partir de qualquer estado ativo e não é reprovação nem abandono.
+- As transições ficam num serviço único (`CandidaturaStateMachine`), com validação, autor, motivo e `HistoricoStatus`, e controle otimista de concorrência.
+- **Não existe reprovação automática**.
+- O candidato vê um **rótulo amigável** do status/fase (ex.: "Triagem pelo WhatsApp", "Em análise pela empresa"), nunca informações de ranking.
 
-# 9. Multiprocesso, multi-tenant e escalabilidade
+# 11. Multiprocesso, multi-tenant e escalabilidade
 
-## 9.1 Multiprocesso
+## 11.1 Multiprocesso
 
-- Uma empresa pode ter **N vagas** e **N processos** ativos; um candidato pode ter **N candidaturas** simultâneas em empresas diferentes.
-- Cada candidatura tem sua própria instância de entrevista por etapa; não há estado global por candidato.
-- No WhatsApp, triagens ativas para o mesmo número são serializadas (uma conversa ativa por vez, ver §6.5), com cada mensagem identificando a vaga.
-- O candidato vê todas as candidaturas na aba **Candidaturas**, com etapa, prazos e pendências.
+- Muitas empresas, vagas e processos simultâneos; o candidato pode estar em vários processos de empresas diferentes ao mesmo tempo.
+- Cada candidatura tem suas próprias entrevistas por fase; não há estado global por candidato.
+- WhatsApp: cada empresa envia pelo próprio número (instância própria), então empresas diferentes não competem pelo mesmo número. Na mesma empresa, uma triagem ativa por candidato de cada vez, com mensagens que identificam a vaga; os retries das triagens em espera não correm.
+- Voz: no máximo uma sessão de voz ativa por candidato (lock por candidato).
 
-## 9.2 Isolamento de dados (multi-tenant)
+## 11.2 Isolamento multi-tenant
 
 | Camada | Mecanismo |
 |--------|-----------|
-| Banco | Modelo compartilhado com coluna `empresaId` + **Row-Level Security** do PostgreSQL (`SET app.empresa_id` por transação) como segunda barreira |
-| Aplicação | `TenantGuard` no NestJS resolve a empresa ativa (`X-Empresa-Id`) e valida o vínculo `MembroEmpresa`; extensão do Prisma injeta `empresaId` em todas as consultas de tabelas com tenant |
-| Perfil do candidato | Global; a empresa acessa somente via candidatura/convite. Notas e avaliações de uma empresa **nunca** são visíveis para outra |
-| Arquivos | Prefixo por tenant no S3 (`empresas/{empresaId}/entrevistas/...`), URLs pré-assinadas de curta duração |
-| Filas | Payload sempre com `empresaId`; worker reestabelece o contexto de tenant |
-| Configurações | Número de WhatsApp, templates, limites de IA e retenção por empresa |
-| Testes | Testes automatizados de isolamento (tentar ler dados de outra empresa deve retornar 404/403) |
+| Banco | `empresaId` + **Row-Level Security** (`app.empresa_id`); **bypass apenas** com `app.is_admin = true` (admin + MFA), sempre auditado em acessos sensíveis |
+| Aplicação | `TenantGuard` e extensão do Prisma que injeta `empresaId`; DTOs por papel |
+| Candidato | Perfil global; a empresa acessa via candidatura/convite; dados de avaliação de uma empresa nunca vão para outra |
+| Arquivos | Prefixo por empresa no S3; URLs pré-assinadas curtas; acesso auditado |
+| Filas | `empresaId` em todo payload; o worker restabelece o contexto |
+| Testes | Suítes de isolamento (acesso cruzado → 403/404), de bypass do admin (permitido e auditado) e de DTO do candidato sem score |
 
-## 9.3 Concorrência e consistência
+## 11.3 Concorrência e escala
 
-- **Webhooks**: resposta 200 imediata, processamento assíncrono; dedup por `waMessageId` (índice único).
-- **Ordem por conversa**: processamento serial por entrevista (lock no Redis por `entrevistaId` ou grupos do BullMQ).
-- **Transições de estado**: controle otimista (coluna `versao`) para evitar corrida entre timeout e resposta chegando ao mesmo tempo.
-- **Ranking**: debounce por vaga para evitar recálculos em rajada.
+- Webhooks: resposta 200 imediata, processamento assíncrono e dedup por `mensagemIdProvedor`.
+- Ordem por conversa: lock no Redis por `entrevistaId`; controle otimista (`versao`) contra corrida entre timeout/retry e resposta.
+- Prazos e retries: jobs atrasados + varreduras de reconciliação.
+- API stateless; workers separados por tipo de carga (OCR/STT em CPU/GPU; IA/WhatsApp em I/O); autoscaling por tamanho de fila.
+- Voz: servidor de mídia e agentes em pool, com autoscaling por sessões ativas, fila de admissão e cotas por tenant.
+- Rate limits por tenant (API, IA, WhatsApp, sessões de voz), por instância Uazapi (cadência humana) e por provedor (token bucket no Redis).
+- Índices: `(empresaId, vagaId, status)`, `(vagaId, scoreFinal DESC)`, `(status, prazoInscricoes)` e HNSW para embeddings.
 
-## 9.4 Escalabilidade
+# 12. APIs principais (REST)
 
-- API stateless, escala horizontal atrás do load balancer.
-- Workers separados por tipo de carga (OCR/STT intensivos em CPU/GPU; IA e WhatsApp intensivos em I/O) com autoscaling por tamanho de fila.
-- Rate limits: por tenant (API e IA), por número de WhatsApp (limites da Meta), por provedor de LLM (token bucket no Redis).
-- Custos de IA controlados por cotas por empresa e cache de sugestões.
-- Índices: `(empresaId, vagaId, status)`, `(vagaId, scoreFinal DESC)`, índice vetorial (HNSW) para embeddings.
-
-# 10. APIs principais (REST)
-
-Prefixo `/api/v1`. Autenticação Bearer JWT; rotas da visão empresa exigem `X-Empresa-Id`. Documentação OpenAPI gerada pelo NestJS e usada para gerar o cliente TypeScript do app.
+Prefixo `/api/v1`; JWT Bearer; rotas da visão empresa com `X-Empresa-Id`; rotas `/admin/*` exigem `ADMIN_PLATAFORMA` + MFA. O OpenAPI é gerado pelo NestJS e o cliente TS do app é gerado a partir dele.
 
 | Método | Endpoint | Descrição | Papel |
 |--------|----------|-----------|-------|
-| POST | `/auth/cadastro` | Cria usuário | público |
-| POST | `/auth/login` · `/auth/refresh` · `/auth/logout` | Sessão | público/autenticado |
-| POST | `/auth/telefone/verificar` | Envia/valida OTP do WhatsApp | autenticado |
-| GET | `/me` | Usuário, papéis, empresas, visão preferida | autenticado |
-| PATCH | `/me/visao` | Atualiza visão preferida/empresa ativa | autenticado |
-| POST | `/empresas` | Cria empresa (usuário vira ADMIN_EMPRESA) | autenticado |
-| GET/PATCH | `/empresas/{id}` | Dados/configurações | ADMIN_EMPRESA |
-| GET/POST/PATCH/DELETE | `/empresas/{id}/membros` | Gestão de membros/convites | ADMIN_EMPRESA |
-| GET | `/habilidades?busca=` | Catálogo | autenticado |
-| GET/POST | `/vagas` (empresa) | Lista/cria vagas da empresa | RECRUTADOR |
-| GET/PATCH/DELETE | `/vagas/{id}` | Detalhe/edição | RECRUTADOR |
-| PUT | `/vagas/{id}/habilidades` | Define habilidades requeridas | RECRUTADOR |
-| POST | `/vagas/{id}/publicar` · `/pausar` · `/encerrar` | Ciclo de vida | RECRUTADOR |
-| GET/PUT | `/vagas/{id}/processo` | Processo seletivo e etapas | RECRUTADOR |
-| GET/POST | `/etapas/{id}/perguntas` | Perguntas da etapa (exigidas) | RECRUTADOR |
-| POST | `/etapas/{id}/perguntas/sugestoes` | Solicita sugestões à IA (assíncrono) | RECRUTADOR |
-| PATCH | `/etapas/{id}/perguntas/sugestoes/{sid}` | Aceitar/editar/descartar | RECRUTADOR |
-| GET/POST | `/perguntas` | Banco de perguntas da empresa | RECRUTADOR |
-| GET | `/vagas/{id}/candidaturas?etapa=&status=&ordem=score` | Ranking/lista | RECRUTADOR, AVALIADOR |
-| GET | `/vagas/{id}/sugestoes-match` | Candidatos sugeridos | RECRUTADOR |
-| POST | `/sugestoes-match/{id}/convidar` | Envia convite | RECRUTADOR |
-| GET | `/candidaturas/{id}` | Detalhe (respostas, transcrições, avaliações, score) | RECRUTADOR, AVALIADOR |
-| POST | `/candidaturas/{id}/transicoes` | Muda etapa/status (com motivo) | RECRUTADOR |
-| POST | `/respostas/{id}/revisao` | Revisão humana da nota | AVALIADOR+ |
-| GET | `/respostas/{id}/audio` | URL pré-assinada do áudio | AVALIADOR+ |
-| GET | `/vagas-publicas?filtros` · `/vagas-publicas/{id}` | Vagas para candidatos | CANDIDATO |
-| GET | `/candidatos/me/vagas-recomendadas` | Vagas por match | CANDIDATO |
-| GET/PUT | `/candidatos/me` | Perfil (inclui `linkedinUrl`) | CANDIDATO |
-| PUT | `/candidatos/me/habilidades` | Habilidades | CANDIDATO |
-| POST | `/curriculos/upload-url` · `/curriculos` | Upload de CV | CANDIDATO |
-| GET | `/curriculos/{id}` | Status e dados extraídos | CANDIDATO |
-| POST | `/curriculos/{id}/confirmar` | Aplica dados revisados ao perfil | CANDIDATO |
+| POST | `/auth/cadastro`, `/auth/login`, `/auth/refresh`, `/auth/logout` | Sessão | público/autenticado |
+| POST | `/auth/mfa/configurar`, `/auth/mfa/verificar` | MFA TOTP | autenticado (obrigatório para admin) |
+| GET / PATCH | `/me`, `/me/visao` | Papéis, empresas, visão | autenticado |
+| POST | `/empresas/cadastro` | **Auto-cadastro** da empresa | autenticado |
+| POST | `/empresas/{id}/verificacao/email`, `/verificacao/dominio`, `/verificacao/reenviar` | Verificações | ADMIN_EMPRESA |
+| GET | `/empresas/{id}/verificacao` | Status da verificação | ADMIN_EMPRESA |
+| GET / POST / DELETE | `/empresas/{id}/membros` | Membros | ADMIN_EMPRESA |
+| GET | `/admin/empresas?status=PENDENTE` | Fila de verificação | ADMIN |
+| POST | `/admin/empresas/{id}/aprovar`, `/rejeitar`, `/suspender`, `/reativar` | Decisão (com motivo) | ADMIN |
+| GET | `/admin/auditoria` | Trilha de auditoria | ADMIN |
+| GET / POST | `/vagas` | Vagas da empresa | RECRUTADOR+ |
+| GET / PATCH | `/vagas/{id}` | Detalhe/edição (inclui `prazoInscricoes`) | RECRUTADOR+ |
+| PUT | `/vagas/{id}/habilidades` | Habilidades requeridas | RECRUTADOR+ |
+| PUT | `/vagas/{id}/processo` | Etapas, nº de perguntas, `tempoPadraoPorPergunta`, `politicaRetry` | RECRUTADOR+ |
+| PUT | `/vagas/{id}/pesos-ranking` | Pesos do score | RECRUTADOR+ |
+| POST | `/vagas/{id}/publicar` | Exige prazo e empresa verificada | RECRUTADOR+ |
+| POST | `/vagas/{id}/prorrogar` | Novo prazo de inscrições | RECRUTADOR+ |
+| POST | `/vagas/:id/pausar` | Pausa | RECRUTADOR+, ADMIN |
+| POST | `/vagas/:id/retomar` | Retomada | RECRUTADOR+, ADMIN |
+| POST | `/vagas/:id/fechar` | Fechamento (motivo obrigatório) | RECRUTADOR+, ADMIN |
+| GET / POST | `/etapas/{id}/perguntas` | Perguntas exigidas (com `tempoLimiteSegundos`) | RECRUTADOR+ |
+| POST / PATCH | `/etapas/{id}/perguntas/sugestoes[/{sid}]` | Sugestões da IA | RECRUTADOR+ |
+| GET | `/vagas/{id}/ranking` | Ranking com componentes e explicação | Empresa dona, ADMIN |
+| GET / POST | `/vagas/{id}/sugestoes-match`, `/sugestoes-match/{id}/convidar` | Match | RECRUTADOR+ |
+| GET | `/candidaturas/{id}` | Detalhe (respostas, áudios, gravação, notas) | Empresa dona, ADMIN |
+| POST | `/candidaturas/{id}/transicoes` | Decisão humana | RECRUTADOR+ |
+| POST | `/respostas/{id}/revisao` | Revisão humana | AVALIADOR+ |
+| GET | `/respostas/{id}/audio`, `/entrevistas/{id}/gravacao`, `/entrevistas/{id}/transcricao` | URLs pré-assinadas (**auditado**) | Empresa dona, ADMIN |
+| GET | `/vagas-publicas`, `/vagas-publicas/{id}` | Só vagas aceitando inscrições | CANDIDATO |
+| GET / PUT | `/candidatos/me`, `/candidatos/me/habilidades` | Perfil (inclui `linkedinUrl`) | CANDIDATO |
+| POST | `/curriculos/upload-url`, `/curriculos`, `/curriculos/{id}/confirmar` | CV com OCR local | CANDIDATO |
 | POST | `/vagas-publicas/{id}/candidaturas` | Candidatura direta | CANDIDATO |
-| GET | `/candidatos/me/candidaturas` | Minhas candidaturas | CANDIDATO |
-| POST | `/convites/{id}/aceitar` · `/recusar` | Convites de match | CANDIDATO |
-| POST | `/candidaturas/{id}/desistir` | Desistência | CANDIDATO |
-| POST/GET | `/candidatos/me/consentimentos` | Registrar/consultar consentimentos | CANDIDATO |
-| POST | `/entrevistas/{id}/iniciar` · `/mensagens` · GET `/entrevistas/{id}` | 2ª fase (chat IA) | CANDIDATO |
-| GET | `/webhooks/whatsapp` | Verificação do webhook (hub.challenge) | provedor |
-| POST | `/webhooks/whatsapp` | Mensagens e status | provedor (assinatura) |
-| POST | `/lgpd/exportar` · `/lgpd/excluir` | Direitos do titular | autenticado |
+| GET | `/candidatos/me/candidaturas` | **Só status/fase** (sem score) | CANDIDATO |
+| POST | `/convites/{id}/aceitar`, `/convites/{id}/recusar` | Convites de match | CANDIDATO |
+| POST | `/candidatos/me/consentimentos` | Consentimentos | CANDIDATO |
+| POST | `/candidatos/me/whatsapp/verificar` | Verificação do número (método em aberto, Q21) | CANDIDATO |
+| GET | `/entrevistas/{id}` | Regras, tempos e status (sem score) | CANDIDATO |
+| POST | `/entrevistas/{id}/aceite` | Aviso/aceite da tentativa única + gravação | CANDIDATO |
+| POST | `/entrevistas/{id}/sessao` | Token da sala de voz (sessão ativa ou reconexão) | CANDIDATO |
+| POST | `/entrevistas/{id}/encerrar` | Saída voluntária (consome a tentativa) | CANDIDATO |
+| POST | `/entrevistas/{id}/excecao` | Exceção por queda involuntária (**em aberto**) | ADMIN / empresa |
+| GET / POST | `/notificacoes`, `/notificacoes/{id}/lida` | Central in-app | autenticado |
+| GET / PUT | `/preferencias-notificacao` | Preferências | autenticado |
+| POST / DELETE | `/dispositivos-push` | Registro de token | autenticado |
+| POST | `/webhooks/whatsapp/uazapi/{instanciaId}` | Eventos `messages` da instância (texto, áudio, botões), roteados para a empresa dona da instância | Uazapi (segredo no header `x-webhook-secret` + token da instância) |
+| POST | `/empresas/{id}/whatsapp/instancia` | Cria a instância da empresa (`/instance/init`) | ADMIN_EMPRESA |
+| POST | `/empresas/{id}/whatsapp/conectar` | Gera QR/código de pareamento (`/instance/connect`) | ADMIN_EMPRESA, ADMIN |
+| GET | `/empresas/{id}/whatsapp/status` | Status, número, última conexão | Empresa, ADMIN |
+| POST | `/empresas/{id}/whatsapp/desconectar` | Desconecta/troca de número (`/instance/disconnect`) | ADMIN_EMPRESA, ADMIN |
+| GET | `/admin/whatsapp/instancias` | Todas as instâncias com status | ADMIN |
+| POST | `/lgpd/exportar`, `/lgpd/excluir` | Direitos do titular | autenticado |
 
-# 11. Segurança, LGPD e privacidade
+# 13. Segurança
 
-## 11.1 Segurança
+- TLS; criptografia em repouso (banco e S3); segredos em cofre.
+- Senhas com Argon2; JWT curto + refresh rotativo; Expo SecureStore no app.
+- **MFA obrigatório para admin**; reautenticação em ações sensíveis; sessões curtas.
+- RBAC + tenancy no backend + RLS no banco; bypass só para admin, auditado.
+- Webhook da Uazapi autenticado por segredo compartilhado (header `x-webhook-secret`) e rate limit; tokens de instância e o admintoken da Uazapi só no cofre de segredos; uploads validados (tipo, tamanho, antivírus).
+- Tokens de sala de voz de curta duração, vinculados à entrevista e ao usuário.
+- Proteção contra prompt injection: CV, respostas e falas tratados como dados; saídas validadas por schema.
+- **Auditoria** imutável de acessos a áudios, gravações e transcrições (admin e empresa) e de ações administrativas.
 
-- TLS em todo tráfego; criptografia em repouso (banco e S3); segredos em cofre (ex.: AWS Secrets Manager/Vault), nunca no app.
-- Senhas com Argon2/bcrypt; JWT de curta duração + refresh rotativo; armazenamento seguro no app (Expo SecureStore).
-- RBAC + tenancy no backend (guards) + RLS no banco.
-- Validação de assinatura dos webhooks do WhatsApp; verificação de tipo e tamanho dos uploads; varredura antivírus.
-- Proteção contra prompt injection: conteúdo do CV e das respostas é tratado como dado, delimitado no prompt; saídas da IA validadas por schema.
-- Rate limiting e proteção contra abuso; auditoria de acessos a dados sensíveis (ex.: quem ouviu um áudio).
+# 14. LGPD e privacidade
 
-## 11.2 Consentimento
+| Consentimento | Momento |
+|---------------|---------|
+| Termos e privacidade | Cadastro |
+| Contato por WhatsApp (opt-in) | Verificação do número / candidatura; revogável com "PARAR" |
+| Processamento e transcrição de áudio (1ª fase) | Antes da 1ª fase |
+| **Gravação** da entrevista por voz (2ª fase) | Tela de aceite, antes da sessão |
+| Avaliação automatizada por IA com revisão humana | Candidatura |
+| Visibilidade para match | Configuração do perfil (padrão em aberto) |
 
-| Consentimento | Quando | Observação |
-|---------------|--------|------------|
-| Termos de uso e política de privacidade | Cadastro | Versão registrada |
-| Contato por WhatsApp (opt-in) | Cadastro do número e/ou candidatura | Exigência da política do WhatsApp Business; revogável com "PARAR" |
-| Envio, armazenamento e transcrição de áudio | Antes da 1ª fase | Explicar finalidade e prazo de retenção |
-| Avaliação automatizada por IA | Na candidatura | Informar que há revisão humana e direito de solicitar revisão (art. 20 da LGPD) |
-| Visibilidade para match | Configuração do perfil | Desligado por padrão (**decisão em aberto**) |
+- **Retenção** configurável por empresa, com padrão da plataforma (prazos a definir com o jurídico), para CVs, áudios, gravações e transcrições; expurgo por job + ciclo de vida no S3; auditoria com retenção própria.
+- Exportação e exclusão de dados; anonimização do que precisa permanecer.
+- Papéis LGPD (controladora/operadora) a validar juridicamente.
+- O OCR local reduz transferência de dados; STT/TTS/LLM gerenciados exigem contrato sem uso dos dados para treinamento e análise de transferência internacional.
+- **Art. 20**: revisão de decisões automatizadas (ver §9.4 e §18).
+- Viés e revisão humana: §9.5.
 
-## 11.3 Retenção e direitos do titular
+# 15. Observabilidade
 
-- Retenção configurável por empresa, com padrão definido pela plataforma (**valor a decidir com assessoria jurídica**). Exemplo de política: áudios e transcrições removidos X meses após o encerramento da vaga; perfil do candidato mantido enquanto a conta estiver ativa.
-- Jobs de expurgo periódicos + regras de ciclo de vida no S3.
-- Exportação de dados (JSON/PDF) e exclusão de conta, com anonimização dos registros que precisam permanecer para auditoria.
-- Papéis LGPD: em regra, a empresa contratante tende a ser **controladora** dos dados do processo e a plataforma **operadora**; para o perfil global do candidato, a plataforma tende a ser controladora (**validar juridicamente**).
-- Provedores de IA/WhatsApp: contratos de processamento, verificação de transferência internacional e de uso de dados para treinamento (preferir opções sem retenção/treinamento). STT e OCR locais reduzem esse risco.
+| Pilar | Itens |
+|-------|-------|
+| Logs | JSON com `traceId`, `empresaId`, `candidaturaId`, `entrevistaId`, `sessaoId`; sem PII nem conteúdo de respostas |
+| Métricas | API; filas (tamanho, idade, falhas); WhatsApp (entrega, leitura, retries, `SEM_RESPOSTA`, abandonos); STT (tempo, falhas, confiança); OCR (tempo, confiança, % OCR × nativo); voz (**latência por etapa p50/p95**, sessões simultâneas, quedas, reconexões, expirações por pergunta); IA (tokens, custo por empresa); vagas (encerramentos automáticos, pausas); notificações (enviadas, agrupadas, falhas de push) |
+| Traces | OpenTelemetry da API aos workers e ao agente de voz |
+| Erros | Sentry (backend e app) |
+| Alertas | Fila acumulando; job de prazo atrasado; falhas de webhook; **instância Uazapi de uma empresa desconectada** (para a empresa e o admin); taxa de falhas de envio por empresa; latência de voz acima da meta; custo de IA acima da cota; acessos atípicos de admin |
+| Qualidade da IA | Concordância IA × humano; distribuição de notas; erros de schema |
 
-## 11.4 Viés da IA e revisão humana
+# 16. Fases de implementação (resumo)
 
-- Rubricas explícitas por pergunta; a IA avalia o conteúdo técnico, não sotaque, dicção ou qualidade de áudio.
-- Remover atributos sensíveis dos prompts; avaliação cega opcional.
-- Revisão humana obrigatória antes de reprovar ou aprovar.
-- Amostragem periódica de avaliações para comparar IA × humano (concordância) e detectar desvios.
-- Monitorar a qualidade da transcrição por perfil de áudio; baixa confiança → revisão humana, nunca penalidade automática.
-- Registro de modelo e versão de prompt em cada avaliação, permitindo reprodutibilidade e auditoria.
+As 10 fases estão detalhadas no **[Plano de Implementação Orquestrado](plano-implementacao.md)** (tarefas, agentes, paralelismo, critérios de aceite e riscos). Os tamanhos relativos são **estimativas**, sem datas.
 
-# 12. Observabilidade
+| # | Fase | Escopo principal | Estimativa |
+|---|------|------------------|:-:|
+| 1 | Setup do repo e ambientes | Monorepo, CI, Docker Compose, esqueletos de API/app/workers, ambientes; contas externas e conta Uazapi | M |
+| 2 | Modelo de dados | Schema Prisma completo, RLS, bypass do admin, seeds | M |
+| 3 | Auth e papéis | Auth, RBAC, auto-cadastro e verificação da empresa, **conexão do WhatsApp da empresa (instância Uazapi por QR)**, admin, MFA do admin, auditoria, navegação por papel | G |
+| 4 | CRUD de vagas com perguntas e prazo | Vagas, habilidades, perguntas exigidas/sugeridas por IA, tempo por pergunta, política de retry, prazo obrigatório, pausar/fechar | G |
+| 5 | Perfil do candidato com OCR local | Perfil, habilidades, LinkedIn (campo), upload, extração nativa + Tesseract, consentimentos | M |
+| 6 | Candidatura e notificações | Direta + match, máquina de estados, push + central in-app | G |
+| 7 | Entrevista WhatsApp | Envio pelo número da empresa (Uazapi), adapter portado do sof, roteamento do webhook por instância, monitoramento/alertas, texto/áudio, transcrição, avaliação, retry com cadência própria, tentativa consumida/abandono | G |
+| 8 | Entrevista IA por voz em tempo real | POC de latência (cedo), WebRTC/LiveKit, agente de voz, tempo por pergunta, reconexão, gravação | GG |
+| 9 | Ranqueamento | Score composto, pesos, explicabilidade, ranking invisível ao candidato com teste | M |
+| 10 | Multiprocesso | Concorrência, isolamento, escala, testes de carga | G |
 
-| Pilar | O que coletar |
-|-------|---------------|
-| Logs | Estruturados (JSON) com `traceId`, `empresaId`, `candidaturaId`, `entrevistaId`; **sem** PII ou conteúdo de respostas nos logs |
-| Métricas | Latência/erros da API; tamanho e idade das filas; jobs falhos; taxa de entrega/leitura WhatsApp; tempo de transcrição; taxa de falha/baixa confiança do STT; tempo e confiança do OCR; tokens e custo de IA por empresa; taxa de conclusão por etapa; tempo médio de resposta do candidato |
-| Traces | OpenTelemetry da API até workers (propagação de contexto nos jobs) |
-| Erros | Sentry no backend e no app React Native |
-| Painéis | Bull Board para filas; dashboards de funil (convite → início → conclusão) por vaga |
-| Alertas | Fila acumulando; falhas de webhook/envio; erros do provedor de IA; custo de IA acima da cota; expiração de template/token do WhatsApp |
-| Qualidade da IA | Concordância IA × revisão humana; distribuição de notas por vaga; avaliações com erro de schema |
+LGPD e observabilidade são **trilhas transversais** a todas as fases.
 
-# 13. Fases de implementação
+# 17. Riscos e mitigação
 
-> Estimativas em **tamanho relativo** (P, M, G, GG) — são **estimativas** a refinar com o time, sem datas fixas. P < M < G < GG.
+| Risco | Mitigação |
+|-------|-----------|
+| **Bloqueio/banimento do número** (Uazapi não é API oficial do WhatsApp) | **Risco isolado por empresa** (cada uma tem o próprio número): um bloqueio não afeta as demais. Mitigação: orientar a empresa a usar número dedicado e aquecido; cadência humana; rate limiting por instância; apenas candidatos com opt-in; opt-out fácil; textos variados; fallback de convite por push/e-mail enquanto a empresa troca o número |
+| **Limites de envio** e degradação da reputação do número | Limites conservadores por minuto/hora/dia por instância, distribuição de envios ao longo do horário comercial, monitoramento de falhas e respostas negativas |
+| **Aquecimento do número** novo da empresa | Rampa gradual de volume por instância nas primeiras semanas (valores a definir na Fase 7), aplicada automaticamente a instâncias recém-conectadas |
+| **Desconexão da instância** da empresa (sessão do aparelho expira, troca de aparelho) | Monitoramento de status, alerta à empresa e ao admin, reconexão por QR pela empresa; envios e retries pausados sem consumir tentativas |
+| Empresa sem WhatsApp conectado atrasa triagens | Etapa de conexão no onboarding, banner nas vagas e bloqueio com alerta ao tentar iniciar a 1ª fase |
+| Mudanças na API da Uazapi ou no WhatsApp | Adapter isolado atrás de `WhatsappProvider`, testes de contrato com payloads reais anonimizados, possibilidade de trocar de provedor |
+| Latência da voz acima de ~1 s | POC cedo; streaming ponta a ponta; região próxima; opção speech-to-speech |
+| Quedas de rede na entrevista por voz | Janela de reconexão na mesma sessão; pré-checagem de rede; exceção manual (em aberto) |
+| Percepção de injustiça na tentativa única | Aviso e aceite explícitos; avaliação parcial; revisão humana |
+| Retry percebido como spam | Horário comercial, cadência humana, limite de tentativas, opt-out fácil |
+| Transcrição ruim (ruído, termos técnicos) | Vocabulário técnico; limiar de confiança → revisão humana; sem penalidade automática |
+| OCR fraco em layouts complexos | Texto nativo primeiro; pré-processamento; revisão pelo candidato |
+| Vazamento do ranking ao candidato | DTOs dedicados + teste automatizado em todos os endpoints do candidato |
+| Abuso do acesso total do admin | MFA, motivo obrigatório, auditoria imutável, alertas de acessos atípicos |
+| Fraude no auto-cadastro de empresa | Verificação de e-mail/domínio/CNPJ, revisão manual configurável, suspensão |
+| Corrida entre prazos, pausas e respostas | Jobs idempotentes, controle otimista, reconciliação periódica |
+| Viés algorítmico | Rubricas, atributos sensíveis fora, auditoria, decisão humana |
+| Custo de IA/voz | Cotas por tenant, componentes locais quando viável, monitoramento de custo |
 
-## Fase 0 — Fundação (Estimativa: M)
+# 18. Questões em aberto e decisões pendentes
 
-- **Escopo**: monorepo (backend NestJS, app Expo, pacote de tipos compartilhados), CI, ambientes, PostgreSQL + Prisma, Redis + BullMQ, S3 (MinIO local), autenticação, modelo `Usuario`/`MembroEmpresa`/papéis, `GET /me`, guards de RBAC e tenancy, RLS, esqueleto do app único com grupos `(auth)`, `(candidato)`, `(empresa)` e troca de visão.
-- **Entregáveis**: repositório, pipelines, ambiente de desenvolvimento com Docker Compose, app navegável com login e troca de visão.
-- **Critérios de aceite**: um usuário com os dois papéis alterna entre visões no mesmo app; acesso a dados de outra empresa retorna 403/404 em testes automatizados; CI roda lint, testes e migrações.
+| # | Questão | Bloqueia a fase |
+|---|---------|:-:|
+| Q2 | STT da 1ª fase: Whisper local (faster-whisper/whisper.cpp) × API | 7 |
+| Q3 | Voz: pipeline STT→LLM→TTS × speech-to-speech; componentes locais × gerenciados; LiveKit self-hosted × gerenciado (decidido pela POC) | 8 |
+| Q4 | Provedor/modelo de LLM (qualidade em pt-BR, custo, retenção de dados) | 4 |
+| Q5 | Fonte de dados para validação do CNPJ | 3 |
+| Q6 | Política de revisão manual de empresas (sempre / só em falha / nunca) | 3 |
+| Q7 | Política final de retry da 1ª fase (valores sugeridos em §8.5.2) | 7 |
+| Q8 | Resposta em texto na triagem: aceitar após pedir áudio × exigir áudio | 7 |
+| Q9 | Janela de reconexão e pausa do cronômetro durante a queda | 8 |
+| Q10 | Exceção manual (admin/empresa) para queda involuntária | 8 |
+| Q11 | Reabrir inscrições após o prazo expirar | 4 |
+| Q12 | Congelar o prazo de inscrições durante a pausa (padrão: não congela) | 4 |
+| Q13 | Duração máxima de pausa | 4 |
+| Q14 | Reabertura de vaga fechada | 4 |
+| Q15 | Pesos padrão do ranking e limiar de match forte | 9 (limiar: 6) |
+| Q16 | LGPD art. 20: revisão de decisão automatizada sem expor o ranking | 9 |
+| Q17 | Visibilidade para match: opt-in × opt-out | 6 |
+| Q18 | Prazos de retenção (CV, áudio, gravação, transcrição, auditoria) | Trilha LGPD (antes do piloto) |
+| Q19 | Avanço da 1ª para a 2ª fase: automático por nota mínima × manual | 7 |
+| Q20 | Hospedagem/região e necessidade de GPU (STT local, voz) | 1 (provisionamento) / 8 |
+| Q21 | Verificação do WhatsApp do candidato sem número da plataforma: OTP por SMS × confirmação no primeiro contato pela instância da empresa (o candidato responde confirmando) | 7 |
 
-## Fase 1 — MVP Empresa + Candidato (Estimativa: G)
-
-- **Escopo**: catálogo de habilidades; CRUD de vagas com habilidades (nível, peso, obrigatória); processo seletivo com etapas e número de perguntas (padrão 5); perguntas exigidas pela empresa; sugestão de perguntas por IA com aprovação; perfil do candidato, habilidades, campo LinkedIn; upload de CV com extração de texto + OCR local + extração estruturada com revisão; lista de vagas e candidatura direta; consentimentos; score de habilidades e ranking inicial explicável; máquina de estados da candidatura.
-- **Entregáveis**: fluxos 6.1, 6.2 e 6.4 funcionando ponta a ponta no app; ranking por vaga com S_hab.
-- **Critérios de aceite**: recrutador publica vaga com 5 perguntas (mistura de exigidas e sugeridas); candidato envia CV escaneado e vê dados extraídos para revisão; candidatura direta aparece no ranking com explicação por habilidade; nenhum dado extraído é salvo sem confirmação.
-
-## Fase 2 — 1ª fase: triagem por WhatsApp (texto → áudio) (Estimativa: G)
-
-- **Escopo**: integração WhatsApp Business (Cloud API ou Twilio), templates de convite/lembrete/retomada aprovados, verificação do número, opt-in/opt-out, webhook com validação de assinatura, envio de perguntas por texto, recebimento de áudio (OGG/Opus), download e armazenamento, conversão com ffmpeg, transcrição com Whisper, avaliação por IA, tratamento de respostas em texto e mídia inválida, lembretes/timeouts/retomada, serialização de conversas por número, estado da entrevista, tela de acompanhamento com áudio + transcrição + nota.
-- **Entregáveis**: fluxo 6.5 completo; S_triagem no ranking; painel de filas.
-- **Critérios de aceite**: candidato recebe template, responde 5 perguntas por áudio e a entrevista fica `CONCLUIDA` com transcrições e notas; resposta em texto é tratada conforme configuração; sem resposta, lembrete e depois `PAUSADA`/`EXPIRADA` ocorrem nos prazos configurados; retomada continua na pergunta pendente; webhook duplicado não gera resposta duplicada; "PARAR" revoga o consentimento.
-
-## Fase 3 — 2ª fase: entrevista conduzida por IA (Estimativa: G)
-
-- **Escopo**: orquestrador de entrevista no app (chat), follow-ups limitados, guardrails, sessão retomável, avaliação consolidada com evidências, revisão humana por resposta, transição automática/manual entre fases, S_entrevista e score composto com renormalização.
-- **Entregáveis**: fluxo 6.6; tela de revisão para avaliadores; ranking com score composto.
-- **Critérios de aceite**: candidato aprovado na triagem conclui a entrevista com as perguntas definidas; cada nota tem justificativa e trechos citados; avaliador altera nota e o ranking é recalculado; IA não faz perguntas fora das definidas além dos follow-ups permitidos.
-
-## Fase 4 — Match e multiprocesso em escala (Estimativa: M)
-
-- **Escopo**: embeddings (pgvector), sugestões de candidatos por vaga e de vagas por candidato, convites, visibilidade do perfil para match, cotas e rate limits por tenant, autoscaling de workers, otimização de índices, testes de carga com muitos processos simultâneos.
-- **Entregáveis**: fluxo 6.3; painéis de capacidade.
-- **Critérios de aceite**: ao publicar vaga, sugestões aparecem com explicação; candidato com várias candidaturas simultâneas é conduzido corretamente (uma triagem WhatsApp por vez); testes de carga sem perda de mensagens ou corrida de estado.
-
-## Fase 5 — LGPD, governança de IA e operação (Estimativa: M)
-
-- **Escopo**: exportação/exclusão de dados, expurgo por retenção, auditoria de acessos, relatórios de concordância IA × humano e distribuição de notas, avaliação cega, alertas de custo, hardening de segurança (pentest), observabilidade completa.
-- **Entregáveis**: processos de privacidade operando; painéis de qualidade da IA.
-- **Critérios de aceite**: solicitação de exclusão remove/anonimiza dados em todas as camadas (banco, S3, filas); expurgo automático comprovado em ambiente de teste; relatório de viés gerado para uma vaga piloto.
-
-## Fase 6 — Evoluções (Estimativa: GG, incremental)
-
-- Entrevista por voz no app (2ª fase), versão web do app para recrutadores (react-native-web), integração real com LinkedIn (sujeita às políticas da plataforma), integrações com ATS/calendário, analytics de funil, templates de processo por cargo.
-
-> **Sugestão de piloto**: liberar Fases 0–2 para uma ou poucas empresas parceiras antes da Fase 3, para calibrar perguntas, pesos e tempos de lembrete/timeout com dados reais.
-
-# 14. Riscos e mitigação
-
-| Risco | Impacto | Mitigação |
-|-------|---------|-----------|
-| Aprovação de templates e da conta WhatsApp Business demora ou é negada | Bloqueia a 1ª fase | Iniciar o processo de verificação cedo; templates simples e transacionais; fallback temporário (convite por push/e-mail com link para responder no app) |
-| Restrições/limites de mensagens do WhatsApp (janela 24 h, limites de envio, qualidade do número) | Mensagens não entregues | Respeitar janela, templates para reabrir; monitorar qualidade do número; rate limit |
-| Qualidade da transcrição (ruído, sotaques, termos técnicos) | Avaliação injusta | Whisper com vocabulário/prompt técnico; limiar de confiança → revisão humana; nunca penalizar automaticamente |
-| Candidato prefere texto ou não envia áudio | Abandono | Aceitar texto como fallback configurável; instruções claras; lembretes |
-| Alucinação/inconsistência do LLM na avaliação | Scores pouco confiáveis | Rubricas, saída por schema, temperatura baixa, evidências citadas obrigatórias, revisão humana, amostragem IA × humano |
-| Viés algorítmico | Discriminação, risco legal | §11.4; remover atributos sensíveis; auditoria periódica |
-| Prompt injection via CV ou resposta | Manipulação do score | Delimitação de conteúdo, instruções de sistema, validação, detecção de padrões |
-| Custo de IA/STT acima do previsto | Margem | STT/OCR locais, cache, cotas por tenant, modelos menores para tarefas simples |
-| Vazamento entre tenants | Grave (LGPD, confiança) | Guards + extensão Prisma + RLS + testes automatizados de isolamento |
-| OCR ruim em CVs com layout complexo | Perfil incompleto | Texto nativo primeiro; revisão obrigatória pelo candidato; edição manual |
-| Complexidade do app único com duas visões | Bugs de permissão/estado | Grupos de rota isolados, cache segmentado por empresa, testes E2E por papel |
-| Concorrência (timeout × resposta simultânea, webhooks duplicados) | Estado inconsistente | Locks por entrevista, controle otimista, idempotência |
-
-# 15. Questões em aberto / decisões pendentes
-
-| # | Questão | Opções / observações |
-|---|---------|----------------------|
-| Q1 | Provedor WhatsApp | Cloud API direta (Meta) vs. Twilio (BSP): custo, onboarding, suporte, ferramentas |
-| Q2 | STT local vs. API | faster-whisper/whisper.cpp local (coerente com OCR local, privacidade, custo fixo, exige CPU/GPU) vs. API gerenciada (simplicidade, custo variável, transferência de dados). Definir modelo (tamanho) conforme qualidade × latência |
-| Q3 | Provedor/modelo de LLM | Critérios: qualidade em pt-BR, saída estruturada, custo, políticas de retenção de dados, região |
-| Q4 | Motor de OCR | Tesseract vs. PaddleOCR (qualidade em layouts complexos × facilidade de operação) |
-| Q5 | Resposta em texto na triagem | Aceitar por padrão ou exigir áudio? Peso diferente para texto? |
-| Q6 | Avanço entre fases | Automático por nota mínima ou sempre manual? Nota mínima padrão? |
-| Q7 | Prazos | Prazo por pergunta, prazo total da etapa, número e intervalo de lembretes |
-| Q8 | Pesos padrão do score | Valores iniciais em §7.4 são estimativas; calibrar no piloto |
-| Q9 | Visibilidade do candidato para match | Opt-in (padrão desligado) ou opt-out? |
-| Q10 | Retenção de dados | Prazos para áudios, transcrições e CVs; validar com jurídico |
-| Q11 | Papéis LGPD | Controladora/operadora por tipo de dado; contratos com empresas clientes |
-| Q12 | Versão web | Recrutadores precisarão de web desde o MVP (react-native-web) ou o app basta? |
-| Q13 | 2ª fase por voz | Manter só chat no MVP ou incluir voz no app? |
-| Q14 | Modelo de cobrança | Por vaga, por candidatura ou assinatura — impacta cotas e métricas |
-| Q15 | Hospedagem | Nuvem/região (preferência por dados no Brasil?) e necessidade de GPU para STT local |
+Decisão já tomada (fora desta lista): **um número/instância Uazapi por empresa** (§4.6 e §6.1).
