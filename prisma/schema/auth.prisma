@@ -1,0 +1,84 @@
+// Domínio: auth — sessões, tokens de uso único, MFA e convites de membro (Fase 3)
+
+enum TipoTokenUsoUnico {
+  CONFIRMACAO_EMAIL
+  RECUPERACAO_SENHA
+  VERIFICACAO_EMAIL_EMPRESA
+}
+
+enum StatusConviteMembro {
+  PENDENTE
+  ACEITO
+  REVOGADO
+  EXPIRADO
+}
+
+model RefreshToken {
+  id            String    @id @default(uuid()) @db.Uuid
+  usuarioId     String    @db.Uuid
+  familiaId     String    @db.Uuid
+  tokenHash     String    @unique
+  mfaVerificado Boolean   @default(false)
+  expiraEm      DateTime  @db.Timestamptz
+  revogadoEm    DateTime? @db.Timestamptz
+  substituidoEm DateTime? @db.Timestamptz
+  criadoEm      DateTime  @default(now()) @db.Timestamptz
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([familiaId])
+  @@map("refresh_tokens")
+}
+
+model TokenUsoUnico {
+  id        String            @id @default(uuid()) @db.Uuid
+  usuarioId String?           @db.Uuid
+  empresaId String?           @db.Uuid
+  email     String
+  tipo      TipoTokenUsoUnico
+  tokenHash String            @unique
+  expiraEm  DateTime          @db.Timestamptz
+  usadoEm   DateTime?         @db.Timestamptz
+  criadoEm  DateTime          @default(now()) @db.Timestamptz
+
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa Empresa? @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@index([email, tipo])
+  @@index([empresaId])
+  @@map("tokens_uso_unico")
+}
+
+model CodigoRecuperacaoMfa {
+  id         String    @id @default(uuid()) @db.Uuid
+  usuarioId  String    @db.Uuid
+  codigoHash String
+  usadoEm    DateTime? @db.Timestamptz
+  criadoEm   DateTime  @default(now()) @db.Timestamptz
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@map("codigos_recuperacao_mfa")
+}
+
+model ConviteMembro {
+  id             String              @id @default(uuid()) @db.Uuid
+  empresaId      String              @db.Uuid
+  email          String
+  papeis         PapelEmpresa[]
+  tokenHash      String              @unique
+  convidadoPorId String              @db.Uuid
+  status         StatusConviteMembro @default(PENDENTE)
+  expiraEm       DateTime            @db.Timestamptz
+  aceitoEm       DateTime?           @db.Timestamptz
+  criadoEm       DateTime            @default(now()) @db.Timestamptz
+
+  empresa      Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  convidadoPor Usuario @relation("ConvitesEnviados", fields: [convidadoPorId], references: [id], onDelete: Cascade)
+
+  @@index([empresaId])
+  @@index([email])
+  @@map("convites_membro")
+}
