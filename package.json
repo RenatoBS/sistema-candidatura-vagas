@@ -24,7 +24,8 @@
       "prisma",
       "esbuild",
       "msgpackr-extract",
-      "protobufjs"
+      "protobufjs",
+      "sharp"
     ]
   },
   "devDependencies": {
