@@ -40,3 +40,6 @@ infra/terraform/**/.terraform.lock.hcl
 # Expo
 apps/mobile/.expo/
 apps/mobile/dist/
+
+# Segredos locais (nunca versionar)
+.secrets/

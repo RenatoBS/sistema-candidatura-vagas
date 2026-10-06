@@ -37,7 +37,7 @@
 | F1-08 | IaC base (Terraform esqueleto dev/staging, cofre de segredos placeholder) | ✅ Feito | Cursor |
 | F1-09 | Dependabot, CODEOWNERS, docs proteção da main | ✅ Feito | Cursor |
 | F1-10 | Contas de nuvem/GitHub/Sentry; proteger a `main` | ⬜ Pendente | **Renato** |
-| F1-11 | Conta Uazapi e número de teste | ⬜ Pendente | **Renato** |
+| F1-11 | Conta Uazapi e número de teste | ✅ Feito (credenciais + número +55 11 95688-0691) | Renato + HubCandidate |
 
 ## Revisão cruzada Fase 1 — Claude Code (2026-10-06)
 
