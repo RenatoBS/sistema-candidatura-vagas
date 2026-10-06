@@ -11,6 +11,7 @@ export default function CandidatoHome() {
     <View style={styles.tela}>
       <Text style={styles.titulo}>{t('candidato.titulo')}</Text>
       <Text style={styles.texto}>{t('candidato.texto')}</Text>
+      <Link href="/candidato/vagas">{t('candidato.vagas')}</Link>
       <Link href="/candidato/perfil">{t('candidato.perfil')}</Link>
       <Link href="/candidato/curriculo">{t('candidato.curriculo')}</Link>
       <Link href="/candidato/habilidades">{t('candidato.habilidades')}</Link>
