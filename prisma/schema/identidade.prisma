@@ -24,6 +24,7 @@ model Usuario {
   tokensUsoUnico         TokenUsoUnico[]
   codigosRecuperacaoMfa  CodigoRecuperacaoMfa[]
   convitesEnviados       ConviteMembro[]          @relation("ConvitesEnviados")
+  solicitacoesLgpd       SolicitacaoLgpd[]
 
   @@map("usuarios")
 }
