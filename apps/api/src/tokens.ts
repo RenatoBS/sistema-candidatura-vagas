@@ -6,3 +6,6 @@ export const FILA_CNPJ = Symbol('FILA_CNPJ');
 export const DNS = Symbol('DNS');
 export const CLIENTE_WHATSAPP = Symbol('CLIENTE_WHATSAPP');
 export const RELOGIO = Symbol('RELOGIO');
+export const ARMAZENAMENTO = Symbol('ARMAZENAMENTO');
+export const ANTIVIRUS = Symbol('ANTIVIRUS');
+export const FILA_CURRICULO = Symbol('FILA_CURRICULO');

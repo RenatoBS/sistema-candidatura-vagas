@@ -1,11 +1,14 @@
 import { type FactoryProvider, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { BrasilApiFonteCnpj, criarEmailProvider, UazapiInstanciaCliente } from '@scv/providers';
+import { BrasilApiFonteCnpj, criarAntivirus, criarArmazenamentoS3, criarEmailProvider, UazapiInstanciaCliente } from '@scv/providers';
 
 import {
+  antivirusTeste,
+  armazenamentoTeste,
   dnsTeste,
   emailTeste,
   filaCnpjTeste,
+  filaCurriculoTeste,
   fonteCnpjTeste,
   repositorioTeste,
   whatsappTeste,
@@ -14,25 +17,31 @@ import { AcessoSensivelService } from './auditoria/acesso-sensivel';
 import { AuditoriaService } from './auditoria/auditoria.service';
 import { AuthService, relogioSistema } from './auth/auth.service';
 import { MfaService } from './auth/mfa.service';
+import { ConsentimentoService, CurriculoService, LgpdService, PerfilService } from './candidatos/candidato.service';
 import type { ConfiguracaoApp } from './configuracao';
 import { lerConfiguracao } from './configuracao';
 import { DnsNode } from './dns';
 import { EmpresasService } from './empresas/empresas.service';
 import { FilaCnpjBull } from './fila/fila-cnpj';
+import { FilaCurriculoBull } from './fila/fila-curriculo';
 import { AuditoriaController } from './http/auditoria.controller';
 import { AuthController } from './http/auth.controller';
 import { AuthGuard } from './http/auth.guard';
+import { CandidatoController } from './http/candidatos.controller';
 import { EmpresasController } from './http/empresas.controller';
 import { WhatsappController } from './http/whatsapp.controller';
 import { MembrosService } from './membros/membros.service';
 import { RepositorioPrisma } from './repositorio/prisma';
 import type { Repositorio } from './repositorio/tipos';
 import {
+  ANTIVIRUS,
+  ARMAZENAMENTO,
   CLIENTE_WHATSAPP,
   CONFIG,
   DNS,
   EMAIL,
   FILA_CNPJ,
+  FILA_CURRICULO,
   FONTE_CNPJ,
   RELOGIO,
   REPOSITORIO,
@@ -81,6 +90,24 @@ const dnsProvider: FactoryProvider = {
   useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? dnsTeste : new DnsNode()),
 };
 
+const armazenamentoProvider: FactoryProvider = {
+  provide: ARMAZENAMENTO,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? armazenamentoTeste : criarArmazenamentoS3()),
+};
+
+const antivirusProvider: FactoryProvider = {
+  provide: ANTIVIRUS,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? antivirusTeste : criarAntivirus()),
+};
+
+const filaCurriculoProvider: FactoryProvider = {
+  provide: FILA_CURRICULO,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? filaCurriculoTeste : new FilaCurriculoBull()),
+};
+
 const whatsappClienteProvider: FactoryProvider = {
   provide: CLIENTE_WHATSAPP,
   inject: [CONFIG],
@@ -91,7 +118,7 @@ const whatsappClienteProvider: FactoryProvider = {
 };
 
 @Module({
-  controllers: [AuthController, EmpresasController, WhatsappController, AuditoriaController],
+  controllers: [AuthController, EmpresasController, WhatsappController, AuditoriaController, CandidatoController],
   providers: [
     configProvider,
     relogioProvider,
@@ -101,6 +128,9 @@ const whatsappClienteProvider: FactoryProvider = {
     filaProvider,
     dnsProvider,
     whatsappClienteProvider,
+    armazenamentoProvider,
+    antivirusProvider,
+    filaCurriculoProvider,
     {
       provide: AuditoriaService,
       inject: [REPOSITORIO, RELOGIO],
@@ -151,6 +181,33 @@ const whatsappClienteProvider: FactoryProvider = {
         config: ConfiguracaoApp,
         relogio: typeof relogioSistema,
       ) => new WhatsappService(repo, cliente, config, relogio),
+    },
+    {
+      provide: PerfilService,
+      inject: [REPOSITORIO],
+      useFactory: (repo: Repositorio) => new PerfilService(repo),
+    },
+    {
+      provide: CurriculoService,
+      inject: [REPOSITORIO, ARMAZENAMENTO, ANTIVIRUS, FILA_CURRICULO, RELOGIO],
+      useFactory: (
+        repo: Repositorio,
+        armazenamento: typeof armazenamentoTeste,
+        antivirus: typeof antivirusTeste,
+        fila: typeof filaCurriculoTeste,
+        relogio: typeof relogioSistema,
+      ) => new CurriculoService(repo, armazenamento, antivirus, fila, relogio),
+    },
+    {
+      provide: ConsentimentoService,
+      inject: [REPOSITORIO, RELOGIO],
+      useFactory: (repo: Repositorio, relogio: typeof relogioSistema) => new ConsentimentoService(repo, relogio),
+    },
+    {
+      provide: LgpdService,
+      inject: [REPOSITORIO, ARMAZENAMENTO, RELOGIO],
+      useFactory: (repo: Repositorio, armazenamento: typeof armazenamentoTeste, relogio: typeof relogioSistema) =>
+        new LgpdService(repo, armazenamento, relogio),
     },
     {
       provide: AcessoSensivelService,
