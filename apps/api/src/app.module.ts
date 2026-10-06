@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 
 import { HealthModule } from './health/health.module';
+import { PlataformaModule } from './plataforma.module';
 
 @Module({
   imports: [
@@ -11,13 +12,14 @@ import { HealthModule } from './health/health.module';
       pinoHttp: {
         level: process.env.LOG_LEVEL ?? 'info',
         transport:
-          process.env.NODE_ENV !== 'production'
+          process.env.NODE_ENV === 'development'
             ? { target: 'pino-pretty', options: { colorize: true } }
             : undefined,
         redact: ['req.headers.authorization', 'req.headers.cookie'],
       },
     }),
     HealthModule,
+    PlataformaModule,
   ],
 })
 export class AppModule {}

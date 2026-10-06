@@ -1,8 +1,11 @@
 import { Controller, Get } from '@nestjs/common';
 import type { HealthResponse } from '@scv/contracts';
 
+import { Publico } from '../http/decoradores';
+
 @Controller('health')
 export class HealthController {
+  @Publico()
   @Get()
   check(): HealthResponse {
     return {
