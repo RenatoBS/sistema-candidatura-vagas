@@ -1,6 +1,6 @@
 {
   "name": "@scv/providers",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Interfaces e adapters: WhatsappProvider, SttProvider, LlmProvider, OcrProvider",
   "main": "./dist/index.js",
@@ -12,7 +12,11 @@
     "test": "node --import tsx --test src/**/*.test.ts",
     "clean": "rm -rf dist"
   },
+  "dependencies": {
+    "nodemailer": "^6.10.0"
+  },
   "devDependencies": {
+    "@types/nodemailer": "^6.4.17",
     "@scv/config": "workspace:*",
     "eslint": "^9.22.0",
     "tsx": "^4.19.3",
