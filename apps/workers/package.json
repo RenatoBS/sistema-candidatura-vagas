@@ -1,0 +1,31 @@
+{
+  "name": "@scv/workers",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Processos BullMQ (OCR, STT, IA, WhatsApp, prazos, notificações)",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "lint": "eslint src --max-warnings 0",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test src/**/*.test.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@bull-board/api": "^6.7.10",
+    "@bull-board/express": "^6.7.10",
+    "bullmq": "^5.44.0",
+    "express": "^4.21.2",
+    "ioredis": "^5.6.0",
+    "pino": "^9.6.0"
+  },
+  "devDependencies": {
+    "@scv/config": "workspace:*",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.10",
+    "eslint": "^9.22.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

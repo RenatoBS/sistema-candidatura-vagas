@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'feat/**', 'cursor/**']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-typecheck-test:
+    name: Lint, typecheck e testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Testes
+        run: pnpm test
+
+  migrations:
+    name: Migrações em banco efêmero
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: scv
+          POSTGRES_PASSWORD: scv_ci_password
+          POSTGRES_DB: scv_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scv -d scv_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://scv:scv_ci_password@localhost:5432/scv_ci?schema=public
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Gerar cliente Prisma
+        run: pnpm --filter @scv/prisma db:generate
+
+      - name: Aplicar migrações
+        run: |
+          cd prisma
+          npx prisma migrate diff \
+            --from-empty \
+            --to-schema-datamodel schema/schema.prisma \
+            --script > /tmp/init.sql
+          npx prisma db execute --url "$DATABASE_URL" --file /tmp/init.sql
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint-typecheck-test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+  secrets-scan:
+    name: Varredura de segredos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

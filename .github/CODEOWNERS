@@ -1,0 +1,12 @@
+# Proprietários padrão — revisão obrigatória do Renato em mudanças críticas
+* @RenatoBS
+
+# Infraestrutura e CI
+/infra/ @RenatoBS
+/.github/ @RenatoBS
+/prisma/ @RenatoBS
+
+# Documentação de arquitetura
+/docs/adr/ @RenatoBS
+/AGENTS.md @RenatoBS
+/CLAUDE.md @RenatoBS

@@ -1,0 +1,46 @@
+{
+  "name": "@scv/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "description": "App React Native único (Expo Router): candidato, empresa e admin",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/validate-entry.mjs",
+    "dev": "expo start",
+    "start": "expo start",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test src/**/*.test.ts",
+    "clean": "rm -rf dist .expo"
+  },
+  "dependencies": {
+    "@scv/contracts": "workspace:*",
+    "@expo/metro-runtime": "~4.0.1",
+    "@react-navigation/native": "^7.0.14",
+    "expo": "~52.0.40",
+    "expo-font": "~13.0.4",
+    "expo-constants": "~17.0.8",
+    "expo-linking": "~7.0.5",
+    "expo-localization": "~16.0.1",
+    "expo-router": "~4.0.19",
+    "expo-status-bar": "~2.0.1",
+    "i18next": "^24.2.3",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-i18next": "^15.4.1",
+    "react-native": "0.76.9",
+    "react-native-gesture-handler": "~2.20.2",
+    "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.4.0",
+    "react-native-web": "~0.19.13"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.10",
+    "babel-preset-expo": "~12.0.9",
+    "@scv/config": "workspace:*",
+    "@types/react": "~18.3.18",
+    "eslint": "^9.22.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

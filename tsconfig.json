@@ -1,0 +1,7 @@
+{
+  "extends": "@scv/config/tsconfig/base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "exclude": ["node_modules", "dist", "build", ".expo"]
+}

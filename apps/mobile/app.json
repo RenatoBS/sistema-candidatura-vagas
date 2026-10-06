@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Sistema de Candidatura",
+    "slug": "sistema-candidatura-vagas",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "scv",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": ["expo-router", "expo-localization"]
+  }
+}

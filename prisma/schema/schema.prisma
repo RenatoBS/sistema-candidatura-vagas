@@ -1,0 +1,18 @@
+// Schema Prisma — será expandido na Fase 2 por domínio.
+// Arquivos futuros: identidade, vagas, candidatos, entrevistas, notificacoes.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Placeholder mínimo para validar migrações na CI.
+// Será removido/substituído na Fase 2.
+model HealthCheck {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @db.Timestamptz
+}
