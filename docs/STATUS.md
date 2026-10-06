@@ -2,7 +2,7 @@
 
 **Última atualização:** 2026-10-06  
 **Branch ativa:** `feat/f1-setup-monorepo`  
-**PR:** Fase 1 em implementação
+**PR:** Fase 1 em implementação — revisada pelo Claude Code em 2026-10-06
 
 ## Status geral
 
@@ -38,6 +38,26 @@
 | F1-09 | Dependabot, CODEOWNERS, docs proteção da main | ✅ Feito | Cursor |
 | F1-10 | Contas de nuvem/GitHub/Sentry; proteger a `main` | ⬜ Pendente | **Renato** |
 | F1-11 | Conta Uazapi e número de teste | ⬜ Pendente | **Renato** |
+
+## Revisão cruzada Fase 1 — Claude Code (2026-10-06)
+
+Revisão de arquitetura de F1-01 a F1-09 feita pelo Claude Code (Opus 5.5). `pnpm install && pnpm lint && pnpm typecheck && pnpm test && pnpm build` verdes localmente; `GET /api/v1/health` respondendo `200` com o build de produção.
+
+**Ajustes feitos:**
+
+- `.gitignore`: removido o ignore de `prisma/schema/migrations/` — migrações precisam ser versionadas (pré-requisito da Fase 2).
+- `infra/docker-compose.yml`: healthcheck do MinIO trocado de `curl` (ausente na imagem oficial) para `mc ready local`.
+- `apps/workers`: `@types/express` alinhado à major do `express` (v4).
+- `apps/mobile/turbo.json`: `build` sem outputs (só valida tipos/entrypoint), eliminando o aviso do Turborepo.
+
+**Pendências registradas (não bloqueiam a Fase 1):**
+
+- **CI (aplicar pelo Renato):** remover `with: version: 10` dos 3 passos `pnpm/action-setup@v4` em `.github/workflows/ci.yml` — conflita com `packageManager` e a action falha. O agente não tem escopo `workflow` no token para enviar essa mudança.
+- `docker compose up` não validado neste ambiente (sem daemon Docker); validar localmente.
+- `apps/api/test` fica fora do `typecheck`; `dist/` dos `packages/*` inclui arquivos `*.test.*`.
+- Compose lê `.env` de `infra/`; para usar o `.env` da raiz, rodar com `--env-file .env`.
+- Prisma multi-arquivo (Fase 2): scripts devem apontar para a pasta `schema/` em vez de `schema/schema.prisma`.
+- `pnpm format:check` acusa 8 arquivos Markdown (não roda na CI).
 
 ## Documentos de referência
 

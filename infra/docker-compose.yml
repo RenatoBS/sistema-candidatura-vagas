@@ -43,7 +43,8 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      # A imagem oficial do MinIO não inclui curl; usar o mc embutido
+      test: ['CMD', 'mc', 'ready', 'local']
       interval: 15s
       timeout: 5s
       retries: 5
