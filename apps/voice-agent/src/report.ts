@@ -55,7 +55,7 @@ export function montarRelatorio(params: {
   };
 }
 
-function statusMeta(valor: number, [min, max]: [number, number]): string {
+function statusMeta(valor: number, [_min, max]: [number, number]): string {
   if (valor <= max) return '✅';
   if (valor <= max * 1.5) return '⚠️';
   return '❌';
