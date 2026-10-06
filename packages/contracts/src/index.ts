@@ -4,6 +4,18 @@
 
 export const API_VERSION = 'v1';
 
+export {
+  atualizarPerfilSchema,
+  confirmarCurriculoSchema,
+  consentimentoSchema,
+  dadosExtraidosSchema,
+  excluirDadosSchema,
+  habilidadesCandidatoSchema,
+  registrarCurriculoSchema,
+  uploadCurriculoSchema,
+} from './candidato';
+export { openApiFase5 } from './openapi-fase5';
+
 export interface HealthResponse {
   status: 'ok';
   version: string;
