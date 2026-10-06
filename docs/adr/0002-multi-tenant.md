@@ -1,7 +1,8 @@
 # ADR 0002 — Modelo multi-tenant com RLS
 
-**Status:** Proposto — **aguarda aprovação do Renato (F2-02)**  
+**Status:** Aceito  
 **Data:** 2026-10-06  
+**Aprovado por:** Renato Souza (F2-02, 2026-10-06)  
 **Autor:** Cursor (Composer)
 
 ## Contexto
@@ -10,7 +11,7 @@ A plataforma atende múltiplas empresas (tenants) no mesmo banco PostgreSQL. Cad
 
 O [plano do sistema](../plano-sistema.md) §11.2 e o [plano de implementação](../plano-implementacao.md) §7.4 (F2-01) definem isolamento por `empresaId` com Row-Level Security (RLS) no banco e bypass controlado no aplicativo.
 
-## Decisão proposta
+## Decisão
 
 ### 1. Coluna `empresaId` em tabelas de domínio do tenant
 
@@ -78,7 +79,7 @@ A camada de aplicação (NestJS `TenantGuard`, workers com `empresaId` no payloa
 
 - **Positivas:** defesa em profundidade; workers e API compartilham a mesma regra; testes de isolamento reproduzíveis na CI.
 - **Negativas:** políticas em tabelas filhas mais verbosas; necessidade de `SET LOCAL` em toda transação; seeds e migrações precisam de papel adequado.
-- **Implementação:** o schema da Fase 2 já segue esta decisão (colunas, índices, migração RLS). A aprovação do Renato (F2-02) confirma o ADR antes de depender dele nas fases 3+.
+- **Implementação:** o schema da Fase 2 segue esta decisão (colunas, índices, migração RLS). Aprovado pelo Renato em 2026-10-06; fases 3+ dependem deste ADR.
 
 ## Referências
 

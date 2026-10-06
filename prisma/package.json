@@ -17,7 +17,7 @@
     "db:reset": "prisma migrate reset --schema=schema --force",
     "build": "prisma generate --schema=schema",
     "lint": "eslint \"{src,test}/**/*.ts\" --max-warnings 0",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "pnpm run db:generate && tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test --test-concurrency=1 test/**/*.test.ts"
   },
   "prisma": {
