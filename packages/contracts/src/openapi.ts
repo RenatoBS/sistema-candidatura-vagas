@@ -1,3 +1,5 @@
+import { openApiFase5 } from './openapi-fase5';
+
 /** Contrato das rotas da Fase 3. A especificação completa cresce nas fases seguintes. */
 export const openApiFase3 = {
   openapi: '3.0.3',
@@ -104,9 +106,9 @@ export const openApi = {
   openapi: '3.0.3',
   info: {
     title: 'Sistema de Candidatura a Vagas',
-    version: '0.4.0',
+    version: '0.5.0',
   },
-  paths: { ...openApiFase3.paths, ...openApiFase4.paths },
+  paths: { ...openApiFase3.paths, ...openApiFase4.paths, ...openApiFase5.paths },
 } as const;
 
 export type CaminhoApi = keyof typeof openApi.paths;
