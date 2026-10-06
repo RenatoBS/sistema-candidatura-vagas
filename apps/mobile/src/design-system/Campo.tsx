@@ -8,19 +8,21 @@ interface CampoProps {
   onChangeText: (valor: string) => void;
   secureTextEntry?: boolean;
   autoCapitalize?: 'none' | 'sentences';
+  multiline?: boolean;
 }
 
-export function Campo({ label, value, onChangeText, secureTextEntry, autoCapitalize = 'sentences' }: CampoProps) {
+export function Campo({ label, value, onChangeText, secureTextEntry, autoCapitalize = 'sentences', multiline }: CampoProps) {
   return (
     <>
       <Text style={styles.label}>{label}</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, multiline ? styles.multilinha : null]}
         value={value}
         onChangeText={onChangeText}
         secureTextEntry={secureTextEntry}
         autoCapitalize={autoCapitalize}
         autoCorrect={false}
+        multiline={multiline}
       />
     </>
   );
@@ -36,4 +38,5 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     color: colors.text,
   },
+  multilinha: { minHeight: 96, textAlignVertical: 'top' },
 });
