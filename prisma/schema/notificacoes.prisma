@@ -1,0 +1,100 @@
+// Domínio: notificações — push, central in-app, match
+
+enum TipoNotificacao {
+  CANDIDATO_NOVO
+  MATCH_FORTE
+  VERIFICACAO_APROVADA
+  VERIFICACAO_REJEITADA
+  INSCRICOES_ENCERRADAS
+  VAGA_PAUSADA
+  VAGA_RETOMADA
+  WHATSAPP_DESCONECTADO
+  STATUS_CANDIDATURA
+  OPERACIONAL
+}
+
+enum StatusSugestaoMatch {
+  PENDENTE
+  NOTIFICADA
+  CONVIDADA
+  ACEITA
+  RECUSADA
+  EXPIRADA
+}
+
+enum PlataformaPush {
+  IOS
+  ANDROID
+  WEB
+}
+
+model Notificacao {
+  id          String          @id @default(uuid()) @db.Uuid
+  usuarioId   String          @db.Uuid
+  empresaId   String?         @db.Uuid
+  tipo        TipoNotificacao
+  chaveDedup  String          @unique
+  dados       Json            @default("{}")
+  agrupadas   Int             @default(1)
+  lidaEm      DateTime?       @db.Timestamptz
+  criadoEm    DateTime        @default(now()) @db.Timestamptz
+
+  usuario Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa Empresa? @relation(fields: [empresaId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId, criadoEm])
+  @@index([empresaId])
+  @@map("notificacoes")
+}
+
+model PreferenciaNotificacao {
+  id           String          @id @default(uuid()) @db.Uuid
+  usuarioId    String          @db.Uuid
+  empresaId    String?         @db.Uuid
+  tipo         TipoNotificacao
+  push         Boolean         @default(true)
+  email        Boolean         @default(false)
+  inApp        Boolean         @default(true)
+  limiarMatch  Float?
+  criadoEm     DateTime        @default(now()) @db.Timestamptz
+  atualizadoEm DateTime        @updatedAt @db.Timestamptz
+
+  usuario Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa Empresa? @relation(fields: [empresaId], references: [id], onDelete: SetNull)
+
+  @@unique([usuarioId, empresaId, tipo])
+  @@map("preferencias_notificacao")
+}
+
+model DispositivoPush {
+  id           String         @id @default(uuid()) @db.Uuid
+  usuarioId    String         @db.Uuid
+  token        String         @unique
+  plataforma   PlataformaPush
+  ultimoUsoEm  DateTime?      @db.Timestamptz
+  criadoEm     DateTime       @default(now()) @db.Timestamptz
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@map("dispositivos_push")
+}
+
+model SugestaoMatch {
+  id              String            @id @default(uuid()) @db.Uuid
+  vagaId          String            @db.Uuid
+  candidatoId     String            @db.Uuid
+  compatibilidade Float
+  explicacao      Json              @default("{}")
+  status          StatusSugestaoMatch @default(PENDENTE)
+  notificadoEm    DateTime?         @db.Timestamptz
+  criadoEm        DateTime          @default(now()) @db.Timestamptz
+  atualizadoEm    DateTime          @updatedAt @db.Timestamptz
+
+  vaga      Vaga      @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  candidato Candidato @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
+
+  @@unique([vagaId, candidatoId])
+  @@index([vagaId, status])
+  @@map("sugestoes_match")
+}

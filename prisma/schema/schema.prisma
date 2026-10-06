@@ -1,18 +1,51 @@
-// Schema Prisma — será expandido na Fase 2 por domínio.
-// Arquivos futuros: identidade, vagas, candidatos, entrevistas, notificacoes.
+// Schema Prisma — entrada multi-arquivo (Fase 2).
+// Domínios: identidade, vagas, candidatos, entrevistas, notificacoes.
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
-// Placeholder mínimo para validar migrações na CI.
-// Será removido/substituído na Fase 2.
-model HealthCheck {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now()) @db.Timestamptz
+// --- Papéis e status compartilhados ---
+
+enum PapelGlobal {
+  ADMIN_PLATAFORMA
+}
+
+enum PapelEmpresa {
+  ADMIN_EMPRESA
+  RECRUTADOR
+  AVALIADOR
+}
+
+enum StatusMembroEmpresa {
+  ATIVO
+  CONVIDADO
+  REMOVIDO
+}
+
+enum StatusVerificacaoEmpresa {
+  PENDENTE
+  VERIFICADA
+  REJEITADA
+  SUSPENSA
+}
+
+enum TipoVerificacaoEmpresa {
+  EMAIL
+  DOMINIO
+  CNPJ
+  REVISAO_MANUAL
+}
+
+enum VisaoPreferida {
+  CANDIDATO
+  EMPRESA
+  ADMIN
 }

@@ -50,7 +50,7 @@ O sistema de candidatura a vagas com IA será desenvolvido por três agentes de 
 
 - Isolamento por `empresaId` no banco (Row-Level Security).
 - Bypass auditado somente para admin com MFA.
-- Detalhes na Fase 2 (ADR específico).
+- Detalhes no [ADR 0002](0002-multi-tenant.md) (aceito em 2026-10-06).
 
 ## Consequências
 

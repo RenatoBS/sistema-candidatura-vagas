@@ -1,0 +1,307 @@
+// Domínio: entrevistas — candidaturas, entrevistas, respostas, WhatsApp, scores
+
+enum OrigemCandidatura {
+  DIRETA
+  MATCH
+}
+
+enum StatusCandidatura {
+  CONVIDADA
+  INSCRITA
+  TRIAGEM_WHATSAPP
+  TRIAGEM_CONCLUIDA
+  TRIAGEM_ABANDONADA
+  SEM_RESPOSTA
+  ENTREVISTA_VOZ
+  ENTREVISTA_CONCLUIDA
+  ENTREVISTA_ABANDONADA
+  EM_REVISAO
+  APROVADA
+  REPROVADA
+  CONTRATADA
+  EM_ESPERA
+  ENCERRADA_VAGA_FECHADA
+  DESISTENCIA
+  CONVITE_EXPIRADO
+}
+
+enum CanalEntrevista {
+  WHATSAPP
+  VOZ_TEMPO_REAL
+}
+
+enum StatusEntrevista {
+  AGENDADA
+  AGUARDANDO_INICIO
+  RETRY_1
+  RETRY_2
+  RETRY_3
+  EM_ANDAMENTO
+  AGUARDANDO_RESPOSTA
+  PROCESSANDO
+  CONCLUIDA
+  ABANDONADA
+  SEM_RESPOSTA
+  RECUSADA
+  CANCELADA
+  SUSPENSA_PAUSA
+  SUSPENSA_INSTANCIA
+  DISPONIVEL
+  ACEITE_REGISTRADO
+  EM_SESSAO
+  RECONECTANDO
+  EXPIRADA
+}
+
+enum TipoResposta {
+  AUDIO_WHATSAPP
+  TEXTO_WHATSAPP
+  VOZ_TEMPO_REAL
+}
+
+enum StatusTranscricao {
+  PENDENTE
+  PROCESSANDO
+  CONCLUIDA
+  FALHA
+}
+
+enum StatusInstanciaWhatsapp {
+  AGUARDANDO_QR
+  CONECTADA
+  DESCONECTADA
+}
+
+enum ProvedorWhatsapp {
+  UAZAPI
+}
+
+enum DirecaoMensagemWhatsapp {
+  ENVIADA
+  RECEBIDA
+}
+
+enum TipoMensagemWhatsapp {
+  TEXTO
+  AUDIO
+  MENU
+  MIDIA
+  OUTRO
+}
+
+enum StatusMensagemWhatsapp {
+  PENDENTE
+  ENVIADA
+  ENTREGUE
+  LIDA
+  FALHA
+  IGNORADA
+}
+
+enum AvaliadorTipo {
+  IA
+  HUMANO
+}
+
+enum StatusSessaoVoz {
+  CONECTANDO
+  ATIVA
+  RECONECTANDO
+  FINALIZADA
+  ABANDONADA
+}
+
+model Candidatura {
+  id                   String            @id @default(uuid()) @db.Uuid
+  empresaId            String            @db.Uuid
+  vagaId               String            @db.Uuid
+  candidatoId          String            @db.Uuid
+  origem               OrigemCandidatura
+  status               StatusCandidatura @default(INSCRITA)
+  statusAntesDaEspera  StatusCandidatura?
+  etapaAtualId         String?           @db.Uuid
+  criadoEm             DateTime          @default(now()) @db.Timestamptz
+  atualizadoEm         DateTime          @updatedAt @db.Timestamptz
+
+  empresa       Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  vaga          Vaga              @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  candidato     Candidato         @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
+  etapaAtual    Etapa?            @relation("EtapaAtual", fields: [etapaAtualId], references: [id])
+  entrevistas   Entrevista[]
+  scores        Score[]
+  historico     HistoricoStatus[]
+  consentimentos Consentimento[]
+
+  @@unique([vagaId, candidatoId])
+  @@index([empresaId, status])
+  @@map("candidaturas")
+}
+
+model Entrevista {
+  id                   String           @id @default(uuid()) @db.Uuid
+  empresaId            String           @db.Uuid
+  candidaturaId        String           @db.Uuid
+  etapaId              String           @db.Uuid
+  canal                CanalEntrevista
+  status               StatusEntrevista @default(AGENDADA)
+  retryAtual           Int              @default(0)
+  perguntaAtual        Int              @default(0)
+  iniciadaEm           DateTime?        @db.Timestamptz
+  ultimaInteracaoEm    DateTime?        @db.Timestamptz
+  proximoRetryEm       DateTime?        @db.Timestamptz
+  aceiteTentativaEm    DateTime?        @db.Timestamptz
+  excecaoConcedida     Boolean          @default(false)
+  encerrarAoFim        Boolean          @default(false)
+  criadoEm             DateTime         @default(now()) @db.Timestamptz
+  atualizadoEm         DateTime         @updatedAt @db.Timestamptz
+
+  empresa      Empresa             @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  candidatura  Candidatura         @relation(fields: [candidaturaId], references: [id], onDelete: Cascade)
+  etapa        Etapa               @relation(fields: [etapaId], references: [id], onDelete: Cascade)
+  respostas    Resposta[]
+  sessoesVoz   SessaoVoz[]
+  mensagens    MensagemWhatsapp[]
+
+  @@unique([candidaturaId, etapaId])
+  @@index([empresaId, status])
+  @@map("entrevistas")
+}
+
+model SessaoVoz {
+  id              String          @id @default(uuid()) @db.Uuid
+  entrevistaId    String          @db.Uuid
+  salaId          String
+  status          StatusSessaoVoz @default(CONECTANDO)
+  inicioEm        DateTime?       @db.Timestamptz
+  fimEm           DateTime?       @db.Timestamptz
+  desconectadoEm  DateTime?       @db.Timestamptz
+  motivoFim       String?
+  gravacaoKey     String?
+  criadoEm        DateTime        @default(now()) @db.Timestamptz
+  atualizadoEm    DateTime        @updatedAt @db.Timestamptz
+
+  entrevista Entrevista @relation(fields: [entrevistaId], references: [id], onDelete: Cascade)
+
+  @@index([entrevistaId])
+  @@map("sessoes_voz")
+}
+
+model Resposta {
+  id                    String             @id @default(uuid()) @db.Uuid
+  empresaId             String             @db.Uuid
+  entrevistaId          String             @db.Uuid
+  etapaPerguntaId       String             @db.Uuid
+  tipo                  TipoResposta
+  textoOriginal         String?            @db.Text
+  audioUrl              String?
+  duracaoSegundos       Int?
+  statusTranscricao     StatusTranscricao  @default(PENDENTE)
+  transcricao           String?            @db.Text
+  confiancaTranscricao  Float?
+  tempoUsado            Int?
+  expirou               Boolean            @default(false)
+  parcial               Boolean            @default(false)
+  criadoEm              DateTime           @default(now()) @db.Timestamptz
+  atualizadoEm          DateTime           @updatedAt @db.Timestamptz
+
+  empresa        Empresa       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  entrevista     Entrevista    @relation(fields: [entrevistaId], references: [id], onDelete: Cascade)
+  etapaPergunta  EtapaPergunta @relation(fields: [etapaPerguntaId], references: [id], onDelete: Cascade)
+  avaliacoes     Avaliacao[]
+
+  @@index([empresaId])
+  @@index([entrevistaId])
+  @@map("respostas")
+}
+
+model InstanciaWhatsapp {
+  id                        String                  @id @default(uuid()) @db.Uuid
+  empresaId                 String                  @unique @db.Uuid
+  provedor                  ProvedorWhatsapp        @default(UAZAPI)
+  instanciaIdProvedorCifrado String
+  tokenCifrado              String
+  numero                    String?
+  status                    StatusInstanciaWhatsapp @default(AGUARDANDO_QR)
+  ultimaConexaoEm           DateTime?               @db.Timestamptz
+  desconectadaEm            DateTime?               @db.Timestamptz
+  criadoEm                  DateTime                @default(now()) @db.Timestamptz
+  atualizadoEm              DateTime                @updatedAt @db.Timestamptz
+
+  empresa   Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  mensagens MensagemWhatsapp[]
+
+  @@map("instancias_whatsapp")
+}
+
+model MensagemWhatsapp {
+  id                   String                  @id @default(uuid()) @db.Uuid
+  entrevistaId         String                  @db.Uuid
+  instanciaWhatsappId  String?                 @db.Uuid
+  mensagemIdProvedor   String                  @unique
+  direcao              DirecaoMensagemWhatsapp
+  tipo                 TipoMensagemWhatsapp
+  status               StatusMensagemWhatsapp  @default(PENDENTE)
+  payload              Json                    @default("{}")
+  criadoEm             DateTime                @default(now()) @db.Timestamptz
+
+  entrevista        Entrevista         @relation(fields: [entrevistaId], references: [id], onDelete: Cascade)
+  instanciaWhatsapp InstanciaWhatsapp? @relation(fields: [instanciaWhatsappId], references: [id], onDelete: SetNull)
+
+  @@index([entrevistaId])
+  @@map("mensagens_whatsapp")
+}
+
+model Avaliacao {
+  id              String        @id @default(uuid()) @db.Uuid
+  respostaId      String        @db.Uuid
+  avaliador       AvaliadorTipo
+  nota            Float
+  criterios       Json          @default("{}")
+  justificativa   String?       @db.Text
+  modelo          String?
+  versaoPrompt    String?
+  criadoEm        DateTime      @default(now()) @db.Timestamptz
+
+  resposta Resposta @relation(fields: [respostaId], references: [id], onDelete: Cascade)
+
+  @@index([respostaId])
+  @@map("avaliacoes")
+}
+
+model Score {
+  id                String   @id @default(uuid()) @db.Uuid
+  candidaturaId     String   @db.Uuid
+  scorePerfil       Float?
+  scoreHabilidades  Float?
+  scoreCurriculo    Float?
+  scoreLinkedin     Float?
+  scoreTriagem      Float?
+  scoreEntrevista   Float?
+  scoreFinal        Float?
+  completude        Float?
+  explicacao        Json     @default("{}")
+  versaoAlgoritmo   Int      @default(1)
+  criadoEm          DateTime @default(now()) @db.Timestamptz
+  atualizadoEm      DateTime @updatedAt @db.Timestamptz
+
+  candidatura Candidatura @relation(fields: [candidaturaId], references: [id], onDelete: Cascade)
+
+  @@index([candidaturaId])
+  @@map("scores")
+}
+
+model HistoricoStatus {
+  id             String   @id @default(uuid()) @db.Uuid
+  candidaturaId  String   @db.Uuid
+  de             String
+  para           String
+  autorId        String?  @db.Uuid
+  motivo         String?
+  criadoEm       DateTime @default(now()) @db.Timestamptz
+
+  candidatura Candidatura @relation(fields: [candidaturaId], references: [id], onDelete: Cascade)
+  autor       Usuario?    @relation(fields: [autorId], references: [id], onDelete: SetNull)
+
+  @@index([candidaturaId, criadoEm])
+  @@map("historico_status")
+}

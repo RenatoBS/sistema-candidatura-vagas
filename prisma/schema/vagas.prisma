@@ -1,0 +1,179 @@
+// Domínio: vagas — vagas, habilidades, processo seletivo, perguntas
+
+enum StatusVaga {
+  RASCUNHO
+  PUBLICADA
+  PAUSADA
+  INSCRICOES_ENCERRADAS
+  FECHADA
+}
+
+enum SenioridadeVaga {
+  ESTAGIO
+  JUNIOR
+  PLENO
+  SENIOR
+  ESPECIALISTA
+  LIDERANCA
+}
+
+enum ModeloTrabalho {
+  REMOTO
+  HIBRIDO
+  PRESENCIAL
+}
+
+enum TipoContrato {
+  CLT
+  PJ
+  TEMPORARIO
+  ESTAGIO
+  AUTONOMO
+}
+
+enum TipoEtapa {
+  TRIAGEM_WHATSAPP
+  ENTREVISTA_VOZ
+  REVISAO_HUMANA
+}
+
+enum OrigemPergunta {
+  EMPRESA
+  IA_SUGERIDA
+  CATALOGO
+}
+
+model Habilidade {
+  id         String   @id @default(uuid()) @db.Uuid
+  nome       String   @unique
+  categoria  String
+  sinonimos  String[]
+  criadoEm   DateTime @default(now()) @db.Timestamptz
+  atualizadoEm DateTime @updatedAt @db.Timestamptz
+
+  vagas      VagaHabilidade[]
+  candidatos CandidatoHabilidade[]
+
+  @@map("habilidades")
+}
+
+model Vaga {
+  id                     String          @id @default(uuid()) @db.Uuid
+  empresaId              String          @db.Uuid
+  titulo                 String
+  descricao              String          @db.Text
+  senioridade            SenioridadeVaga
+  modelo                 ModeloTrabalho
+  localidade             String?
+  tipoContrato           TipoContrato?
+  faixaSalarialMin       Float?
+  faixaSalarialMax       Float?
+  beneficios             String[]        @default([])
+  posicoes               Int             @default(1)
+  status                 StatusVaga      @default(RASCUNHO)
+  prazoInscricoes        DateTime?       @db.Timestamptz
+  inscricoesEncerradasEm DateTime?       @db.Timestamptz
+  pausadaEm              DateTime?       @db.Timestamptz
+  statusAntesDaPausa     StatusVaga?
+  fechadaEm              DateTime?       @db.Timestamptz
+  motivoFechamento       String?
+  pesosRanking           Json            @default("{}")
+  embedding              Unsupported("vector(1536)")?
+  criadoEm               DateTime        @default(now()) @db.Timestamptz
+  atualizadoEm           DateTime        @updatedAt @db.Timestamptz
+
+  empresa         Empresa          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  habilidades     VagaHabilidade[]
+  processo        ProcessoSeletivo?
+  candidaturas    Candidatura[]
+  sugestoesMatch  SugestaoMatch[]
+
+  @@index([empresaId, status])
+  @@index([status, prazoInscricoes])
+  @@map("vagas")
+}
+
+model VagaHabilidade {
+  vagaId        String  @db.Uuid
+  habilidadeId  String  @db.Uuid
+  nivelMinimo   Int
+  peso          Float
+  obrigatoria   Boolean @default(false)
+
+  vaga       Vaga       @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  habilidade Habilidade @relation(fields: [habilidadeId], references: [id], onDelete: Cascade)
+
+  @@id([vagaId, habilidadeId])
+  @@map("vagas_habilidades")
+}
+
+model ProcessoSeletivo {
+  id                        String @id @default(uuid()) @db.Uuid
+  vagaId                    String @unique @db.Uuid
+  empresaId                 String @db.Uuid
+  tempoPadraoPorPergunta    Int    @default(180)
+  politicaRetry             Json   @default("{}")
+  janelaReconexaoSegundos   Int    @default(60)
+  criadoEm                  DateTime @default(now()) @db.Timestamptz
+  atualizadoEm              DateTime @updatedAt @db.Timestamptz
+
+  vaga    Vaga    @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  etapas  Etapa[]
+
+  @@index([empresaId])
+  @@map("processos_seletivos")
+}
+
+model Etapa {
+  id               String    @id @default(uuid()) @db.Uuid
+  processoId       String    @db.Uuid
+  ordem            Int
+  tipo             TipoEtapa
+  numeroPerguntas  Int       @default(5)
+  criadoEm         DateTime  @default(now()) @db.Timestamptz
+  atualizadoEm     DateTime  @updatedAt @db.Timestamptz
+
+  processo           ProcessoSeletivo @relation(fields: [processoId], references: [id], onDelete: Cascade)
+  perguntas          EtapaPergunta[]
+  entrevistas        Entrevista[]
+  candidaturasAtuais Candidatura[]    @relation("EtapaAtual")
+
+  @@unique([processoId, ordem])
+  @@map("etapas")
+}
+
+model Pergunta {
+  id                   String         @id @default(uuid()) @db.Uuid
+  empresaId            String         @db.Uuid
+  enunciado            String         @db.Text
+  rubrica              Json           @default("{}")
+  origem               OrigemPergunta @default(EMPRESA)
+  tempoLimiteSegundos  Int?
+  criadoEm             DateTime       @default(now()) @db.Timestamptz
+  atualizadoEm         DateTime       @updatedAt @db.Timestamptz
+
+  empresa Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  etapas  EtapaPergunta[]
+
+  @@index([empresaId])
+  @@map("perguntas")
+}
+
+model EtapaPergunta {
+  id                   String  @id @default(uuid()) @db.Uuid
+  etapaId              String  @db.Uuid
+  perguntaId           String  @db.Uuid
+  ordem                Int
+  peso                 Float   @default(1)
+  tempoLimiteSegundos  Int?
+  criadoEm             DateTime @default(now()) @db.Timestamptz
+
+  etapa     Etapa    @relation(fields: [etapaId], references: [id], onDelete: Cascade)
+  pergunta  Pergunta @relation(fields: [perguntaId], references: [id], onDelete: Cascade)
+  respostas Resposta[]
+
+  @@unique([etapaId, ordem])
+  @@unique([etapaId, perguntaId])
+  @@map("etapas_perguntas")
+}

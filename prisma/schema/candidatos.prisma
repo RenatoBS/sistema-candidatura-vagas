@@ -1,0 +1,101 @@
+// Domínio: candidatos — perfil, habilidades, currículo, consentimentos
+
+enum OrigemHabilidadeCandidato {
+  MANUAL
+  CV_EXTRAIDO
+  SUGESTAO_IA
+}
+
+enum MetodoExtracaoCurriculo {
+  NATIVO
+  OCR
+  MISTO
+}
+
+enum StatusProcessamentoCurriculo {
+  PENDENTE
+  PROCESSANDO
+  CONCLUIDO
+  FALHA
+}
+
+enum TipoConsentimento {
+  TERMOS
+  WHATSAPP
+  AUDIO_WHATSAPP
+  GRAVACAO_VOZ
+  AVALIACAO_IA
+  VISIBILIDADE_MATCH
+}
+
+model Candidato {
+  id                 String   @id @default(uuid()) @db.Uuid
+  usuarioId          String   @unique @db.Uuid
+  nome               String
+  whatsapp           String?
+  whatsappVerificado Boolean  @default(false)
+  linkedinUrl        String?
+  perfil             Json     @default("{}")
+  visivelParaMatch   Boolean  @default(true)
+  embedding          Unsupported("vector(1536)")?
+  criadoEm           DateTime @default(now()) @db.Timestamptz
+  atualizadoEm       DateTime @updatedAt @db.Timestamptz
+
+  usuario      Usuario              @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  habilidades  CandidatoHabilidade[]
+  curriculos   Curriculo[]
+  consentimentos Consentimento[]
+  candidaturas Candidatura[]
+  sugestoesMatch SugestaoMatch[]
+
+  @@map("candidatos")
+}
+
+model CandidatoHabilidade {
+  candidatoId     String                    @db.Uuid
+  habilidadeId    String                    @db.Uuid
+  nivel           Int
+  anosExperiencia Float?
+  origem          OrigemHabilidadeCandidato @default(MANUAL)
+  criadoEm        DateTime                  @default(now()) @db.Timestamptz
+
+  candidato  Candidato  @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
+  habilidade Habilidade @relation(fields: [habilidadeId], references: [id], onDelete: Cascade)
+
+  @@id([candidatoId, habilidadeId])
+  @@map("candidatos_habilidades")
+}
+
+model Curriculo {
+  id                   String                     @id @default(uuid()) @db.Uuid
+  candidatoId          String                     @db.Uuid
+  arquivoKey           String
+  metodoExtracao       MetodoExtracaoCurriculo?
+  statusProcessamento  StatusProcessamentoCurriculo @default(PENDENTE)
+  confiancaOcr         Float?
+  textoExtraido        String?                    @db.Text
+  dadosExtraidos       Json?
+  criadoEm             DateTime                   @default(now()) @db.Timestamptz
+  atualizadoEm         DateTime                   @updatedAt @db.Timestamptz
+
+  candidato Candidato @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
+
+  @@index([candidatoId])
+  @@map("curriculos")
+}
+
+model Consentimento {
+  id             String            @id @default(uuid()) @db.Uuid
+  candidatoId    String            @db.Uuid
+  candidaturaId  String?           @db.Uuid
+  tipo           TipoConsentimento
+  concedido      Boolean
+  versaoTermo    String
+  criadoEm       DateTime          @default(now()) @db.Timestamptz
+
+  candidato   Candidato    @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
+  candidatura Candidatura? @relation(fields: [candidaturaId], references: [id], onDelete: SetNull)
+
+  @@index([candidatoId])
+  @@map("consentimentos")
+}
