@@ -48,4 +48,65 @@ export const openApiFase3 = {
   },
 } as const;
 
-export type CaminhoApi = keyof typeof openApiFase3.paths;
+/** Contrato das rotas da Fase 4 (vagas, processo, perguntas e ciclo de vida). */
+export const openApiFase4 = {
+  openapi: '3.0.3',
+  info: {
+    title: 'Sistema de Candidatura a Vagas',
+    version: '0.4.0',
+  },
+  paths: {
+    '/habilidades': { get: { operationId: 'listarHabilidades' } },
+    '/empresas/{empresaId}/vagas': {
+      get: { operationId: 'listarVagasEmpresa' },
+      post: { operationId: 'criarVaga' },
+    },
+    '/empresas/{empresaId}/vagas/{vagaId}': {
+      get: { operationId: 'obterVaga' },
+      patch: { operationId: 'atualizarVaga' },
+    },
+    '/empresas/{empresaId}/vagas/{vagaId}/habilidades': {
+      put: { operationId: 'definirHabilidadesVaga' },
+    },
+    '/empresas/{empresaId}/vagas/{vagaId}/processo': {
+      put: { operationId: 'salvarProcesso' },
+    },
+    '/empresas/{empresaId}/vagas/{vagaId}/publicar': { post: { operationId: 'publicarVagaPorId' } },
+    '/empresas/{empresaId}/vagas/{vagaId}/prorrogar': { post: { operationId: 'prorrogarVaga' } },
+    '/empresas/{empresaId}/vagas/{vagaId}/pausar': { post: { operationId: 'pausarVaga' } },
+    '/empresas/{empresaId}/vagas/{vagaId}/retomar': { post: { operationId: 'retomarVaga' } },
+    '/empresas/{empresaId}/vagas/{vagaId}/fechar': { post: { operationId: 'fecharVaga' } },
+    '/empresas/{empresaId}/vagas/{vagaId}/duplicar': { post: { operationId: 'duplicarVaga' } },
+    '/empresas/{empresaId}/perguntas': {
+      get: { operationId: 'listarPerguntas' },
+      post: { operationId: 'criarPerguntaBanco' },
+    },
+    '/empresas/{empresaId}/vagas/{vagaId}/etapas/{etapaId}/perguntas': {
+      post: { operationId: 'adicionarPerguntaEtapa' },
+    },
+    '/empresas/{empresaId}/vagas/{vagaId}/etapas/{etapaId}/perguntas/sugestoes': {
+      post: { operationId: 'sugerirPerguntas' },
+    },
+    '/empresas/{empresaId}/perguntas/{perguntaId}/aceitar': { post: { operationId: 'aceitarSugestao' } },
+    '/empresas/{empresaId}/perguntas/{perguntaId}/descartar': { post: { operationId: 'descartarSugestao' } },
+    '/empresas/{empresaId}/perguntas/{perguntaId}': { patch: { operationId: 'revisarPergunta' } },
+    '/vagas-publicas': { get: { operationId: 'listarVagasPublicas' } },
+    '/vagas-publicas/{vagaId}': { get: { operationId: 'obterVagaPublica' } },
+    '/vagas-publicas/{vagaId}/candidaturas': { post: { operationId: 'verificarInscricao' } },
+    '/interno/vagas/reconciliar': { post: { operationId: 'reconciliarVagas' } },
+    '/interno/vagas/{vagaId}/encerrar-inscricoes': { post: { operationId: 'encerrarInscricoes' } },
+    '/interno/etapas/{etapaId}/sugerir': { post: { operationId: 'jobSugerirPerguntas' } },
+    '/interno/eventos-vaga/{eventoId}/aplicar': { post: { operationId: 'aplicarEventoVaga' } },
+  },
+} as const;
+
+export const openApi = {
+  openapi: '3.0.3',
+  info: {
+    title: 'Sistema de Candidatura a Vagas',
+    version: '0.4.0',
+  },
+  paths: { ...openApiFase3.paths, ...openApiFase4.paths },
+} as const;
+
+export type CaminhoApi = keyof typeof openApi.paths;

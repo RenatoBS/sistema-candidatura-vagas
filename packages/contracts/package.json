@@ -1,6 +1,6 @@
 {
   "name": "@scv/contracts",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "OpenAPI, tipos gerados e schemas Zod compartilhados",
   "main": "./dist/index.js",
