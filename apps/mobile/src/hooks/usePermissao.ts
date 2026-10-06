@@ -1,7 +1,10 @@
-/**
- * Hook de permissões — será implementado na Fase 3.
- * Placeholder para os grupos de rota (candidato), (empresa) e (admin).
- */
-export function usePermissao(_permissao: string): boolean {
-  return false;
+import type { Acao } from '@scv/domain';
+
+import { podeAcao } from '@/auth/acesso';
+import { useAuth } from '@/auth/AuthContext';
+
+/** A interface só reflete a permissão. O backend continua sendo a barreira. */
+export function usePermissao(acao: Acao, empresaId?: string): boolean {
+  const { sessao } = useAuth();
+  return podeAcao(sessao, acao, empresaId);
 }

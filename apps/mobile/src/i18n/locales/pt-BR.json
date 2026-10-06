@@ -2,7 +2,92 @@
   "home": {
     "title": "Sistema de Candidatura a Vagas",
     "subtitle": "Recrutamento com IA — candidato, empresa e admin em um único app.",
-    "phase": "Fase 1: setup do monorepo em andamento.",
-    "cta": "Em breve"
+    "phase": "Fase 3: autenticação, papéis e WhatsApp da empresa.",
+    "entrar": "Entrar",
+    "cadastrar": "Criar conta"
+  },
+  "comum": {
+    "salvar": "Salvar",
+    "enviar": "Enviar",
+    "voltar": "Voltar",
+    "sair": "Sair",
+    "erro": "Não foi possível concluir. Tente de novo.",
+    "carregando": "Carregando…"
+  },
+  "auth": {
+    "loginTitulo": "Entrar",
+    "cadastroTitulo": "Criar conta",
+    "email": "E-mail",
+    "senha": "Senha",
+    "recuperar": "Esqueci a senha",
+    "redefinirTitulo": "Nova senha",
+    "codigo": "Código",
+    "confirmarEmail": "Confirmar e-mail",
+    "mfaTitulo": "Verificação em duas etapas",
+    "mfaIniciar": "Configurar autenticador",
+    "mfaConfirmar": "Confirmar código",
+    "mfaVerificar": "Validar MFA",
+    "codigosRecuperacao": "Guarde estes códigos de recuperação. Eles aparecem uma única vez."
+  },
+  "onboarding": {
+    "titulo": "Como você quer usar o app?",
+    "candidato": "Quero me candidatar",
+    "empresa": "Cadastrar minha empresa",
+    "nome": "Seu nome"
+  },
+  "empresa": {
+    "titulo": "Minha empresa",
+    "razao": "Razão social",
+    "fantasia": "Nome fantasia",
+    "cnpj": "CNPJ",
+    "dominio": "Domínio",
+    "responsavel": "Nome do responsável",
+    "emailResponsavel": "E-mail corporativo",
+    "status": "Status da verificação",
+    "codigoEmail": "Código do e-mail",
+    "confirmarEmail": "Confirmar e-mail da empresa",
+    "confirmarDns": "Já publiquei o DNS TXT",
+    "dns": "Registro DNS",
+    "membros": "Membros",
+    "convidar": "Convidar",
+    "papelRecrutador": "Recrutador",
+    "papelAvaliador": "Avaliador",
+    "vagas": "Vagas",
+    "whatsapp": "WhatsApp da empresa"
+  },
+  "whatsapp": {
+    "titulo": "Conectar WhatsApp da empresa",
+    "criar": "Criar instância",
+    "conectar": "Gerar QR",
+    "atualizar": "Atualizar status",
+    "desconectar": "Desconectar",
+    "numero": "Número",
+    "ultima": "Última conexão",
+    "semNumero": "Número ainda não identificado",
+    "semConexao": "Sem conexão registrada",
+    "banner": "WhatsApp desconectado. A triagem não começa até a empresa reconectar.",
+    "qr": "Leia este QR no WhatsApp do número da empresa"
+  },
+  "admin": {
+    "titulo": "Administração",
+    "fila": "Fila de verificação",
+    "empresas": "Empresas",
+    "auditoria": "Auditoria",
+    "whatsapp": "Instâncias WhatsApp",
+    "aprovar": "Aprovar",
+    "rejeitar": "Rejeitar",
+    "suspender": "Suspender",
+    "motivo": "Motivo",
+    "vazia": "Nenhum item."
+  },
+  "visao": {
+    "trocar": "Trocar visão",
+    "candidato": "Candidato",
+    "empresa": "Empresa",
+    "admin": "Admin"
+  },
+  "candidato": {
+    "titulo": "Visão do candidato",
+    "texto": "Seu perfil e suas candidaturas ficam nesta visão. O score não aparece aqui."
   }
 }
