@@ -35,17 +35,24 @@ describe('LlmProvider', () => {
 
   it('openai e ollama usam o fetch injetado', async () => {
     const urls: string[] = [];
-    const fetchImpl: FetchLlm = async (url) => {
+    const corpos: string[] = [];
+    const fetchImpl: FetchLlm = async (url, init) => {
       urls.push(url);
+      corpos.push(init.body);
       const corpo = url.includes('openai')
         ? { choices: [{ message: { content: '{"perguntas":[]}' } }] }
         : { message: { content: '{"perguntas":[]}' } };
       return { ok: true, status: 200, text: async () => '', json: async () => corpo };
     };
+    const schema = { type: 'object', properties: { perguntas: { type: 'array' } } };
     const openai = new LlmOpenAi({ apiKey: 'sk-teste', modelo: 'gpt-teste', fetchImpl });
-    await openai.complete({ mensagens: [{ role: 'user', content: 'oi' }], json: true });
+    await openai.complete({ mensagens: [{ role: 'user', content: 'oi' }], json: true, schema });
     const ollama = new LlmOllama({ baseUrl: 'http://ollama.local', modelo: 'llama', fetchImpl });
-    await ollama.complete({ mensagens: [{ role: 'user', content: 'oi' }], json: true });
+    await ollama.complete({ mensagens: [{ role: 'user', content: 'oi' }], json: true, schema });
+    const pedidoOpenAi = JSON.parse(corpos[0] ?? '{}') as { response_format?: { type?: string } };
+    const pedidoOllama = JSON.parse(corpos[1] ?? '{}') as { format?: { type?: string } };
+    assert.equal(pedidoOpenAi.response_format?.type, 'json_schema');
+    assert.equal(pedidoOllama.format?.type, 'object');
     assert.deepEqual(urls, ['https://api.openai.com/v1/chat/completions', 'http://ollama.local/api/chat']);
     const fabrica = criarLlmProvider({ LLM_PROVIDER: 'openai', OPENAI_API_KEY: 'sk-teste', LLM_MODELO: 'gpt-teste' });
     assert.ok(fabrica instanceof LlmOpenAi);

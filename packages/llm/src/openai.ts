@@ -23,7 +23,7 @@ export class LlmOpenAi implements LlmProvider {
       body: JSON.stringify({
         model: this.opcoes.modelo,
         temperature: 0.2,
-        response_format: pedido.json ? { type: 'json_object' } : undefined,
+        response_format: formatoResposta(pedido),
         messages: pedido.mensagens,
       }),
     });
@@ -37,6 +37,23 @@ export class LlmOpenAi implements LlmProvider {
       provedor: 'openai',
     };
   }
+}
+
+function formatoResposta(pedido: PedidoLlm): { type: string; json_schema?: object } | undefined {
+  if (pedido.schema) {
+    return {
+      type: 'json_schema',
+      json_schema: { name: 'resposta', strict: true, schema: semMeta(pedido.schema) },
+    };
+  }
+  if (pedido.json) return { type: 'json_object' };
+  return undefined;
+}
+
+function semMeta(schema: object): object {
+  const copia = { ...(schema as Record<string, unknown>) };
+  delete copia.$schema;
+  return copia;
 }
 
 const fetchCompativel: FetchLlm = async (entrada, init) => {

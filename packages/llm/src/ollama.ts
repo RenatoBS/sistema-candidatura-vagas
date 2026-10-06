@@ -18,7 +18,7 @@ export class LlmOllama implements LlmProvider {
       body: JSON.stringify({
         model: this.opcoes.modelo,
         stream: false,
-        format: pedido.json ? 'json' : undefined,
+        format: pedido.schema ? semMeta(pedido.schema) : pedido.json ? 'json' : undefined,
         messages: pedido.mensagens,
       }),
     });
@@ -30,6 +30,12 @@ export class LlmOllama implements LlmProvider {
       provedor: 'ollama',
     };
   }
+}
+
+function semMeta(schema: object): object {
+  const copia = { ...(schema as Record<string, unknown>) };
+  delete copia.$schema;
+  return copia;
 }
 
 const fetchCompativel: FetchLlm = async (entrada, init) => {

@@ -8,6 +8,8 @@ export interface MensagemLlm {
 export interface PedidoLlm {
   mensagens: MensagemLlm[];
   json?: boolean;
+  /** JSON Schema enviado ao provedor quando a resposta precisa obedecer um contrato. */
+  schema?: object;
 }
 
 export interface RespostaLlm {
