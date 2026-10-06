@@ -18,6 +18,17 @@ export interface OcrProvider {
   extractText(imageBuffer: Buffer): Promise<string>;
 }
 
+export { ArmazenamentoMemoria, ArmazenamentoS3, criarArmazenamentoS3 } from './armazenamento';
+export type { Armazenamento, PedidoUpload, UrlUpload } from './armazenamento';
+export { AntivirusClamAv, AntivirusMock, criarAntivirus } from './antivirus';
+export type { Antivirus, ResultadoAntivirus } from './antivirus';
+export { ExtratorEstruturadoMock } from './extrator-estruturado';
+export type { ExtratorEstruturadoCurriculo } from './extrator-estruturado';
+export { executarJobCurriculo } from './job-curriculo';
+export { OcrMock, TesseractOcr } from './ocr';
+export { criarDepsOcrMock, criarDepsOcrReal, processarArquivoCurriculo } from './processar-curriculo';
+export type { DependenciasExtracao, ResultadoProcessamento } from './processar-curriculo';
+
 export { BrasilApiFonteCnpj, FonteCnpjControlavel } from './cnpj';
 export type { FonteCnpjProvider, ResultadoFonteCnpj } from './cnpj';
 export { cifrar, decifrar } from './criptografia';

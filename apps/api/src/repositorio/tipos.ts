@@ -104,6 +104,82 @@ export interface CandidatoRegistro {
   nome: string;
 }
 
+export interface PerfilCandidato {
+  id: string;
+  usuarioId: string;
+  nome: string;
+  whatsapp: string | null;
+  whatsappVerificado: boolean;
+  linkedinUrl: string | null;
+  perfil: Record<string, unknown>;
+  visivelParaMatch: boolean;
+}
+
+export type OrigemHabilidade = 'MANUAL' | 'CV_EXTRAIDO' | 'SUGESTAO_IA';
+export type StatusAntivirus = 'PENDENTE' | 'LIMPO' | 'INFECTADO';
+export type MetodoExtracaoCurriculo = 'NATIVO' | 'OCR' | 'MISTO';
+export type StatusProcessamentoCurriculo = 'PENDENTE' | 'PROCESSANDO' | 'CONCLUIDO' | 'FALHA';
+export type TipoConsentimentoCandidato =
+  | 'TERMOS'
+  | 'WHATSAPP'
+  | 'AUDIO_WHATSAPP'
+  | 'GRAVACAO_VOZ'
+  | 'AVALIACAO_IA'
+  | 'VISIBILIDADE_MATCH';
+
+export interface HabilidadeCatalogo {
+  id: string;
+  nome: string;
+  categoria: string;
+  sinonimos: string[];
+}
+
+export interface LinhaHabilidade {
+  habilidadeId: string;
+  nivel: number;
+  anosExperiencia: number | null;
+  origem: OrigemHabilidade;
+}
+
+export interface HabilidadeDoCandidato extends LinhaHabilidade {
+  nome: string;
+}
+
+export interface CurriculoRegistro {
+  id: string;
+  candidatoId: string;
+  arquivoKey: string;
+  mimeType: string | null;
+  tamanhoBytes: number | null;
+  antivirusStatus: StatusAntivirus;
+  metodoExtracao: MetodoExtracaoCurriculo | null;
+  statusProcessamento: StatusProcessamentoCurriculo;
+  confiancaOcr: number | null;
+  textoExtraido: string | null;
+  dadosExtraidos: Record<string, unknown> | null;
+  confirmadoEm: Date | null;
+  aplicadoAoPerfil: boolean;
+  paginas: unknown;
+  criadoEm: Date;
+}
+
+export interface ConsentimentoRegistro {
+  id: string;
+  candidatoId: string;
+  tipo: TipoConsentimentoCandidato;
+  concedido: boolean;
+  versaoTermo: string;
+  criadoEm: Date;
+}
+
+export interface SolicitacaoLgpdRegistro {
+  id: string;
+  usuarioId: string;
+  candidatoId: string | null;
+  tipo: 'EXPORTACAO' | 'EXCLUSAO';
+  criadoEm: Date;
+}
+
 export interface AuditoriaRegistro {
   id: string;
   usuarioId: string;
@@ -193,6 +269,24 @@ export interface Repositorio {
   ): Promise<ConviteRegistro>;
   criarCandidato(candidato: CandidatoRegistro): Promise<CandidatoRegistro>;
   buscarCandidatoPorUsuario(usuarioId: string): Promise<CandidatoRegistro | null>;
+  obterPerfil(usuarioId: string): Promise<PerfilCandidato | null>;
+  salvarPerfil(perfil: PerfilCandidato): Promise<PerfilCandidato>;
+  listarCatalogoHabilidades(): Promise<HabilidadeCatalogo[]>;
+  listarHabilidades(candidatoId: string): Promise<HabilidadeDoCandidato[]>;
+  listarLinhasHabilidade(candidatoId: string): Promise<LinhaHabilidade[]>;
+  definirHabilidades(candidatoId: string, linhas: LinhaHabilidade[]): Promise<void>;
+  criarCurriculo(curriculo: CurriculoRegistro): Promise<CurriculoRegistro>;
+  buscarCurriculo(id: string): Promise<CurriculoRegistro | null>;
+  buscarCurriculoPorKey(arquivoKey: string): Promise<CurriculoRegistro | null>;
+  listarCurriculos(candidatoId: string): Promise<CurriculoRegistro[]>;
+  atualizarCurriculo(id: string, patch: Partial<CurriculoRegistro>): Promise<CurriculoRegistro>;
+  registrarConsentimento(registro: ConsentimentoRegistro): Promise<ConsentimentoRegistro>;
+  listarConsentimentos(candidatoId: string): Promise<ConsentimentoRegistro[]>;
+  registrarSolicitacaoLgpd(registro: SolicitacaoLgpdRegistro): Promise<void>;
+  expurgarDadosCandidato(
+    usuarioId: string,
+    anon: { email: string; senhaHash: string; nome: string },
+  ): Promise<{ arquivoKeys: string[] }>;
   registrarAuditoria(registro: AuditoriaRegistro, ctx: ContextoTenant): Promise<AuditoriaRegistro>;
   listarAuditoria(ctx: ContextoTenant, empresaId?: string): Promise<AuditoriaRegistro[]>;
   alterarAuditoria(): Promise<never>;

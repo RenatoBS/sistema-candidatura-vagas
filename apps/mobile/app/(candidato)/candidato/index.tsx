@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -10,6 +11,11 @@ export default function CandidatoHome() {
     <View style={styles.tela}>
       <Text style={styles.titulo}>{t('candidato.titulo')}</Text>
       <Text style={styles.texto}>{t('candidato.texto')}</Text>
+      <Link href="/candidato/perfil">{t('candidato.perfil')}</Link>
+      <Link href="/candidato/curriculo">{t('candidato.curriculo')}</Link>
+      <Link href="/candidato/habilidades">{t('candidato.habilidades')}</Link>
+      <Link href="/candidato/privacidade">{t('candidato.privacidade')}</Link>
+      <Link href="/candidato/dados">{t('candidato.dados')}</Link>
       <TrocaVisao />
     </View>
   );

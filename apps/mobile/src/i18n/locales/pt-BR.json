@@ -88,6 +88,41 @@
   },
   "candidato": {
     "titulo": "Visão do candidato",
-    "texto": "Seu perfil e suas candidaturas ficam nesta visão. O score não aparece aqui."
+    "texto": "Seu perfil, currículo e privacidade ficam nesta visão. O score não aparece aqui.",
+    "perfil": "Perfil",
+    "curriculo": "Currículo",
+    "habilidades": "Habilidades",
+    "privacidade": "Privacidade",
+    "dados": "Meus dados",
+    "carregar": "Carregar",
+    "whatsapp": "WhatsApp",
+    "linkedin": "LinkedIn",
+    "linkedinAjuda": "Informe o link público do perfil. O app não consulta o LinkedIn.",
+    "linkedinInvalido": "Use um link https://www.linkedin.com/in/…",
+    "perfilSalvo": "Alterações salvas.",
+    "uploadAjuda": "Envie PDF, DOCX ou imagem. Os dados só entram no perfil depois da sua confirmação.",
+    "enviarCurriculo": "Enviar currículo",
+    "resumo": "Resumo",
+    "confirmarDados": "Confirmar e aplicar ao perfil",
+    "visivelMatch": "Visível para match",
+    "exportar": "Exportar meus dados",
+    "excluir": "Excluir meus dados",
+    "dadosAjuda": "A exportação não inclui score. A exclusão anonimiza o perfil e apaga currículo e consentimentos.",
+    "dadosExcluidos": "Dados excluídos.",
+    "estado": {
+      "processando": "Estamos lendo o currículo.",
+      "falha": "Não foi possível ler o arquivo. Envie de novo.",
+      "baixa_confianca": "A leitura automática teve baixa confiança. Revise o texto antes de confirmar.",
+      "revisar": "Revise os dados extraídos. Nada foi gravado no perfil ainda.",
+      "aplicado": "Dados confirmados e aplicados ao perfil."
+    },
+    "consentimento": {
+      "TERMOS": "Termos e privacidade",
+      "WHATSAPP": "Contato por WhatsApp",
+      "AUDIO_WHATSAPP": "Processamento de áudio",
+      "GRAVACAO_VOZ": "Gravação da entrevista por voz",
+      "AVALIACAO_IA": "Avaliação por IA com revisão humana",
+      "VISIBILIDADE_MATCH": "Visibilidade para match"
+    }
   }
 }

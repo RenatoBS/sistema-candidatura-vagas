@@ -28,6 +28,17 @@ enum TipoConsentimento {
   VISIBILIDADE_MATCH
 }
 
+enum StatusAntivirus {
+  PENDENTE
+  LIMPO
+  INFECTADO
+}
+
+enum TipoSolicitacaoLgpd {
+  EXPORTACAO
+  EXCLUSAO
+}
+
 model Candidato {
   id                 String   @id @default(uuid()) @db.Uuid
   usuarioId          String   @unique @db.Uuid
@@ -47,6 +58,7 @@ model Candidato {
   consentimentos Consentimento[]
   candidaturas Candidatura[]
   sugestoesMatch SugestaoMatch[]
+  solicitacoesLgpd SolicitacaoLgpd[]
 
   @@map("candidatos")
 }
@@ -69,12 +81,18 @@ model CandidatoHabilidade {
 model Curriculo {
   id                   String                     @id @default(uuid()) @db.Uuid
   candidatoId          String                     @db.Uuid
-  arquivoKey           String
+  arquivoKey           String                     @unique
+  mimeType             String?
+  tamanhoBytes         Int?
+  antivirusStatus      StatusAntivirus            @default(PENDENTE)
   metodoExtracao       MetodoExtracaoCurriculo?
   statusProcessamento  StatusProcessamentoCurriculo @default(PENDENTE)
   confiancaOcr         Float?
   textoExtraido        String?                    @db.Text
   dadosExtraidos       Json?
+  confirmadoEm         DateTime?                  @db.Timestamptz
+  aplicadoAoPerfil     Boolean                    @default(false)
+  paginas              Json?
   criadoEm             DateTime                   @default(now()) @db.Timestamptz
   atualizadoEm         DateTime                   @updatedAt @db.Timestamptz
 
@@ -82,6 +100,20 @@ model Curriculo {
 
   @@index([candidatoId])
   @@map("curriculos")
+}
+
+model SolicitacaoLgpd {
+  id          String              @id @default(uuid()) @db.Uuid
+  usuarioId   String              @db.Uuid
+  candidatoId String?             @db.Uuid
+  tipo        TipoSolicitacaoLgpd
+  criadoEm    DateTime            @default(now()) @db.Timestamptz
+
+  usuario   Usuario    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  candidato Candidato? @relation(fields: [candidatoId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId])
+  @@map("solicitacoes_lgpd")
 }
 
 model Consentimento {

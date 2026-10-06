@@ -1,0 +1,9 @@
+title = "scv"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Referência à variável de ambiente do MinIO local, não um segredo"
+regexTarget = "secret"
+regexes = ['''^env\.S3_SECRET_KEY$''']

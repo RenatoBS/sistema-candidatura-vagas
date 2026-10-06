@@ -1,21 +1,48 @@
+import { CATALOGO_BASE } from '@scv/domain';
+
 import { ErroAplicacao } from '../erros';
 import type {
   AuditoriaRegistro,
   CandidatoRegistro,
   CodigoMfaRegistro,
+  ConsentimentoRegistro,
   ContextoTenant,
   ConviteRegistro,
+  CurriculoRegistro,
   EmpresaRegistro,
+  HabilidadeCatalogo,
+  HabilidadeDoCandidato,
   InstanciaRegistro,
+  LinhaHabilidade,
   MembroRegistro,
+  PerfilCandidato,
   RefreshRegistro,
   Repositorio,
   RespostaSensivel,
+  SolicitacaoLgpdRegistro,
   TokenRegistro,
   UsuarioRegistro,
   VerificacaoRegistro,
   VinculoUsuario,
 } from './tipos';
+
+const CATALOGO_MEMORIA: HabilidadeCatalogo[] = CATALOGO_BASE.map((item, indice) => ({
+  ...item,
+  id: `00000000-0000-4000-8000-${String(indice + 1).padStart(12, '0')}`,
+}));
+
+function perfilInicial(candidato: CandidatoRegistro): PerfilCandidato {
+  return {
+    id: candidato.id,
+    usuarioId: candidato.usuarioId,
+    nome: candidato.nome,
+    whatsapp: null,
+    whatsappVerificado: false,
+    linkedinUrl: null,
+    perfil: {},
+    visivelParaMatch: true,
+  };
+}
 
 function visivel(ctx: ContextoTenant | undefined, empresaId: string | null): boolean {
   if (!ctx || ctx.isAdmin) return true;
@@ -32,7 +59,11 @@ export class RepositorioMemoria implements Repositorio {
   verificacoes: VerificacaoRegistro[] = [];
   membros = new Map<string, MembroRegistro>();
   convites = new Map<string, ConviteRegistro>();
-  candidatos = new Map<string, CandidatoRegistro>();
+  candidatos = new Map<string, PerfilCandidato>();
+  linhasHabilidade: { candidatoId: string; linha: LinhaHabilidade }[] = [];
+  curriculos = new Map<string, CurriculoRegistro>();
+  consentimentos: ConsentimentoRegistro[] = [];
+  solicitacoesLgpd: SolicitacaoLgpdRegistro[] = [];
   auditorias: AuditoriaRegistro[] = [];
   instancias = new Map<string, InstanciaRegistro>();
   respostas = new Map<string, RespostaSensivel>();
@@ -48,6 +79,10 @@ export class RepositorioMemoria implements Repositorio {
     this.membros.clear();
     this.convites.clear();
     this.candidatos.clear();
+    this.linhasHabilidade = [];
+    this.curriculos.clear();
+    this.consentimentos = [];
+    this.solicitacoesLgpd = [];
     this.auditorias = [];
     this.instancias.clear();
     this.respostas.clear();
@@ -274,13 +309,122 @@ export class RepositorioMemoria implements Repositorio {
   }
 
   async criarCandidato(candidato: CandidatoRegistro): Promise<CandidatoRegistro> {
-    this.candidatos.set(candidato.usuarioId, { ...candidato });
-    return { ...candidato };
+    const perfil = perfilInicial(candidato);
+    this.candidatos.set(candidato.usuarioId, perfil);
+    return { id: perfil.id, usuarioId: perfil.usuarioId, nome: perfil.nome };
   }
 
   async buscarCandidatoPorUsuario(usuarioId: string): Promise<CandidatoRegistro | null> {
     const candidato = this.candidatos.get(usuarioId);
-    return candidato ? { ...candidato } : null;
+    return candidato ? { id: candidato.id, usuarioId: candidato.usuarioId, nome: candidato.nome } : null;
+  }
+
+  async obterPerfil(usuarioId: string): Promise<PerfilCandidato | null> {
+    const perfil = this.candidatos.get(usuarioId);
+    return perfil ? { ...perfil, perfil: { ...perfil.perfil } } : null;
+  }
+
+  async salvarPerfil(perfil: PerfilCandidato): Promise<PerfilCandidato> {
+    this.candidatos.set(perfil.usuarioId, { ...perfil, perfil: { ...perfil.perfil } });
+    const salvo = await this.obterPerfil(perfil.usuarioId);
+    if (!salvo) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'perfil não encontrado');
+    return salvo;
+  }
+
+  async listarCatalogoHabilidades(): Promise<HabilidadeCatalogo[]> {
+    return CATALOGO_MEMORIA.map((item) => ({ ...item, sinonimos: [...item.sinonimos] }));
+  }
+
+  async listarLinhasHabilidade(candidatoId: string): Promise<LinhaHabilidade[]> {
+    return this.linhasHabilidade.filter((item) => item.candidatoId === candidatoId).map((item) => ({ ...item.linha }));
+  }
+
+  async listarHabilidades(candidatoId: string): Promise<HabilidadeDoCandidato[]> {
+    const catalogo = new Map(CATALOGO_MEMORIA.map((item) => [item.id, item]));
+    const linhas = await this.listarLinhasHabilidade(candidatoId);
+    return linhas.map((linha) => ({ ...linha, nome: catalogo.get(linha.habilidadeId)?.nome ?? '' }));
+  }
+
+  async definirHabilidades(candidatoId: string, linhas: LinhaHabilidade[]): Promise<void> {
+    this.linhasHabilidade = this.linhasHabilidade.filter((item) => item.candidatoId !== candidatoId);
+    for (const linha of linhas) this.linhasHabilidade.push({ candidatoId, linha: { ...linha } });
+  }
+
+  async criarCurriculo(curriculo: CurriculoRegistro): Promise<CurriculoRegistro> {
+    this.curriculos.set(curriculo.id, { ...curriculo });
+    return { ...curriculo };
+  }
+
+  async buscarCurriculo(id: string): Promise<CurriculoRegistro | null> {
+    const curriculo = this.curriculos.get(id);
+    return curriculo ? { ...curriculo } : null;
+  }
+
+  async buscarCurriculoPorKey(arquivoKey: string): Promise<CurriculoRegistro | null> {
+    const curriculo = [...this.curriculos.values()].find((item) => item.arquivoKey === arquivoKey);
+    return curriculo ? { ...curriculo } : null;
+  }
+
+  async listarCurriculos(candidatoId: string): Promise<CurriculoRegistro[]> {
+    return [...this.curriculos.values()]
+      .filter((item) => item.candidatoId === candidatoId)
+      .map((item) => ({ ...item }))
+      .sort((a, b) => b.criadoEm.getTime() - a.criadoEm.getTime());
+  }
+
+  async atualizarCurriculo(id: string, patch: Partial<CurriculoRegistro>): Promise<CurriculoRegistro> {
+    const atual = this.curriculos.get(id);
+    if (!atual) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'currículo não encontrado');
+    const proximo = { ...atual, ...patch, id };
+    this.curriculos.set(id, proximo);
+    return { ...proximo };
+  }
+
+  async registrarConsentimento(registro: ConsentimentoRegistro): Promise<ConsentimentoRegistro> {
+    this.consentimentos.push({ ...registro });
+    return { ...registro };
+  }
+
+  async listarConsentimentos(candidatoId: string): Promise<ConsentimentoRegistro[]> {
+    return this.consentimentos.filter((item) => item.candidatoId === candidatoId).map((item) => ({ ...item }));
+  }
+
+  async registrarSolicitacaoLgpd(registro: SolicitacaoLgpdRegistro): Promise<void> {
+    this.solicitacoesLgpd.push({ ...registro });
+  }
+
+  async expurgarDadosCandidato(
+    usuarioId: string,
+    anon: { email: string; senhaHash: string; nome: string },
+  ): Promise<{ arquivoKeys: string[] }> {
+    const perfil = this.candidatos.get(usuarioId);
+    if (!perfil) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'candidato não encontrado');
+    const usuario = this.usuarios.get(usuarioId);
+    if (!usuario) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'usuário não encontrado');
+    const arquivoKeys = [...this.curriculos.values()]
+      .filter((item) => item.candidatoId === perfil.id)
+      .map((item) => item.arquivoKey);
+    for (const [id, item] of this.curriculos) {
+      if (item.candidatoId === perfil.id) this.curriculos.delete(id);
+    }
+    this.linhasHabilidade = this.linhasHabilidade.filter((item) => item.candidatoId !== perfil.id);
+    this.consentimentos = this.consentimentos.filter((item) => item.candidatoId !== perfil.id);
+    this.candidatos.set(usuarioId, {
+      ...perfil,
+      nome: anon.nome,
+      whatsapp: null,
+      whatsappVerificado: false,
+      linkedinUrl: null,
+      perfil: {},
+      visivelParaMatch: false,
+    });
+    this.usuarios.set(usuarioId, { ...usuario, email: anon.email, senhaHash: anon.senhaHash });
+    for (const [id, refresh] of this.refresh) {
+      if (refresh.usuarioId === usuarioId && !refresh.revogadoEm) {
+        this.refresh.set(id, { ...refresh, revogadoEm: new Date() });
+      }
+    }
+    return { arquivoKeys };
   }
 
   async registrarAuditoria(registro: AuditoriaRegistro, ctx: ContextoTenant): Promise<AuditoriaRegistro> {

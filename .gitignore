@@ -30,6 +30,7 @@ Thumbs.db
 
 # Documentos gerados
 *.docx
+!packages/providers/fixtures/*.docx
 
 # Terraform
 infra/terraform/**/.terraform/

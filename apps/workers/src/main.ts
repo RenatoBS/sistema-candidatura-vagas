@@ -5,6 +5,7 @@ import { Queue, Worker } from 'bullmq';
 import express from 'express';
 import pino from 'pino';
 
+import { FILA_CV, processarJobCurriculo } from './processar-cv';
 import { executarVerificacaoCnpj } from './verificar-cnpj';
 
 const logger = pino({ level: process.env.LOG_LEVEL ?? 'info' });
@@ -16,6 +17,7 @@ const redisConnection = {
 
 const exampleQueue = new Queue('exemplo', { connection: redisConnection });
 const filaCnpj = new Queue('verificar-cnpj', { connection: redisConnection });
+const filaCv = new Queue(FILA_CV, { connection: redisConnection });
 
 const worker = new Worker(
   'exemplo',
@@ -40,6 +42,19 @@ const workerCnpj = new Worker(
   { connection: redisConnection },
 );
 
+const workerCv = new Worker(
+  FILA_CV,
+  async (job: { data: { curriculoId: string } }) => {
+    logger.info({ curriculoId: job.data.curriculoId }, 'Processando currículo');
+    return processarJobCurriculo(job.data.curriculoId);
+  },
+  { connection: redisConnection },
+);
+
+workerCv.on('failed', (job, err) => {
+  logger.error({ jobId: job?.id, err: err.message }, 'Processamento de currículo falhou');
+});
+
 workerCnpj.on('failed', (job, err) => {
   logger.error({ jobId: job?.id, err }, 'Verificação de CNPJ falhou');
 });
@@ -48,7 +63,7 @@ const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath('/admin/queues');
 
 createBullBoard({
-  queues: [new BullMQAdapter(exampleQueue), new BullMQAdapter(filaCnpj)],
+  queues: [new BullMQAdapter(exampleQueue), new BullMQAdapter(filaCnpj), new BullMQAdapter(filaCv)],
   serverAdapter,
 });
 
@@ -69,7 +84,9 @@ process.on('SIGTERM', async () => {
   logger.info('Encerrando workers...');
   await worker.close();
   await workerCnpj.close();
+  await workerCv.close();
   await exampleQueue.close();
   await filaCnpj.close();
+  await filaCv.close();
   process.exit(0);
 });

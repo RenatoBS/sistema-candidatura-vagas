@@ -5,14 +5,21 @@ import type {
   AuditoriaRegistro,
   CandidatoRegistro,
   CodigoMfaRegistro,
+  ConsentimentoRegistro,
   ContextoTenant,
   ConviteRegistro,
+  CurriculoRegistro,
   EmpresaRegistro,
+  HabilidadeCatalogo,
+  HabilidadeDoCandidato,
   InstanciaRegistro,
+  LinhaHabilidade,
   MembroRegistro,
+  PerfilCandidato,
   RefreshRegistro,
   Repositorio,
   RespostaSensivel,
+  SolicitacaoLgpdRegistro,
   TokenRegistro,
   UsuarioRegistro,
   VerificacaoRegistro,
@@ -28,6 +35,10 @@ function semId<T extends { id?: string }>(patch: T): Omit<T, 'id'> {
 function objeto(valor: Prisma.JsonValue | null | undefined): Record<string, unknown> {
   if (valor && typeof valor === 'object' && !Array.isArray(valor)) return valor as Record<string, unknown>;
   return {};
+}
+
+function json(valor: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(valor ?? {})) as Prisma.InputJsonValue;
 }
 
 function objetoOuNulo(valor: Prisma.JsonValue | null): Record<string, unknown> | null {
@@ -247,6 +258,192 @@ export class RepositorioPrisma implements Repositorio {
     return candidato ? { id: candidato.id, usuarioId: candidato.usuarioId, nome: candidato.nome } : null;
   }
 
+  async obterPerfil(usuarioId: string): Promise<PerfilCandidato | null> {
+    const candidato = await this.prisma.candidato.findUnique({ where: { usuarioId } });
+    return candidato ? this.perfil(candidato) : null;
+  }
+
+  async salvarPerfil(perfil: PerfilCandidato): Promise<PerfilCandidato> {
+    const candidato = await this.prisma.candidato.update({
+      where: { id: perfil.id },
+      data: {
+        nome: perfil.nome,
+        whatsapp: perfil.whatsapp,
+        whatsappVerificado: perfil.whatsappVerificado,
+        linkedinUrl: perfil.linkedinUrl,
+        visivelParaMatch: perfil.visivelParaMatch,
+        perfil: json(perfil.perfil),
+      },
+    });
+    return this.perfil(candidato);
+  }
+
+  async listarCatalogoHabilidades(): Promise<HabilidadeCatalogo[]> {
+    const itens = await this.prisma.habilidade.findMany({ orderBy: { nome: 'asc' } });
+    return itens.map((item) => ({
+      id: item.id,
+      nome: item.nome,
+      categoria: item.categoria,
+      sinonimos: item.sinonimos,
+    }));
+  }
+
+  async listarLinhasHabilidade(candidatoId: string): Promise<LinhaHabilidade[]> {
+    const linhas = await this.prisma.candidatoHabilidade.findMany({ where: { candidatoId } });
+    return linhas.map((linha) => ({
+      habilidadeId: linha.habilidadeId,
+      nivel: linha.nivel,
+      anosExperiencia: linha.anosExperiencia,
+      origem: linha.origem,
+    }));
+  }
+
+  async listarHabilidades(candidatoId: string): Promise<HabilidadeDoCandidato[]> {
+    const linhas = await this.prisma.candidatoHabilidade.findMany({
+      where: { candidatoId },
+      include: { habilidade: true },
+    });
+    return linhas.map((linha) => ({
+      habilidadeId: linha.habilidadeId,
+      nome: linha.habilidade.nome,
+      nivel: linha.nivel,
+      anosExperiencia: linha.anosExperiencia,
+      origem: linha.origem,
+    }));
+  }
+
+  async definirHabilidades(candidatoId: string, linhas: LinhaHabilidade[]): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.candidatoHabilidade.deleteMany({ where: { candidatoId } }),
+      this.prisma.candidatoHabilidade.createMany({
+        data: linhas.map((linha) => ({ candidatoId, ...linha })),
+      }),
+    ]);
+  }
+
+  async criarCurriculo(curriculo: CurriculoRegistro): Promise<CurriculoRegistro> {
+    const criado = await this.prisma.curriculo.create({
+      data: {
+        id: curriculo.id,
+        candidatoId: curriculo.candidatoId,
+        arquivoKey: curriculo.arquivoKey,
+        mimeType: curriculo.mimeType,
+        tamanhoBytes: curriculo.tamanhoBytes,
+        antivirusStatus: curriculo.antivirusStatus,
+        metodoExtracao: curriculo.metodoExtracao,
+        statusProcessamento: curriculo.statusProcessamento,
+        confiancaOcr: curriculo.confiancaOcr,
+        textoExtraido: curriculo.textoExtraido,
+        dadosExtraidos: curriculo.dadosExtraidos ? json(curriculo.dadosExtraidos) : undefined,
+        confirmadoEm: curriculo.confirmadoEm,
+        aplicadoAoPerfil: curriculo.aplicadoAoPerfil,
+        paginas: curriculo.paginas ? json(curriculo.paginas) : undefined,
+        criadoEm: curriculo.criadoEm,
+      },
+    });
+    return this.curriculo(criado);
+  }
+
+  async buscarCurriculo(id: string): Promise<CurriculoRegistro | null> {
+    const curriculo = await this.prisma.curriculo.findUnique({ where: { id } });
+    return curriculo ? this.curriculo(curriculo) : null;
+  }
+
+  async buscarCurriculoPorKey(arquivoKey: string): Promise<CurriculoRegistro | null> {
+    const curriculo = await this.prisma.curriculo.findUnique({ where: { arquivoKey } });
+    return curriculo ? this.curriculo(curriculo) : null;
+  }
+
+  async listarCurriculos(candidatoId: string): Promise<CurriculoRegistro[]> {
+    const itens = await this.prisma.curriculo.findMany({ where: { candidatoId }, orderBy: { criadoEm: 'desc' } });
+    return itens.map((item) => this.curriculo(item));
+  }
+
+  async atualizarCurriculo(id: string, patch: Partial<CurriculoRegistro>): Promise<CurriculoRegistro> {
+    const data: Prisma.CurriculoUpdateInput = {};
+    if (patch.mimeType !== undefined) data.mimeType = patch.mimeType;
+    if (patch.tamanhoBytes !== undefined) data.tamanhoBytes = patch.tamanhoBytes;
+    if (patch.antivirusStatus !== undefined) data.antivirusStatus = patch.antivirusStatus;
+    if (patch.metodoExtracao !== undefined) data.metodoExtracao = patch.metodoExtracao;
+    if (patch.statusProcessamento !== undefined) data.statusProcessamento = patch.statusProcessamento;
+    if (patch.confiancaOcr !== undefined) data.confiancaOcr = patch.confiancaOcr;
+    if (patch.textoExtraido !== undefined) data.textoExtraido = patch.textoExtraido;
+    if (patch.dadosExtraidos !== undefined) data.dadosExtraidos = patch.dadosExtraidos ? json(patch.dadosExtraidos) : Prisma.JsonNull;
+    if (patch.confirmadoEm !== undefined) data.confirmadoEm = patch.confirmadoEm;
+    if (patch.aplicadoAoPerfil !== undefined) data.aplicadoAoPerfil = patch.aplicadoAoPerfil;
+    if (patch.paginas !== undefined) data.paginas = patch.paginas ? json(patch.paginas) : Prisma.JsonNull;
+    const curriculo = await this.prisma.curriculo.update({ where: { id }, data });
+    return this.curriculo(curriculo);
+  }
+
+  async registrarConsentimento(registro: ConsentimentoRegistro): Promise<ConsentimentoRegistro> {
+    const criado = await this.prisma.consentimento.create({
+      data: {
+        id: registro.id,
+        candidatoId: registro.candidatoId,
+        tipo: registro.tipo,
+        concedido: registro.concedido,
+        versaoTermo: registro.versaoTermo,
+        criadoEm: registro.criadoEm,
+      },
+    });
+    return {
+      id: criado.id,
+      candidatoId: criado.candidatoId,
+      tipo: criado.tipo,
+      concedido: criado.concedido,
+      versaoTermo: criado.versaoTermo,
+      criadoEm: criado.criadoEm,
+    };
+  }
+
+  async listarConsentimentos(candidatoId: string): Promise<ConsentimentoRegistro[]> {
+    const itens = await this.prisma.consentimento.findMany({ where: { candidatoId }, orderBy: { criadoEm: 'asc' } });
+    return itens.map((item) => ({
+      id: item.id,
+      candidatoId: item.candidatoId,
+      tipo: item.tipo,
+      concedido: item.concedido,
+      versaoTermo: item.versaoTermo,
+      criadoEm: item.criadoEm,
+    }));
+  }
+
+  async registrarSolicitacaoLgpd(registro: SolicitacaoLgpdRegistro): Promise<void> {
+    await this.prisma.solicitacaoLgpd.create({ data: registro });
+  }
+
+  async expurgarDadosCandidato(
+    usuarioId: string,
+    anon: { email: string; senhaHash: string; nome: string },
+  ): Promise<{ arquivoKeys: string[] }> {
+    return this.prisma.$transaction(async (tx) => {
+      const candidato = await tx.candidato.findUnique({ where: { usuarioId } });
+      if (!candidato) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'candidato não encontrado');
+      const curriculos = await tx.curriculo.findMany({ where: { candidatoId: candidato.id } });
+      await tx.candidatoHabilidade.deleteMany({ where: { candidatoId: candidato.id } });
+      await tx.consentimento.deleteMany({ where: { candidatoId: candidato.id } });
+      await tx.curriculo.deleteMany({ where: { candidatoId: candidato.id } });
+      await tx.candidato.update({
+        where: { id: candidato.id },
+        data: {
+          nome: anon.nome,
+          whatsapp: null,
+          whatsappVerificado: false,
+          linkedinUrl: null,
+          perfil: {},
+          visivelParaMatch: false,
+        },
+      });
+      await tx.usuario.update({ where: { id: usuarioId }, data: { email: anon.email, senhaHash: anon.senhaHash } });
+      await tx.refreshToken.updateMany({
+        where: { usuarioId, revogadoEm: null },
+        data: { revogadoEm: new Date() },
+      });
+      return { arquivoKeys: curriculos.map((item) => item.arquivoKey) };
+    });
+  }
+
   async registrarAuditoria(registro: AuditoriaRegistro, ctx: ContextoTenant): Promise<AuditoriaRegistro> {
     return this.comTenant(ctx, (tx) => tx.auditoriaAcesso.create({ data: registro }));
   }
@@ -357,6 +554,64 @@ export class RepositorioPrisma implements Repositorio {
       statusVerificacao: empresa.statusVerificacao,
       verificadaEm: empresa.verificadaEm,
       configuracoes: objeto(empresa.configuracoes),
+    };
+  }
+
+  private perfil(candidato: {
+    id: string;
+    usuarioId: string;
+    nome: string;
+    whatsapp: string | null;
+    whatsappVerificado: boolean;
+    linkedinUrl: string | null;
+    perfil: Prisma.JsonValue;
+    visivelParaMatch: boolean;
+  }): PerfilCandidato {
+    return {
+      id: candidato.id,
+      usuarioId: candidato.usuarioId,
+      nome: candidato.nome,
+      whatsapp: candidato.whatsapp,
+      whatsappVerificado: candidato.whatsappVerificado,
+      linkedinUrl: candidato.linkedinUrl,
+      perfil: objeto(candidato.perfil),
+      visivelParaMatch: candidato.visivelParaMatch,
+    };
+  }
+
+  private curriculo(curriculo: {
+    id: string;
+    candidatoId: string;
+    arquivoKey: string;
+    mimeType: string | null;
+    tamanhoBytes: number | null;
+    antivirusStatus: CurriculoRegistro['antivirusStatus'];
+    metodoExtracao: CurriculoRegistro['metodoExtracao'];
+    statusProcessamento: CurriculoRegistro['statusProcessamento'];
+    confiancaOcr: number | null;
+    textoExtraido: string | null;
+    dadosExtraidos: Prisma.JsonValue | null;
+    confirmadoEm: Date | null;
+    aplicadoAoPerfil: boolean;
+    paginas: Prisma.JsonValue | null;
+    criadoEm: Date;
+  }): CurriculoRegistro {
+    return {
+      id: curriculo.id,
+      candidatoId: curriculo.candidatoId,
+      arquivoKey: curriculo.arquivoKey,
+      mimeType: curriculo.mimeType,
+      tamanhoBytes: curriculo.tamanhoBytes,
+      antivirusStatus: curriculo.antivirusStatus,
+      metodoExtracao: curriculo.metodoExtracao,
+      statusProcessamento: curriculo.statusProcessamento,
+      confiancaOcr: curriculo.confiancaOcr,
+      textoExtraido: curriculo.textoExtraido,
+      dadosExtraidos: objetoOuNulo(curriculo.dadosExtraidos),
+      confirmadoEm: curriculo.confirmadoEm,
+      aplicadoAoPerfil: curriculo.aplicadoAoPerfil,
+      paginas: curriculo.paginas,
+      criadoEm: curriculo.criadoEm,
     };
   }
 
