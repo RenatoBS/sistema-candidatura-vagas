@@ -15,9 +15,9 @@ Currículo do candidato com extração nativa (PDF com camada de texto e DOCX) e
 
 ## Extração estruturada
 
-A interface `ExtratorEstruturadoCurriculo` vive em `packages/providers`. A implementação padrão é `ExtratorEstruturadoMock` (determinística: linhas `resumo:`, `experiencia:`, `formacao:`, `idioma:`, `habilidade:` e nomes do catálogo).
+A interface `ExtratorEstruturadoCurriculo` vive em `packages/providers`. O padrão em dev e teste é `ExtratorEstruturadoMock` (determinístico: linhas `resumo:`, `experiencia:`, `formacao:`, `idioma:`, `habilidade:` e nomes do catálogo).
 
-TODO(Fase 4): quando `@scv/llm` existir, implementar a interface com o `LlmProvider` e validar a saída com `dadosCurriculoValidos` / `schemaDadosCurriculo`. Não criar `packages/llm` nesta fase.
+`EXTRATOR_CURRICULO=llm` seleciona `ExtratorEstruturadoLlm`, que chama o `LlmProvider` de `@scv/llm` com `schemaDadosCurriculo` e só grava a saída se `dadosCurriculoValidos` aceitar. O provedor do modelo continua `LLM_PROVIDER` (`mock` por padrão; nenhum teste chama API real).
 
 ## Antivírus
 
@@ -60,4 +60,4 @@ Consentimentos são append-only. `GET /candidatos/me/consentimentos` devolve o �
 
 ## Fora desta fase
 
-Prazos de retenção (Q18), direito de revisão de decisão automatizada (LGPD art. 20 / Q16), notificação push para revisar o currículo (Fase 6), verificação do WhatsApp (Fase 7) e o extrator real via `@scv/llm` (Fase 4).
+Prazos de retenção (Q18), direito de revisão de decisão automatizada (LGPD art. 20 / Q16), notificação push para revisar o currículo (Fase 6), verificação do WhatsApp (Fase 7) e a escolha do modelo de LLM (Q4, ADR 0004).

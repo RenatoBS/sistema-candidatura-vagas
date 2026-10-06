@@ -8,11 +8,8 @@ import {
 
 /**
  * Extração estruturada do texto do currículo para o JSON Schema `schemaDadosCurriculo`.
- *
- * TODO(Fase 4): quando `@scv/llm` for mergeado, implementar esta interface com o
- * `LlmProvider` da Fase 4 (dona de `packages/llm`). Não criar `packages/llm` aqui.
- * A saída do modelo precisa passar por `dadosCurriculoValidos` antes de ser gravada.
- * O mock abaixo é determinístico e é o padrão enquanto a Fase 4 não entra.
+ * O mock é o padrão em dev e teste. `ExtratorEstruturadoLlm` usa `@scv/llm` quando
+ * `EXTRATOR_CURRICULO=llm`.
  */
 export interface ExtratorEstruturadoCurriculo {
   extrair(texto: string, catalogo: ItemCatalogo[]): Promise<DadosCurriculo>;

@@ -22,6 +22,7 @@ export { AntivirusClamAv, AntivirusMock, criarAntivirus } from './antivirus';
 export type { Antivirus, ResultadoAntivirus } from './antivirus';
 export { ExtratorEstruturadoMock } from './extrator-estruturado';
 export type { ExtratorEstruturadoCurriculo } from './extrator-estruturado';
+export { criarExtratorEstruturado, ExtratorEstruturadoLlm } from './extrator-estruturado-llm';
 export { executarJobCurriculo } from './job-curriculo';
 export { OcrMock, TesseractOcr } from './ocr';
 export { criarDepsOcrMock, criarDepsOcrReal, processarArquivoCurriculo } from './processar-curriculo';

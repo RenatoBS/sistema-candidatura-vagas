@@ -126,7 +126,7 @@ A POC 8.1 pode começar após a Fase 1 (conforme plano §7.1) e roda em paralelo
 | F5-02 | Upload pré-assinado, tipo/tamanho e antivírus (ClamAV opcional, mock nos testes) | ✅ Feito | Cursor |
 | F5-03 | Extração nativa de PDF com texto e DOCX | ✅ Feito | Cursor |
 | F5-04 | OCR Tesseract local no worker dedicado (`por+eng`, só páginas sem texto) | ✅ Feito | Cursor |
-| F5-05 | Extração estruturada: interface + mock determinístico (LLM fica para `@scv/llm`) | ✅ Feito | Cursor |
+| F5-05 | Extração estruturada: mock por padrão e `ExtratorEstruturadoLlm` via `@scv/llm` | ✅ Feito | Cursor |
 | F5-06 | Consentimentos (termos, WhatsApp, áudio, gravação, IA) na API e nas telas | ✅ Feito | Cursor |
 | F5-07 | Telas do candidato: perfil, upload, revisão, habilidades, LinkedIn, privacidade | ✅ Feito | Cursor |
 | F5-08 | Fixtures de CV e teste de qualidade do OCR (job `ocr-tesseract` na CI) | ✅ Feito | Cursor |

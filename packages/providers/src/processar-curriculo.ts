@@ -9,6 +9,7 @@ import {
 
 import type { ExtratorEstruturadoCurriculo } from './extrator-estruturado';
 import { ExtratorEstruturadoMock } from './extrator-estruturado';
+import { criarExtratorEstruturado } from './extrator-estruturado-llm';
 import { OcrMock, rasterizarPaginaPdf, TesseractOcr, type ReconhecimentoOcr } from './ocr';
 import { preprocessarImagem } from './preprocessar';
 import { lerTextoDocx, lerTextoPdf } from './texto-nativo';
@@ -51,14 +52,14 @@ export function criarDepsOcrMock(): DependenciasExtracao {
   };
 }
 
-export function criarDepsOcrReal(): DependenciasExtracao {
+export function criarDepsOcrReal(env: NodeJS.ProcessEnv = process.env): DependenciasExtracao {
   return {
     lerPdf: lerTextoPdf,
     lerDocx: lerTextoDocx,
     rasterizarPdf: rasterizarPaginaPdf,
     preprocessar: preprocessarImagem,
     ocr: new TesseractOcr(),
-    extrator: new ExtratorEstruturadoMock(),
+    extrator: criarExtratorEstruturado(env),
   };
 }
 
