@@ -28,7 +28,7 @@
 | 2 | Modelo de dados | ✅ Concluída |
 | 3 | Auth e papéis | 🟢 Em revisão (ADR 0003 provisório) |
 | 4 | CRUD de vagas | ⬜ Pendente |
-| 5 | Perfil do candidato com OCR | ⬜ Pendente |
+| 5 | Perfil do candidato com OCR | 🟢 Implementada nesta branch |
 | 6 | Candidatura e notificações | ⬜ Pendente |
 | 7 | Entrevista WhatsApp (Uazapi) | ⬜ Pendente |
 | 8 | Entrevista IA por voz | ⬜ Pendente |
@@ -99,6 +99,22 @@ A POC 8.1 pode começar após a Fase 1 (conforme plano §7.1) e roda em paralelo
 | F3-13 | Suíte da matriz de permissões e bypass auditado | ✅ Feito | Cursor |
 | F3-14 | Adapter Uazapi de instâncias, token cifrado, `/empresas/{id}/whatsapp/*` | ✅ Feito | Cursor |
 | F3-15 | Etapa Conectar WhatsApp (QR, status, banner, visão admin) | ✅ Feito | Cursor |
+
+## Checklist Fase 5
+
+| ID | Tarefa | Status | Responsável |
+|----|--------|:------:|-------------|
+| F5-01 | API de perfil e habilidades; `linkedinUrl` só formato | ✅ Feito | Cursor |
+| F5-02 | Upload pré-assinado, tipo/tamanho e antivírus (ClamAV opcional, mock nos testes) | ✅ Feito | Cursor |
+| F5-03 | Extração nativa de PDF com texto e DOCX | ✅ Feito | Cursor |
+| F5-04 | OCR Tesseract local no worker dedicado (`por+eng`, só páginas sem texto) | ✅ Feito | Cursor |
+| F5-05 | Extração estruturada: interface + mock determinístico (LLM fica para `@scv/llm`) | ✅ Feito | Cursor |
+| F5-06 | Consentimentos (termos, WhatsApp, áudio, gravação, IA) na API e nas telas | ✅ Feito | Cursor |
+| F5-07 | Telas do candidato: perfil, upload, revisão, habilidades, LinkedIn, privacidade | ✅ Feito | Cursor |
+| F5-08 | Fixtures de CV e teste de qualidade do OCR (job `ocr-tesseract` na CI) | ✅ Feito | Cursor |
+| F5-09 | Exportação e exclusão LGPD | ✅ Feito | Cursor |
+
+Detalhes de execução, profiles Docker e o que ficou de fora: [fase-5-perfil-ocr.md](fase-5-perfil-ocr.md).
 
 ## Documentos de referência
 
