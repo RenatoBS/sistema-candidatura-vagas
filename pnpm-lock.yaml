@@ -56,6 +56,9 @@ importers:
       '@scv/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@scv/llm':
+        specifier: workspace:*
+        version: link:../../packages/llm
       '@scv/providers':
         specifier: workspace:*
         version: link:../../packages/providers
@@ -325,6 +328,21 @@ importers:
         specifier: ^5.8.2
         version: 5.9.3
 
+  packages/llm:
+    devDependencies:
+      '@scv/config':
+        specifier: workspace:*
+        version: link:../config
+      eslint:
+        specifier: ^9.22.0
+        version: 9.39.5(jiti@2.7.0)
+      tsx:
+        specifier: ^4.19.3
+        version: 4.23.15
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
   packages/providers:
     dependencies:
       '@aws-sdk/client-s3':
@@ -336,6 +354,9 @@ importers:
       '@scv/domain':
         specifier: workspace:*
         version: link:../domain
+      '@scv/llm':
+        specifier: workspace:*
+        version: link:../llm
       mammoth:
         specifier: ^1.9.0
         version: 1.13.0

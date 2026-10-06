@@ -1,5 +1,6 @@
 import { type FactoryProvider, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { criarLlmProvider } from '@scv/llm';
 import { BrasilApiFonteCnpj, criarAntivirus, criarArmazenamentoS3, criarEmailProvider, UazapiInstanciaCliente } from '@scv/providers';
 
 import {
@@ -9,13 +10,15 @@ import {
   emailTeste,
   filaCnpjTeste,
   filaCurriculoTeste,
+  filaVagasTeste,
   fonteCnpjTeste,
+  relogioTeste,
   repositorioTeste,
   whatsappTeste,
 } from './ambiente-teste';
 import { AcessoSensivelService } from './auditoria/acesso-sensivel';
 import { AuditoriaService } from './auditoria/auditoria.service';
-import { AuthService, relogioSistema } from './auth/auth.service';
+import { AuthService, relogioSistema, type Relogio } from './auth/auth.service';
 import { MfaService } from './auth/mfa.service';
 import { ConsentimentoService, CurriculoService, LgpdService, PerfilService } from './candidatos/candidato.service';
 import type { ConfiguracaoApp } from './configuracao';
@@ -24,11 +27,13 @@ import { DnsNode } from './dns';
 import { EmpresasService } from './empresas/empresas.service';
 import { FilaCnpjBull } from './fila/fila-cnpj';
 import { FilaCurriculoBull } from './fila/fila-curriculo';
+import { FilaVagasBull } from './fila/fila-vagas';
 import { AuditoriaController } from './http/auditoria.controller';
 import { AuthController } from './http/auth.controller';
 import { AuthGuard } from './http/auth.guard';
 import { CandidatoController } from './http/candidatos.controller';
 import { EmpresasController } from './http/empresas.controller';
+import { VagasController } from './http/vagas.controller';
 import { WhatsappController } from './http/whatsapp.controller';
 import { MembrosService } from './membros/membros.service';
 import { RepositorioPrisma } from './repositorio/prisma';
@@ -42,10 +47,13 @@ import {
   EMAIL,
   FILA_CNPJ,
   FILA_CURRICULO,
+  FILA_VAGAS,
   FONTE_CNPJ,
+  LLM,
   RELOGIO,
   REPOSITORIO,
 } from './tokens';
+import { VagasService } from './vagas/vagas.service';
 import { WhatsappService } from './whatsapp/whatsapp.service';
 
 const configProvider: FactoryProvider = {
@@ -55,7 +63,8 @@ const configProvider: FactoryProvider = {
 
 const relogioProvider: FactoryProvider = {
   provide: RELOGIO,
-  useFactory: () => relogioSistema,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? relogioTeste : relogioSistema),
 };
 
 const repositorioProvider: FactoryProvider<Repositorio> = {
@@ -108,6 +117,17 @@ const filaCurriculoProvider: FactoryProvider = {
   useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? filaCurriculoTeste : new FilaCurriculoBull()),
 };
 
+const filaVagasProvider: FactoryProvider = {
+  provide: FILA_VAGAS,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? filaVagasTeste : new FilaVagasBull()),
+};
+
+const llmProvider: FactoryProvider = {
+  provide: LLM,
+  useFactory: () => criarLlmProvider(),
+};
+
 const whatsappClienteProvider: FactoryProvider = {
   provide: CLIENTE_WHATSAPP,
   inject: [CONFIG],
@@ -118,7 +138,7 @@ const whatsappClienteProvider: FactoryProvider = {
 };
 
 @Module({
-  controllers: [AuthController, EmpresasController, WhatsappController, AuditoriaController, CandidatoController],
+  controllers: [AuthController, EmpresasController, WhatsappController, AuditoriaController, CandidatoController, VagasController],
   providers: [
     configProvider,
     relogioProvider,
@@ -126,6 +146,8 @@ const whatsappClienteProvider: FactoryProvider = {
     emailProvider,
     fonteProvider,
     filaProvider,
+    filaVagasProvider,
+    llmProvider,
     dnsProvider,
     whatsappClienteProvider,
     armazenamentoProvider,
@@ -213,6 +235,18 @@ const whatsappClienteProvider: FactoryProvider = {
       provide: AcessoSensivelService,
       inject: [REPOSITORIO, AuditoriaService],
       useFactory: (repo: Repositorio, auditoria: AuditoriaService) => new AcessoSensivelService(repo, auditoria),
+    },
+    {
+      provide: VagasService,
+      inject: [REPOSITORIO, AuditoriaService, FILA_VAGAS, LLM, CONFIG, RELOGIO],
+      useFactory: (
+        repo: Repositorio,
+        auditoria: AuditoriaService,
+        fila: typeof filaVagasTeste,
+        llm: ReturnType<typeof criarLlmProvider>,
+        config: ConfiguracaoApp,
+        relogio: Relogio,
+      ) => new VagasService(repo, auditoria, fila, llm, config, relogio),
     },
     AuthGuard,
     { provide: APP_GUARD, useExisting: AuthGuard },

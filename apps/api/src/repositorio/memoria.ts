@@ -25,6 +25,7 @@ import type {
   VerificacaoRegistro,
   VinculoUsuario,
 } from './tipos';
+import { VagasMemoria } from './vagas-memoria';
 
 const CATALOGO_MEMORIA: HabilidadeCatalogo[] = CATALOGO_BASE.map((item, indice) => ({
   ...item,
@@ -45,7 +46,7 @@ function perfilInicial(candidato: CandidatoRegistro): PerfilCandidato {
 }
 
 function visivel(ctx: ContextoTenant | undefined, empresaId: string | null): boolean {
-  if (!ctx || ctx.isAdmin) return true;
+  if (!ctx || ctx.isAdmin || ctx.sistema) return true;
   if (empresaId === null) return true;
   return ctx.empresaId === empresaId;
 }
@@ -67,7 +68,7 @@ export class RepositorioMemoria implements Repositorio {
   auditorias: AuditoriaRegistro[] = [];
   instancias = new Map<string, InstanciaRegistro>();
   respostas = new Map<string, RespostaSensivel>();
-  vagasPausadas = 0;
+  readonly vagasStore = new VagasMemoria();
 
   limpar(): void {
     this.usuarios.clear();
@@ -86,7 +87,7 @@ export class RepositorioMemoria implements Repositorio {
     this.auditorias = [];
     this.instancias.clear();
     this.respostas.clear();
-    this.vagasPausadas = 0;
+    this.vagasStore.limpar();
   }
 
   async criarUsuario(dados: UsuarioRegistro): Promise<UsuarioRegistro> {
@@ -465,10 +466,128 @@ export class RepositorioMemoria implements Repositorio {
       .map((item) => ({ ...item }));
   }
 
-  async pausarVagasPublicadas(empresaId: string, _quando: Date, ctx: ContextoTenant): Promise<number> {
-    if (!visivel(ctx, empresaId)) return 0;
-    this.vagasPausadas += 1;
-    return 1;
+  async pausarVagasPublicadas(empresaId: string, quando: Date, ctx: ContextoTenant): Promise<number> {
+    return this.vagasStore.pausarPublicadas(empresaId, quando, ctx);
+  }
+
+  garantirHabilidade(nome: string, categoria?: string) {
+    return this.vagasStore.garantirHabilidade(nome, categoria);
+  }
+
+  buscarHabilidade(id: string) {
+    return this.vagasStore.buscarHabilidade(id);
+  }
+
+  listarHabilidades() {
+    return this.vagasStore.listarHabilidades();
+  }
+
+  criarVaga(dados: Parameters<VagasMemoria['criarVaga']>[0], ctx: ContextoTenant) {
+    return this.vagasStore.criarVaga(dados, ctx);
+  }
+
+  atualizarVaga(id: string, patch: Parameters<VagasMemoria['atualizarVaga']>[1], ctx: ContextoTenant) {
+    return this.vagasStore.atualizarVaga(id, patch, ctx);
+  }
+
+  buscarVaga(id: string, ctx: ContextoTenant) {
+    return this.vagasStore.buscarVaga(id, ctx);
+  }
+
+  listarVagasEmpresa(empresaId: string, ctx: ContextoTenant) {
+    return this.vagasStore.listarVagasEmpresa(empresaId, ctx);
+  }
+
+  listarVagasPublicas(filtro: Parameters<VagasMemoria['listarVagasPublicas']>[0]) {
+    return this.vagasStore.listarVagasPublicas(filtro);
+  }
+
+  substituirHabilidades(vagaId: string, itens: Parameters<VagasMemoria['substituirHabilidades']>[1], ctx: ContextoTenant) {
+    return this.vagasStore.substituirHabilidades(vagaId, itens, ctx);
+  }
+
+  listarHabilidadesVaga(vagaId: string, ctx: ContextoTenant) {
+    return this.vagasStore.listarHabilidadesVaga(vagaId, ctx);
+  }
+
+  salvarProcesso(dados: Parameters<VagasMemoria['salvarProcesso']>[0], ctx: ContextoTenant) {
+    return this.vagasStore.salvarProcesso(dados, ctx);
+  }
+
+  buscarProcessoPorVaga(vagaId: string, ctx: ContextoTenant) {
+    return this.vagasStore.buscarProcessoPorVaga(vagaId, ctx);
+  }
+
+  buscarProcessoPorId(id: string, ctx: ContextoTenant) {
+    return this.vagasStore.buscarProcessoPorId(id, ctx);
+  }
+
+  salvarEtapa(dados: Parameters<VagasMemoria['salvarEtapa']>[0], ctx: ContextoTenant) {
+    return this.vagasStore.salvarEtapa(dados, ctx);
+  }
+
+  listarEtapas(processoId: string, ctx: ContextoTenant) {
+    return this.vagasStore.listarEtapas(processoId, ctx);
+  }
+
+  buscarEtapa(id: string, ctx: ContextoTenant) {
+    return this.vagasStore.buscarEtapa(id, ctx);
+  }
+
+  removerEtapa(id: string, ctx: ContextoTenant) {
+    return this.vagasStore.removerEtapa(id, ctx);
+  }
+
+  criarPergunta(dados: Parameters<VagasMemoria['criarPergunta']>[0], ctx: ContextoTenant) {
+    return this.vagasStore.criarPergunta(dados, ctx);
+  }
+
+  atualizarPergunta(id: string, patch: Parameters<VagasMemoria['atualizarPergunta']>[1], ctx: ContextoTenant) {
+    return this.vagasStore.atualizarPergunta(id, patch, ctx);
+  }
+
+  buscarPergunta(id: string, ctx: ContextoTenant) {
+    return this.vagasStore.buscarPergunta(id, ctx);
+  }
+
+  listarPerguntasEmpresa(empresaId: string, ctx: ContextoTenant) {
+    return this.vagasStore.listarPerguntasEmpresa(empresaId, ctx);
+  }
+
+  listarSugestoesEtapa(etapaId: string, ctx: ContextoTenant) {
+    return this.vagasStore.listarSugestoesEtapa(etapaId, ctx);
+  }
+
+  vincularPergunta(dados: Parameters<VagasMemoria['vincularPergunta']>[0], ctx: ContextoTenant) {
+    return this.vagasStore.vincularPergunta(dados, ctx);
+  }
+
+  listarVinculosEtapa(etapaId: string, ctx: ContextoTenant) {
+    return this.vagasStore.listarVinculosEtapa(etapaId, ctx);
+  }
+
+  registrarEventoVaga(evento: Parameters<VagasMemoria['registrarEventoVaga']>[0], ctx: ContextoTenant) {
+    return this.vagasStore.registrarEventoVaga(evento, ctx);
+  }
+
+  buscarEventoVaga(id: string, ctx: ContextoTenant) {
+    return this.vagasStore.buscarEventoVaga(id, ctx);
+  }
+
+  marcarEventoConsumido(id: string, quando: Date, ctx: ContextoTenant) {
+    return this.vagasStore.marcarEventoConsumido(id, quando, ctx);
+  }
+
+  listarEventosVaga(vagaId: string, ctx: ContextoTenant) {
+    return this.vagasStore.listarEventosVaga(vagaId, ctx);
+  }
+
+  listarPublicadasVencidas(agora: Date, ctx: ContextoTenant) {
+    return this.vagasStore.listarPublicadasVencidas(agora, ctx);
+  }
+
+  listarPausasParaAlerta(limite: Date, ctx: ContextoTenant) {
+    return this.vagasStore.listarPausasParaAlerta(limite, ctx);
   }
 
   async buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null> {

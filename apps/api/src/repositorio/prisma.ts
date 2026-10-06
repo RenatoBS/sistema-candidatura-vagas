@@ -25,6 +25,7 @@ import type {
   VerificacaoRegistro,
   VinculoUsuario,
 } from './tipos';
+import { VagasPrisma } from './vagas-prisma';
 
 function semId<T extends { id?: string }>(patch: T): Omit<T, 'id'> {
   const copia = { ...patch };
@@ -47,14 +48,20 @@ function objetoOuNulo(valor: Prisma.JsonValue | null): Record<string, unknown> |
 }
 
 export class RepositorioPrisma implements Repositorio {
-  constructor(private readonly prisma = new PrismaClient()) {}
+  private readonly vagasStore: VagasPrisma;
+
+  constructor(private readonly prisma = new PrismaClient()) {
+    this.vagasStore = new VagasPrisma(this.prisma, (ctx, fn) => this.comTenant(ctx, fn));
+  }
 
   private async comTenant<T>(ctx: ContextoTenant, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`
         SELECT
           set_config('app.empresa_id', ${ctx.empresaId ?? ''}, true),
-          set_config('app.is_admin', ${ctx.isAdmin ? 'true' : 'false'}, true)
+          set_config('app.is_admin', ${ctx.isAdmin ? 'true' : 'false'}, true),
+          set_config('app.is_system', ${ctx.sistema ? 'true' : 'false'}, true),
+          set_config('app.leitura_publica', ${ctx.leituraPublica ? 'true' : 'false'}, true)
       `;
       return fn(tx);
     });
@@ -482,14 +489,128 @@ export class RepositorioPrisma implements Repositorio {
     return itens.map((item) => this.instancia(item));
   }
 
-  async pausarVagasPublicadas(empresaId: string, quando: Date, ctx: ContextoTenant): Promise<number> {
-    const resultado = await this.comTenant(ctx, (tx) =>
-      tx.vaga.updateMany({
-        where: { empresaId, status: 'PUBLICADA' },
-        data: { status: 'PAUSADA', pausadaEm: quando, statusAntesDaPausa: 'PUBLICADA' },
-      }),
-    );
-    return resultado.count;
+  pausarVagasPublicadas(empresaId: string, quando: Date, ctx: ContextoTenant): Promise<number> {
+    return this.vagasStore.pausarPublicadas(empresaId, quando, ctx);
+  }
+
+  garantirHabilidade(nome: string, categoria?: string) {
+    return this.vagasStore.garantirHabilidade(nome, categoria);
+  }
+
+  buscarHabilidade(id: string) {
+    return this.vagasStore.buscarHabilidade(id);
+  }
+
+  listarHabilidades() {
+    return this.vagasStore.listarHabilidades();
+  }
+
+  criarVaga(dados: Parameters<VagasPrisma['criarVaga']>[0], ctx: ContextoTenant) {
+    return this.vagasStore.criarVaga(dados, ctx);
+  }
+
+  atualizarVaga(id: string, patch: Parameters<VagasPrisma['atualizarVaga']>[1], ctx: ContextoTenant) {
+    return this.vagasStore.atualizarVaga(id, patch, ctx);
+  }
+
+  buscarVaga(id: string, ctx: ContextoTenant) {
+    return this.vagasStore.buscarVaga(id, ctx);
+  }
+
+  listarVagasEmpresa(empresaId: string, ctx: ContextoTenant) {
+    return this.vagasStore.listarVagasEmpresa(empresaId, ctx);
+  }
+
+  listarVagasPublicas(filtro: Parameters<VagasPrisma['listarVagasPublicas']>[0]) {
+    return this.vagasStore.listarVagasPublicas(filtro);
+  }
+
+  substituirHabilidades(vagaId: string, itens: Parameters<VagasPrisma['substituirHabilidades']>[1], ctx: ContextoTenant) {
+    return this.vagasStore.substituirHabilidades(vagaId, itens, ctx);
+  }
+
+  listarHabilidadesVaga(vagaId: string, ctx: ContextoTenant) {
+    return this.vagasStore.listarHabilidadesVaga(vagaId, ctx);
+  }
+
+  salvarProcesso(dados: Parameters<VagasPrisma['salvarProcesso']>[0], ctx: ContextoTenant) {
+    return this.vagasStore.salvarProcesso(dados, ctx);
+  }
+
+  buscarProcessoPorVaga(vagaId: string, ctx: ContextoTenant) {
+    return this.vagasStore.buscarProcessoPorVaga(vagaId, ctx);
+  }
+
+  buscarProcessoPorId(id: string, ctx: ContextoTenant) {
+    return this.vagasStore.buscarProcessoPorId(id, ctx);
+  }
+
+  salvarEtapa(dados: Parameters<VagasPrisma['salvarEtapa']>[0], ctx: ContextoTenant) {
+    return this.vagasStore.salvarEtapa(dados, ctx);
+  }
+
+  listarEtapas(processoId: string, ctx: ContextoTenant) {
+    return this.vagasStore.listarEtapas(processoId, ctx);
+  }
+
+  buscarEtapa(id: string, ctx: ContextoTenant) {
+    return this.vagasStore.buscarEtapa(id, ctx);
+  }
+
+  removerEtapa(id: string, ctx: ContextoTenant) {
+    return this.vagasStore.removerEtapa(id, ctx);
+  }
+
+  criarPergunta(dados: Parameters<VagasPrisma['criarPergunta']>[0], ctx: ContextoTenant) {
+    return this.vagasStore.criarPergunta(dados, ctx);
+  }
+
+  atualizarPergunta(id: string, patch: Parameters<VagasPrisma['atualizarPergunta']>[1], ctx: ContextoTenant) {
+    return this.vagasStore.atualizarPergunta(id, patch, ctx);
+  }
+
+  buscarPergunta(id: string, ctx: ContextoTenant) {
+    return this.vagasStore.buscarPergunta(id, ctx);
+  }
+
+  listarPerguntasEmpresa(empresaId: string, ctx: ContextoTenant) {
+    return this.vagasStore.listarPerguntasEmpresa(empresaId, ctx);
+  }
+
+  listarSugestoesEtapa(etapaId: string, ctx: ContextoTenant) {
+    return this.vagasStore.listarSugestoesEtapa(etapaId, ctx);
+  }
+
+  vincularPergunta(dados: Parameters<VagasPrisma['vincularPergunta']>[0], ctx: ContextoTenant) {
+    return this.vagasStore.vincularPergunta(dados, ctx);
+  }
+
+  listarVinculosEtapa(etapaId: string, ctx: ContextoTenant) {
+    return this.vagasStore.listarVinculosEtapa(etapaId, ctx);
+  }
+
+  registrarEventoVaga(evento: Parameters<VagasPrisma['registrarEventoVaga']>[0], ctx: ContextoTenant) {
+    return this.vagasStore.registrarEventoVaga(evento, ctx);
+  }
+
+  buscarEventoVaga(id: string, ctx: ContextoTenant) {
+    return this.vagasStore.buscarEventoVaga(id, ctx);
+  }
+
+  marcarEventoConsumido(id: string, quando: Date, ctx: ContextoTenant) {
+    return this.vagasStore.marcarEventoConsumido(id, quando, ctx);
+  }
+
+  listarEventosVaga(vagaId: string, ctx: ContextoTenant) {
+    return this.vagasStore.listarEventosVaga(vagaId, ctx);
+  }
+
+  listarPublicadasVencidas(agora: Date, ctx: ContextoTenant) {
+    return this.vagasStore.listarPublicadasVencidas(agora, ctx);
+  }
+
+  listarPausasParaAlerta(limite: Date, ctx: ContextoTenant) {
+    return this.vagasStore.listarPausasParaAlerta(limite, ctx);
   }
 
   async buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null> {
