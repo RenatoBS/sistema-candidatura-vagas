@@ -10,6 +10,9 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   lint-typecheck-test:
     name: Lint, typecheck e testes
@@ -76,11 +79,12 @@ jobs:
       - name: Aplicar migrações
         run: |
           cd prisma
-          npx prisma migrate diff \
+          pnpm exec prisma migrate diff \
             --from-empty \
             --to-schema-datamodel schema/schema.prisma \
             --script > /tmp/init.sql
-          npx prisma db execute --url "$DATABASE_URL" --file /tmp/init.sql
+          pnpm exec prisma db execute --schema=schema/schema.prisma \
+            --url "$DATABASE_URL" --file /tmp/init.sql
 
   build:
     name: Build
