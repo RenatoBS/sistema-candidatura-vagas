@@ -84,7 +84,7 @@ jobs:
             --to-schema-datamodel schema/schema.prisma \
             --script > /tmp/init.sql
           pnpm exec prisma db execute --schema=schema/schema.prisma \
-            --url "$DATABASE_URL" --file /tmp/init.sql
+            --file /tmp/init.sql
 
   build:
     name: Build
