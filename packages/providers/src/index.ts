@@ -10,9 +10,7 @@ export interface SttProvider {
   transcribe(audioUrl: string): Promise<{ text: string; confidence: number }>;
 }
 
-export interface LlmProvider {
-  complete(prompt: string): Promise<string>;
-}
+export type { LlmProvider, PedidoLlm, RespostaLlm } from '@scv/llm';
 
 export interface OcrProvider {
   extractText(imageBuffer: Buffer): Promise<string>;
