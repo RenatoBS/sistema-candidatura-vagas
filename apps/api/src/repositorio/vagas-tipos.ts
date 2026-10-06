@@ -11,6 +11,7 @@ export interface HabilidadeCatalogo {
   id: string;
   nome: string;
   categoria: string;
+  sinonimos: string[];
 }
 
 export interface VagaRegistro {

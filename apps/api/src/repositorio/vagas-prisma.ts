@@ -73,19 +73,19 @@ export class VagasPrisma {
     const existente = await this.prisma.habilidade.findFirst({
       where: { nome: { equals: limpo, mode: 'insensitive' } },
     });
-    if (existente) return { id: existente.id, nome: existente.nome, categoria: existente.categoria };
+    if (existente) return { id: existente.id, nome: existente.nome, categoria: existente.categoria, sinonimos: existente.sinonimos };
     const criada = await this.prisma.habilidade.create({ data: { nome: limpo, categoria, sinonimos: [] } });
-    return { id: criada.id, nome: criada.nome, categoria: criada.categoria };
+    return { id: criada.id, nome: criada.nome, categoria: criada.categoria, sinonimos: criada.sinonimos };
   }
 
   async buscarHabilidade(id: string): Promise<HabilidadeCatalogo | null> {
     const item = await this.prisma.habilidade.findUnique({ where: { id } });
-    return item ? { id: item.id, nome: item.nome, categoria: item.categoria } : null;
+    return item ? { id: item.id, nome: item.nome, categoria: item.categoria, sinonimos: item.sinonimos } : null;
   }
 
   async listarHabilidades(): Promise<HabilidadeCatalogo[]> {
     const itens = await this.prisma.habilidade.findMany({ orderBy: { nome: 'asc' } });
-    return itens.map((item) => ({ id: item.id, nome: item.nome, categoria: item.categoria }));
+    return itens.map((item) => ({ id: item.id, nome: item.nome, categoria: item.categoria, sinonimos: item.sinonimos }));
   }
 
   criarVaga(dados: VagaRegistro, ctx: ContextoTenant): Promise<VagaRegistro> {

@@ -478,10 +478,6 @@ export class RepositorioMemoria implements Repositorio {
     return this.vagasStore.buscarHabilidade(id);
   }
 
-  listarHabilidades() {
-    return this.vagasStore.listarHabilidades();
-  }
-
   criarVaga(dados: Parameters<VagasMemoria['criarVaga']>[0], ctx: ContextoTenant) {
     return this.vagasStore.criarVaga(dados, ctx);
   }

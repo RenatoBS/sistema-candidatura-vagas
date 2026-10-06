@@ -50,7 +50,7 @@ export class VagasMemoria {
     const chave = nome.trim().toLowerCase();
     const existente = [...this.habilidades.values()].find((item) => item.nome.toLowerCase() === chave);
     if (existente) return { ...existente };
-    const criada = { id: randomUUID(), nome: nome.trim(), categoria };
+    const criada = { id: randomUUID(), nome: nome.trim(), categoria, sinonimos: [] as string[] };
     this.habilidades.set(criada.id, criada);
     return { ...criada };
   }

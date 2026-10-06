@@ -64,7 +64,7 @@ export class VagasService {
   ) {}
 
   listarCatalogo(): Promise<Array<{ id: string; nome: string; categoria: string }>> {
-    return this.repo.listarHabilidades();
+    return this.repo.listarCatalogoHabilidades();
   }
 
   async criar(sessao: SessaoRequest, empresaId: string, entrada: CriarVagaInput) {

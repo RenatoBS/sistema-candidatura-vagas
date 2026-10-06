@@ -501,10 +501,6 @@ export class RepositorioPrisma implements Repositorio {
     return this.vagasStore.buscarHabilidade(id);
   }
 
-  listarHabilidades() {
-    return this.vagasStore.listarHabilidades();
-  }
-
   criarVaga(dados: Parameters<VagasPrisma['criarVaga']>[0], ctx: ContextoTenant) {
     return this.vagasStore.criarVaga(dados, ctx);
   }

@@ -5,7 +5,6 @@ import type {
   EtapaRegistro,
   EventoVagaRegistro,
   FiltroVagaPublica,
-  HabilidadeCatalogo,
   PerguntaRegistro,
   ProcessoRegistro,
   VagaHabilidadeRegistro,
@@ -17,7 +16,6 @@ export type {
   EtapaRegistro,
   EventoVagaRegistro,
   FiltroVagaPublica,
-  HabilidadeCatalogo,
   OrigemPergunta,
   PerguntaRegistro,
   ProcessoRegistro,
@@ -333,7 +331,6 @@ export interface Repositorio {
   guardarResposta(resposta: RespostaSensivel): Promise<void>;
   garantirHabilidade(nome: string, categoria?: string): Promise<HabilidadeCatalogo>;
   buscarHabilidade(id: string): Promise<HabilidadeCatalogo | null>;
-  listarHabilidades(): Promise<HabilidadeCatalogo[]>;
   criarVaga(dados: VagaRegistro, ctx: ContextoTenant): Promise<VagaRegistro>;
   atualizarVaga(id: string, patch: Partial<VagaRegistro>, ctx: ContextoTenant): Promise<VagaRegistro | null>;
   buscarVaga(id: string, ctx: ContextoTenant): Promise<VagaRegistro | null>;
