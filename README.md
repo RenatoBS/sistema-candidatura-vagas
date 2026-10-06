@@ -13,7 +13,7 @@ O processo seletivo tem duas fases, ambas com tentativa única e revisão humana
 
 O sistema é multi-tenant e suporta vários processos seletivos simultâneos.
 
-**Status:** 🟡 **Fase 1 em implementação** — veja o [status detalhado](docs/STATUS.md).
+**Status:** 🟢 **Fase 3 em revisão** (auth, papéis, verificação de empresa e WhatsApp) — veja o [status detalhado](docs/STATUS.md). O ADR de CNPJ e revisão manual ainda é provisório.
 
 ## Stack
 
