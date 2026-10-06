@@ -79,6 +79,42 @@ services:
       timeout: 5s
       retries: 5
 
+  # Opcional: docker compose --profile antivirus up -d clamav
+  clamav:
+    image: clamav/clamav:1.4
+    container_name: scv-clamav
+    profiles: ['antivirus']
+    ports:
+      - '${CLAMAV_PORT:-3310}:3310'
+
+  # Opcional: docker compose --profile ocr up -d --build ocr-worker
+  # Tesseract local (por+eng) + Poppler. A API segue no host.
+  ocr-worker:
+    build:
+      context: ..
+      dockerfile: infra/ocr/Dockerfile
+    container_name: scv-ocr-worker
+    profiles: ['ocr']
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      API_PUBLIC_URL: ${API_PUBLIC_URL:-http://host.docker.internal:3000}
+      INTERNAL_JOB_TOKEN: ${INTERNAL_JOB_TOKEN:-}
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin123}
+      S3_BUCKET: ${S3_BUCKET:-scv-dev}
+      OCR_PROVIDER: tesseract
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      WORKERS_PORT: 3001
+    ports:
+      - '${OCR_WORKER_PORT:-3002}:3001'
+    depends_on:
+      - redis
+      - minio
+
 volumes:
   postgres_data:
   redis_data:
