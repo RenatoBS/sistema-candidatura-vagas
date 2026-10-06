@@ -2,7 +2,7 @@
 
 **Última atualização:** 2026-10-06  
 **Branch ativa:** `cursor/fase-3-auth-papeis-e8d4`  
-**PR:** Fase 3 — auth e papéis (aberta contra `main`)
+**PR:** [#8 — Fase 3 auth e papéis](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/8)
 
 ## Status geral
 
