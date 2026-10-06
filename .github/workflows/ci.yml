@@ -40,8 +40,8 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Testes
-        run: pnpm test
+      - name: Testes (sem integração Prisma/Postgres)
+        run: pnpm test --filter=!@scv/prisma
 
   migrations:
     name: Migrações em banco efêmero
@@ -128,7 +128,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint-typecheck-test]
+    needs: [lint-typecheck-test, migrations, prisma-rls]
     steps:
       - uses: actions/checkout@v4
 
