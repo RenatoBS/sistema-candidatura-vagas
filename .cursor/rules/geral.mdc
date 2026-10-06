@@ -1,0 +1,33 @@
+---
+description: Regras gerais do repositório para agentes Cursor
+globs: **
+---
+
+# Regras gerais
+
+Leia `AGENTS.md` como fonte única de contexto, convenções e proibições.
+
+## Modelo
+
+- Usar **sempre Composer ou Grok** no Cursor.
+- Nunca modelos de terceiros.
+
+## Convenções
+
+- Branches: `feat/f<fase>-<id>-<descricao>`.
+- Commits: Conventional Commits em pt-BR.
+- Escopo mínimo: uma tarefa = um PR.
+
+## Proibições
+
+- Não commitar segredos.
+- Não fazer merge em `main`.
+- Não expor score ao candidato.
+- Não incluir PII em logs.
+
+## Comandos úteis
+
+```bash
+pnpm install && pnpm lint && pnpm typecheck && pnpm test && pnpm build
+docker compose -f infra/docker-compose.yml up -d
+```

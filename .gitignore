@@ -30,3 +30,16 @@ Thumbs.db
 
 # Documentos gerados
 *.docx
+
+# Terraform
+infra/terraform/**/.terraform/
+infra/terraform/**/*.tfstate
+infra/terraform/**/*.tfstate.*
+infra/terraform/**/.terraform.lock.hcl
+
+# Expo
+apps/mobile/.expo/
+apps/mobile/dist/
+
+# Segredos locais (nunca versionar)
+.secrets/

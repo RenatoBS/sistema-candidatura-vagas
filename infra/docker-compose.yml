@@ -1,0 +1,85 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: scv-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-scv}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-scv_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-scv}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-scv} -d ${POSTGRES_DB:-scv}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: scv-redis
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: scv-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    ports:
+      - '${MINIO_PORT:-9000}:9000'
+      - '${MINIO_CONSOLE_PORT:-9001}:9001'
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      # A imagem oficial do MinIO não inclui curl; usar o mc embutido
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: scv-livekit
+    command: --dev --bind 0.0.0.0
+    ports:
+      - '${LIVEKIT_PORT:-7880}:7880'
+      - '${LIVEKIT_RTC_TCP_PORT:-7881}:7881'
+      - '${LIVEKIT_RTC_UDP_PORT:-7882}:7882/udp'
+    environment:
+      LIVEKIT_KEYS: '${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-secret}'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:7880']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: scv-mailpit
+    ports:
+      - '${MAILPIT_SMTP_PORT:-1025}:1025'
+      - '${MAILPIT_UI_PORT:-8025}:8025'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8025']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

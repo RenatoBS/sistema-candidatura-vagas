@@ -1,0 +1,36 @@
+---
+description: Regras de UI e design system do app mobile
+globs: apps/mobile/**
+---
+
+# UI e Design System
+
+Leia `AGENTS.md` para contexto geral do projeto.
+
+## Design system
+
+- Tokens em `apps/mobile/src/design-system/tokens.ts` (cores, espaçamento).
+- Componentes reutilizáveis em `apps/mobile/src/design-system/`.
+- Não usar cores ou espaçamentos hardcoded fora dos tokens.
+
+## Grupos de rota por papel
+
+- `(candidato)` — visão do candidato
+- `(empresa)` — visão da empresa
+- `(admin)` — visão do admin da plataforma
+
+## Permissões na UI
+
+- Usar `usePermissao()` para controlar visibilidade de ações.
+- A UI **não** é a única barreira — o backend valida tudo.
+- Nunca exibir score, posição ou ranking ao candidato.
+
+## i18n
+
+- Idioma padrão: **pt-BR**.
+- Textos em `apps/mobile/src/i18n/locales/pt-BR.json`.
+- Não hardcodar strings visíveis ao usuário.
+
+## Modelo
+
+- No Cursor, usar **sempre Composer ou Grok** (nunca modelos de terceiros).

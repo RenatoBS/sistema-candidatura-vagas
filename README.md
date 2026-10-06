@@ -13,24 +13,72 @@ O processo seletivo tem duas fases, ambas com tentativa única e revisão humana
 
 O sistema é multi-tenant e suporta vários processos seletivos simultâneos.
 
-**Status:** 🟡 fase de planejamento. Ainda não há código de aplicação neste repositório.
+**Status:** 🟡 **Fase 1 em implementação** — veja o [status detalhado](docs/STATUS.md).
 
-## Stack decidida
+## Stack
 
 | Camada | Tecnologia |
 |--------|------------|
 | App | React Native (Expo + Expo Router), app único com visões candidato, empresa e admin |
 | Backend | Node.js + NestJS (TypeScript) |
+| Workers | BullMQ + Redis |
 | Dados | PostgreSQL + pgvector, via Prisma |
 | Assíncrono | Redis + BullMQ |
-| Arquivos | Armazenamento S3-compatível (CVs, áudios, gravações) |
+| Arquivos | Armazenamento S3-compatível (MinIO em dev) |
 | OCR | Tesseract local |
-| WhatsApp | Uazapi, com uma instância (número) por empresa, padrão portado do SaaS sof |
-| Voz em tempo real | WebRTC com servidor de mídia (ex.: LiveKit); pipeline de voz em aberto (definido por POC) |
-| IA | Whisper para a 1ª fase (local ou API, em aberto) e LLM via camada de abstração |
+| WhatsApp | Uazapi, com uma instância (número) por empresa |
+| Voz em tempo real | WebRTC com LiveKit |
+| IA | Whisper para a 1ª fase e LLM via camada de abstração |
+
+## Início rápido
+
+```bash
+# Instalar dependências
+pnpm install
+
+# Qualidade
+pnpm lint && pnpm typecheck && pnpm test && pnpm build
+
+# Infra local (Postgres, Redis, MinIO, LiveKit, Mailpit)
+cp .env.example .env
+docker compose -f infra/docker-compose.yml up -d
+
+# API (http://localhost:3000/api/v1/health)
+pnpm --filter @scv/api dev
+
+# Workers + Bull Board (http://localhost:3001/admin/queues)
+pnpm --filter @scv/workers dev
+
+# App mobile
+pnpm --filter @scv/mobile dev
+```
+
+## Estrutura do monorepo
+
+```text
+apps/
+  api/           # NestJS REST
+  workers/       # BullMQ
+  voice-agent/   # Agente de voz (stub)
+  mobile/        # Expo Router
+packages/
+  contracts/     # OpenAPI, Zod, tipos
+  domain/        # Regras puras
+  providers/     # Adapters externos
+  config/        # ESLint, TS, Prettier
+prisma/schema/   # Schema Prisma
+infra/           # Docker Compose, Terraform
+docs/            # Planos, ADRs, briefs, STATUS
+```
 
 ## Documentos
 
-- [Plano Técnico e de Produto](docs/plano-sistema.md): requisitos, arquitetura, modelo de dados, fluxos, regras de vaga e de entrevista, ranqueamento, LGPD e questões em aberto.
-- [Plano de Implementação Orquestrado](docs/plano-implementacao.md): 10 fases, executadas por Claude Code, Codex e Cursor sob orquestração do Renato, com tarefas, paralelismo e critérios de aceite.
+- [**Status do projeto**](docs/STATUS.md) — fases, checklist F1, como validar.
+- [Plano Técnico e de Produto](docs/plano-sistema.md): requisitos, arquitetura, modelo de dados, fluxos.
+- [Plano de Implementação Orquestrado](docs/plano-implementacao.md): 10 fases, tarefas, paralelismo.
+- [AGENTS.md](AGENTS.md): guia para agentes de IA.
 - [Diagramas renderizados (PNG)](docs/diagramas/): versões estáticas dos diagramas Mermaid.
+
+## Agentes de IA
+
+Este projeto é desenvolvido por Claude Code, Codex e Cursor sob orquestração do Renato. Leia [AGENTS.md](AGENTS.md) antes de contribuir.
