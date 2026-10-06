@@ -1,18 +1,19 @@
 # Status do Projeto — Sistema de Candidatura a Vagas
 
 **Última atualização:** 2026-10-06  
-**Branch ativa:** `feat/f1-setup-monorepo`  
-**PR:** Fase 1 em implementação — revisada pelo Claude Code em 2026-10-06
+**Branch ativa:** `feat/f8-poc-latencia-voz`  
+**PR:** Fase 1 concluída na `main`; POC 8.1 em andamento
 
 ## Status geral
 
-🟡 **Fase 1 em andamento** — setup do monorepo, CI, Docker e esqueletos das aplicações.
+🟢 **Fase 1 concluída** na `main` — monorepo, CI, Docker e esqueletos.  
+🟡 **POC 8.1 em andamento** — latência de voz (`feat/f8-poc-latencia-voz`).
 
 ## Fases de implementação
 
 | Fase | Objetivo | Status |
 |:----:|----------|:------:|
-| 1 | Setup do repo e ambientes | 🟡 Em andamento |
+| 1 | Setup do repo e ambientes | ✅ Concluída |
 | 2 | Modelo de dados | ⬜ Pendente |
 | 3 | Auth e papéis | ⬜ Pendente |
 | 4 | CRUD de vagas | ⬜ Pendente |
@@ -22,6 +23,19 @@
 | 8 | Entrevista IA por voz | ⬜ Pendente |
 | 9 | Ranqueamento | ⬜ Pendente |
 | 10 | Multiprocesso | ⬜ Pendente |
+
+## POCs e trabalho paralelo
+
+| ID | Item | Status | Branch | Documentação |
+|----|------|--------|--------|--------------|
+| 8.1 | POC de latência de voz | 🟡 Em andamento | `feat/f8-poc-latencia-voz` | [docs/pocs/voz-latencia.md](./pocs/voz-latencia.md) |
+
+A POC 8.1 pode começar após a Fase 1 (conforme plano §7.1) e roda em paralelo às demais fases. Não altera o progresso das fases principais acima.
+
+### Artefatos da POC 8.1
+
+- `apps/voice-agent/` — script de medição STT → LLM → TTS (`pnpm --filter @scv/voice-agent poc:mock`)
+- `docs/pocs/voz-latencia.md` — metas, pipeline, instruções e tabela de resultados
 
 ## Checklist Fase 1
 
@@ -90,4 +104,8 @@ pnpm --filter @scv/workers dev
 
 # 5. Mobile
 pnpm --filter @scv/mobile dev
+
+# 6. POC 8.1 — latência de voz (modo mock, sem APIs)
+pnpm --filter @scv/voice-agent gerar-fixture
+pnpm --filter @scv/voice-agent poc:mock
 ```
