@@ -43,3 +43,6 @@ apps/mobile/dist/
 
 # Segredos locais (nunca versionar)
 .secrets/
+
+# POC voz — relatórios locais
+apps/voice-agent/relatorios/

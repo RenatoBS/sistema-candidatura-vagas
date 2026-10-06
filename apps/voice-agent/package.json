@@ -2,7 +2,7 @@
   "name": "@scv/voice-agent",
   "version": "0.1.0",
   "private": true,
-  "description": "Agente de voz da 2ª fase (participante das salas LiveKit) — stub",
+  "description": "Agente de voz da 2ª fase — stub + POC 8.1 de latência STT→LLM→TTS",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/main.ts",
@@ -10,10 +10,14 @@
     "lint": "eslint src --max-warnings 0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test src/**/*.test.ts",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "poc": "tsx src/poc-latencia.ts",
+    "poc:mock": "tsx src/poc-latencia.ts --mock",
+    "gerar-fixture": "tsx src/scripts/gerar-fixture.ts"
   },
   "devDependencies": {
     "@scv/config": "workspace:*",
+    "@types/node": "^22.13.10",
     "eslint": "^9.22.0",
     "pino": "^9.6.0",
     "tsx": "^4.19.3",
