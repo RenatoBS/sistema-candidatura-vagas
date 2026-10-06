@@ -23,7 +23,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   label: {
-    color: '#FFFFFF',
+    color: colors.onPrimary,
     fontWeight: '600',
     fontSize: 16,
   },

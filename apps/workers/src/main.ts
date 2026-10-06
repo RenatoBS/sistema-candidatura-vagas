@@ -5,6 +5,8 @@ import { Queue, Worker } from 'bullmq';
 import express from 'express';
 import pino from 'pino';
 
+import { executarVerificacaoCnpj } from './verificar-cnpj';
+
 const logger = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 
 const redisConnection = {
@@ -13,6 +15,7 @@ const redisConnection = {
 };
 
 const exampleQueue = new Queue('exemplo', { connection: redisConnection });
+const filaCnpj = new Queue('verificar-cnpj', { connection: redisConnection });
 
 const worker = new Worker(
   'exemplo',
@@ -31,11 +34,21 @@ worker.on('failed', (job, err) => {
   logger.error({ jobId: job?.id, err }, 'Job falhou');
 });
 
+const workerCnpj = new Worker(
+  'verificar-cnpj',
+  async (job: { data: { empresaId: string } }) => executarVerificacaoCnpj(job.data.empresaId),
+  { connection: redisConnection },
+);
+
+workerCnpj.on('failed', (job, err) => {
+  logger.error({ jobId: job?.id, err }, 'Verificação de CNPJ falhou');
+});
+
 const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath('/admin/queues');
 
 createBullBoard({
-  queues: [new BullMQAdapter(exampleQueue)],
+  queues: [new BullMQAdapter(exampleQueue), new BullMQAdapter(filaCnpj)],
   serverAdapter,
 });
 
@@ -55,6 +68,8 @@ app.listen(port, () => {
 process.on('SIGTERM', async () => {
   logger.info('Encerrando workers...');
   await worker.close();
+  await workerCnpj.close();
   await exampleQueue.close();
+  await filaCnpj.close();
   process.exit(0);
 });

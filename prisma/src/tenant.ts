@@ -65,4 +65,6 @@ export const MODELOS_COM_EMPRESA_ID = [
   'Notificacao',
   'PreferenciaNotificacao',
   'AuditoriaAcesso',
+  'ConviteMembro',
+  'TokenUsoUnico',
 ] as const;

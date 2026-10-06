@@ -1,13 +1,14 @@
 # Status do Projeto — Sistema de Candidatura a Vagas
 
 **Última atualização:** 2026-10-06  
-**Branch ativa:** `feat/f2-modelo-de-dados`  
-**PR:** [#7 — Fase 2 modelo de dados](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/7)
+**Branch ativa:** `cursor/fase-3-auth-papeis-e8d4`  
+**PR:** [#8 — Fase 3 auth e papéis](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/8)
 
 ## Status geral
 
 🟢 **Fase 1 concluída** na `main` — monorepo, CI, Docker e esqueletos.  
 ✅ **Fase 2 concluída** — modelo de dados, RLS, seeds, testes de isolamento e ADR multi-tenant aprovado.  
+🟢 **Fase 3 implementada** nesta branch — auth, RBAC, MFA, verificação de empresa, auditoria, membros e instância WhatsApp. ADR 0003 (Q5/Q6) está **provisório**, aguardando o Renato.  
 🟢 **POC 8.1 concluída** na `main` (squash `9db00ec`) — latência de voz STT→LLM→TTS.
 
 ## Decisões do Renato (registro)
@@ -25,7 +26,7 @@
 |:----:|----------|:------:|
 | 1 | Setup do repo e ambientes | ✅ Concluída |
 | 2 | Modelo de dados | ✅ Concluída |
-| 3 | Auth e papéis | ⬜ Pendente |
+| 3 | Auth e papéis | 🟢 Em revisão (ADR 0003 provisório) |
 | 4 | CRUD de vagas | ⬜ Pendente |
 | 5 | Perfil do candidato com OCR | ⬜ Pendente |
 | 6 | Candidatura e notificações | ⬜ Pendente |
@@ -79,12 +80,33 @@ A POC 8.1 pode começar após a Fase 1 (conforme plano §7.1) e roda em paralelo
 | F2-10 | Testes de migração e isolamento RLS | ✅ Feito | Cursor |
 | F2-11 | Diagrama ER em `docs/` | ✅ Feito | Cursor |
 
+## Checklist Fase 3
+
+| ID | Tarefa | Status | Responsável |
+|----|--------|:------:|-------------|
+| F3-01 | Fonte de CNPJ e política de revisão manual | 🟡 Provisório (ADR 0003, revisável pelo Renato) | Orquestrador |
+| F3-02 | Auth core (cadastro, login, refresh rotativo, logout, recuperação, confirmação de e-mail, `GET /me`) | ✅ Feito | Cursor |
+| F3-03 | RBAC e matriz de permissões como código | ✅ Feito | Cursor |
+| F3-04 | MFA TOTP obrigatório para admin, códigos de recuperação e reauth | ✅ Feito | Cursor |
+| F3-05 | Auto-cadastro de empresa + e-mail/domínio | ✅ Feito | Cursor |
+| F3-06 | Validação de CNPJ (dígitos locais + BrasilAPI + job BullMQ) | ✅ Feito | Cursor |
+| F3-07 | Estados da empresa, fila de revisão e bloqueio de publicação | ✅ Feito | Cursor |
+| F3-08 | Auditoria append-only e acesso a áudio/transcrição | ✅ Feito | Cursor |
+| F3-09 | Telas de auth, MFA, onboarding e status da empresa | ✅ Feito | Cursor |
+| F3-10 | Grupos `(candidato)`, `(empresa)`, `(admin)`, troca de visão, `usePermissao` | ✅ Feito | Cursor |
+| F3-11 | Telas do admin (fila, empresas, auditoria) | ✅ Feito | Cursor |
+| F3-12 | Convite de recrutador/avaliador (sem convite de empresa) | ✅ Feito | Cursor |
+| F3-13 | Suíte da matriz de permissões e bypass auditado | ✅ Feito | Cursor |
+| F3-14 | Adapter Uazapi de instâncias, token cifrado, `/empresas/{id}/whatsapp/*` | ✅ Feito | Cursor |
+| F3-15 | Etapa Conectar WhatsApp (QR, status, banner, visão admin) | ✅ Feito | Cursor |
+
 ## Documentos de referência
 
 - [Plano Técnico e de Produto](plano-sistema.md)
 - [Plano de Implementação Orquestrado](plano-implementacao.md)
 - [ADR 0001 — Contexto inicial](adr/0001-contexto-inicial.md)
 - [ADR 0002 — Multi-tenant (aceito)](adr/0002-multi-tenant.md)
+- [ADR 0003 — CNPJ e revisão de empresa (provisório)](adr/0003-verificacao-empresa.md)
 - [Diagrama ER Fase 2](diagrama-er-fase2.md)
 - [Proteção da branch main](protecao-branch-main.md)
 - [AGENTS.md](../AGENTS.md)
@@ -113,10 +135,15 @@ pnpm --filter @scv/workers dev
 # GET http://localhost:3001/health
 # Bull Board: http://localhost:3001/admin/queues
 
-# 6. Mobile
+# 6. API (auth em memória nos testes; com Postgres use AUTH_STORE=prisma)
+# Variáveis: JWT_SECRET, APP_ENCRYPTION_KEY, REVISAO_MANUAL_EMPRESA, INTERNAL_JOB_TOKEN, API_PUBLIC_URL
+# E-mail: sem SMTP_HOST o adapter só registra a mensagem; com Mailpit use SMTP_HOST=localhost e SMTP_PORT=1025
+pnpm --filter @scv/api dev
+
+# 7. Mobile
 pnpm --filter @scv/mobile dev
 
-# 7. POC 8.1 — latência de voz (modo mock, sem APIs)
+# 8. POC 8.1 — latência de voz (modo mock, sem APIs)
 pnpm --filter @scv/voice-agent gerar-fixture
 pnpm --filter @scv/voice-agent poc:mock
 ```

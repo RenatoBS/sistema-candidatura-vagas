@@ -1,6 +1,5 @@
 /**
- * Interfaces de provedores externos.
- * Implementações reais serão adicionadas nas fases 3–8.
+ * Interfaces e adapters de provedores externos.
  */
 
 export interface WhatsappProvider {
@@ -18,3 +17,16 @@ export interface LlmProvider {
 export interface OcrProvider {
   extractText(imageBuffer: Buffer): Promise<string>;
 }
+
+export { BrasilApiFonteCnpj, FonteCnpjControlavel } from './cnpj';
+export type { FonteCnpjProvider, ResultadoFonteCnpj } from './cnpj';
+export { cifrar, decifrar } from './criptografia';
+export { criarEmailProvider, EmailLogProvider, EmailSmtpProvider } from './email';
+export type { EmailProvider, MensagemEmail } from './email';
+export { FakeUazapiInstancia, UazapiInstanciaCliente } from './uazapi-instancia';
+export type {
+  ClienteInstanciaWhatsapp,
+  ConexaoInstancia,
+  InstanciaCriada,
+  StatusInstanciaProvedor,
+} from './uazapi-instancia';

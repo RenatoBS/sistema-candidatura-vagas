@@ -1,0 +1,8 @@
+export const REPOSITORIO = Symbol('REPOSITORIO');
+export const CONFIG = Symbol('CONFIG');
+export const EMAIL = Symbol('EMAIL');
+export const FONTE_CNPJ = Symbol('FONTE_CNPJ');
+export const FILA_CNPJ = Symbol('FILA_CNPJ');
+export const DNS = Symbol('DNS');
+export const CLIENTE_WHATSAPP = Symbol('CLIENTE_WHATSAPP');
+export const RELOGIO = Symbol('RELOGIO');

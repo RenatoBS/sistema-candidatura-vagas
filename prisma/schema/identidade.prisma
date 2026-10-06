@@ -12,14 +12,18 @@ model Usuario {
   criadoEm           DateTime       @default(now()) @db.Timestamptz
   atualizadoEm       DateTime       @updatedAt @db.Timestamptz
 
-  candidato         Candidato?
-  membrosEmpresa    MembroEmpresa[]
-  verificacoesFeitas VerificacaoEmpresa[] @relation("RevisorVerificacao")
-  auditorias        AuditoriaAcesso[]
-  notificacoes      Notificacao[]
-  preferenciasNotif PreferenciaNotificacao[]
-  dispositivosPush  DispositivoPush[]
-  historicoStatus   HistoricoStatus[]
+  candidato              Candidato?
+  membrosEmpresa         MembroEmpresa[]
+  verificacoesFeitas     VerificacaoEmpresa[] @relation("RevisorVerificacao")
+  auditorias             AuditoriaAcesso[]
+  notificacoes           Notificacao[]
+  preferenciasNotif      PreferenciaNotificacao[]
+  dispositivosPush       DispositivoPush[]
+  historicoStatus        HistoricoStatus[]
+  refreshTokens          RefreshToken[]
+  tokensUsoUnico         TokenUsoUnico[]
+  codigosRecuperacaoMfa  CodigoRecuperacaoMfa[]
+  convitesEnviados       ConviteMembro[]          @relation("ConvitesEnviados")
 
   @@map("usuarios")
 }
@@ -53,6 +57,8 @@ model Empresa {
   notificacoes       Notificacao[]
   preferenciasNotif  PreferenciaNotificacao[]
   auditorias         AuditoriaAcesso[]
+  convites           ConviteMembro[]
+  tokensUsoUnico     TokenUsoUnico[]
 
   @@index([statusVerificacao])
   @@map("empresas")

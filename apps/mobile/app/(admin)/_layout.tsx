@@ -1,5 +1,11 @@
 import { Stack } from 'expo-router';
 
+import { GuardGrupo } from '@/componentes/GuardGrupo';
+
 export default function AdminLayout() {
-  return <Stack />;
+  return (
+    <GuardGrupo grupo="admin">
+      <Stack />
+    </GuardGrupo>
+  );
 }
