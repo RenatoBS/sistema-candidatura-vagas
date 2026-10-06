@@ -84,6 +84,65 @@ describe('isolamento multi-tenant RLS (F2-10)', () => {
     await prisma.$disconnect();
   });
 
+  it('leitura pública vê só vaga PUBLICADA com prazo futuro', async () => {
+    const admin = createPrisma(MIGRATION_DATABASE_URL);
+    const futura = 'c0000001-0000-4000-8000-000000000099';
+    const rascunho = 'c0000002-0000-4000-8000-000000000099';
+    await admin.vaga.create({
+      data: {
+        id: futura,
+        empresaId: empresaBId,
+        titulo: 'Vaga pública de teste',
+        descricao: 'Descrição sem dados pessoais.',
+        senioridade: 'PLENO',
+        modelo: 'REMOTO',
+        status: 'PUBLICADA',
+        prazoInscricoes: new Date('2099-01-01T00:00:00.000Z'),
+      },
+    });
+    await admin.vaga.create({
+      data: {
+        id: rascunho,
+        empresaId: empresaBId,
+        titulo: 'Rascunho oculto',
+        descricao: 'Não entra na lista pública.',
+        senioridade: 'JUNIOR',
+        modelo: 'PRESENCIAL',
+        status: 'RASCUNHO',
+      },
+    });
+    await admin.$disconnect();
+
+    const prisma = createPrisma(RLS_DATABASE_URL);
+    await setSessionContext(prisma, { leituraPublica: true });
+    const vagas = await prisma.vaga.findMany();
+    assert.ok(vagas.some((vaga) => vaga.id === futura));
+    assert.equal(vagas.some((vaga) => vaga.id === rascunho), false);
+    assert.ok(vagas.every((vaga) => vaga.status === 'PUBLICADA'));
+    await prisma.$disconnect();
+  });
+
+  it('RLS bloqueia eventos de vaga de outra empresa', async () => {
+    const admin = createPrisma(MIGRATION_DATABASE_URL);
+    const vaga = await admin.vaga.findFirst({ where: { empresaId: empresaBId } });
+    assert.ok(vaga);
+    await admin.eventoVaga.create({
+      data: {
+        empresaId: empresaBId,
+        vagaId: vaga.id,
+        tipo: 'VagaPausada',
+        payload: { efeitos: ['EM_ESPERA'] },
+      },
+    });
+    await admin.$disconnect();
+
+    const prisma = createPrisma(RLS_DATABASE_URL);
+    await setSessionContext(prisma, { empresaId: empresaAId, isAdmin: false });
+    const eventos = await prisma.eventoVaga.findMany({ where: { empresaId: empresaBId } });
+    assert.equal(eventos.length, 0);
+    await prisma.$disconnect();
+  });
+
   it('RLS bloqueia candidaturas cruzadas entre empresas', async () => {
     const prisma = createPrisma(RLS_DATABASE_URL);
     await setSessionContext(prisma, { empresaId: empresaBId, isAdmin: false });

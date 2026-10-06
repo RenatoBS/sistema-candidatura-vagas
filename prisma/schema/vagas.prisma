@@ -43,6 +43,13 @@ enum OrigemPergunta {
   CATALOGO
 }
 
+enum StatusSugestao {
+  NAO_APLICA
+  PENDENTE
+  APROVADA
+  DESCARTADA
+}
+
 model Habilidade {
   id         String   @id @default(uuid()) @db.Uuid
   nome       String   @unique
@@ -77,6 +84,7 @@ model Vaga {
   statusAntesDaPausa     StatusVaga?
   fechadaEm              DateTime?       @db.Timestamptz
   motivoFechamento       String?
+  alertaPausaEm          DateTime?       @db.Timestamptz
   pesosRanking           Json            @default("{}")
   embedding              Unsupported("vector(1536)")?
   criadoEm               DateTime        @default(now()) @db.Timestamptz
@@ -87,6 +95,7 @@ model Vaga {
   processo        ProcessoSeletivo?
   candidaturas    Candidatura[]
   sugestoesMatch  SugestaoMatch[]
+  eventos         EventoVaga[]
 
   @@index([empresaId, status])
   @@index([status, prazoInscricoes])
@@ -138,6 +147,7 @@ model Etapa {
   perguntas          EtapaPergunta[]
   entrevistas        Entrevista[]
   candidaturasAtuais Candidatura[]    @relation("EtapaAtual")
+  sugestoes          Pergunta[]       @relation("SugestoesEtapa")
 
   @@unique([processoId, ordem])
   @@map("etapas")
@@ -149,12 +159,16 @@ model Pergunta {
   enunciado            String         @db.Text
   rubrica              Json           @default("{}")
   origem               OrigemPergunta @default(EMPRESA)
+  statusSugestao       StatusSugestao @default(NAO_APLICA)
+  versaoPrompt         String?
+  etapaAlvoId          String?        @db.Uuid
   tempoLimiteSegundos  Int?
   criadoEm             DateTime       @default(now()) @db.Timestamptz
   atualizadoEm         DateTime       @updatedAt @db.Timestamptz
 
-  empresa Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  etapas  EtapaPergunta[]
+  empresa   Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  etapaAlvo Etapa?          @relation("SugestoesEtapa", fields: [etapaAlvoId], references: [id], onDelete: SetNull)
+  etapas    EtapaPergunta[]
 
   @@index([empresaId])
   @@map("perguntas")
@@ -176,4 +190,20 @@ model EtapaPergunta {
   @@unique([etapaId, ordem])
   @@unique([etapaId, perguntaId])
   @@map("etapas_perguntas")
+}
+
+model EventoVaga {
+  id          String    @id @default(uuid()) @db.Uuid
+  empresaId   String    @db.Uuid
+  vagaId      String    @db.Uuid
+  tipo        String
+  payload     Json      @default("{}")
+  criadoEm    DateTime  @default(now()) @db.Timestamptz
+  consumidoEm DateTime? @db.Timestamptz
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  vaga    Vaga    @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+
+  @@index([empresaId, consumidoEm])
+  @@map("eventos_vaga")
 }

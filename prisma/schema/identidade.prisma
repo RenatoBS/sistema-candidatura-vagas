@@ -60,6 +60,7 @@ model Empresa {
   auditorias         AuditoriaAcesso[]
   convites           ConviteMembro[]
   tokensUsoUnico     TokenUsoUnico[]
+  eventosVaga        EventoVaga[]
 
   @@index([statusVerificacao])
   @@map("empresas")
