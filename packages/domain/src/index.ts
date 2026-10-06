@@ -3,7 +3,7 @@
  * Auth, papéis, verificação de empresa e CNPJ local entram na Fase 3.
  */
 
-export const DOMAIN_PACKAGE_VERSION = '0.3.0';
+export const DOMAIN_PACKAGE_VERSION = '0.4.0';
 
 export {
   cnpjDigitosValidos,
@@ -102,3 +102,27 @@ export {
   type ResultadoChecagem,
   type StatusEmpresa,
 } from './verificacao-empresa';
+export {
+  aceitaInscricoes,
+  deveAlertarPausaLonga,
+  EFEITOS_EVENTO_VAGA,
+  formatarInstanteBrasilia,
+  FUSO_EXIBICAO_VAGA,
+  interpretarPrazo,
+  NUMERO_PERGUNTAS_PADRAO,
+  OFFSET_BRASILIA,
+  PAUSA_MAX_DIAS_PADRAO,
+  POLITICA_RETRY_PADRAO,
+  processoPublicavel,
+  TEMPO_PADRAO_PERGUNTA_SEGUNDOS,
+  tempoLimiteEfetivo,
+  transicionarVaga,
+  visivelNaListaPublica,
+  type ComandoVaga,
+  type ErroTransicaoVaga,
+  type EstadoVaga,
+  type PoliticaRetry,
+  type ResultadoTransicaoVaga,
+  type StatusVaga,
+  type TipoEventoVaga,
+} from './vaga';

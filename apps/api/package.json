@@ -25,6 +25,7 @@
     "@prisma/client": "^6.5.0",
     "@scv/contracts": "workspace:*",
     "@scv/domain": "workspace:*",
+    "@scv/llm": "workspace:*",
     "@scv/providers": "workspace:*",
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.44.0",

@@ -322,6 +322,8 @@ CC = Claude Code, CX = Codex, CU = Cursor, RS = Renato. A contagem é de tarefas
 
 **Riscos:** confusão entre fuso e UTC (mitigação: testes com datas fixas em America/Sao_Paulo); sugestões de IA fracas (mitigação: aprovação humana obrigatória).
 
+Decisões provisórias de Q4 e Q11–Q14: [ADR 0004](adr/0004-vagas-llm.md), revisáveis pelo Renato. O `LlmProvider` ficou em `packages/llm` (`@scv/llm`) para a Fase 5 reutilizar.
+
 ## 7.7 Fase 5 — Perfil do candidato com OCR local Tesseract (Estimativa: M)
 
 **Objetivo:** perfil completo do candidato, habilidades, campo de LinkedIn e currículo com extração nativa + OCR local (Tesseract), sem OCR em nuvem.

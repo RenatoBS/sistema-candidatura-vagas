@@ -1,8 +1,38 @@
 import type { PapelEmpresa, PapelGlobal, StatusEmpresa, Visao } from '@scv/domain';
 
+import type {
+  EtapaPerguntaRegistro,
+  EtapaRegistro,
+  EventoVagaRegistro,
+  FiltroVagaPublica,
+  PerguntaRegistro,
+  ProcessoRegistro,
+  VagaHabilidadeRegistro,
+  VagaRegistro,
+} from './vagas-tipos';
+
+export type {
+  EtapaPerguntaRegistro,
+  EtapaRegistro,
+  EventoVagaRegistro,
+  FiltroVagaPublica,
+  OrigemPergunta,
+  PerguntaRegistro,
+  ProcessoRegistro,
+  SenioridadeVaga,
+  StatusSugestao,
+  TipoContrato,
+  TipoEtapa,
+  VagaHabilidadeRegistro,
+  VagaRegistro,
+} from './vagas-tipos';
+
 export interface ContextoTenant {
   empresaId?: string;
   isAdmin?: boolean;
+  /** Job interno de prazo, sem usuário. Não substitui o bypass de admin. */
+  sistema?: boolean;
+  leituraPublica?: boolean;
 }
 
 export type TipoToken = 'CONFIRMACAO_EMAIL' | 'RECUPERACAO_SENHA' | 'VERIFICACAO_EMAIL_EMPRESA';
@@ -299,4 +329,37 @@ export interface Repositorio {
   pausarVagasPublicadas(empresaId: string, quando: Date, ctx: ContextoTenant): Promise<number>;
   buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null>;
   guardarResposta(resposta: RespostaSensivel): Promise<void>;
+  garantirHabilidade(nome: string, categoria?: string): Promise<HabilidadeCatalogo>;
+  buscarHabilidade(id: string): Promise<HabilidadeCatalogo | null>;
+  criarVaga(dados: VagaRegistro, ctx: ContextoTenant): Promise<VagaRegistro>;
+  atualizarVaga(id: string, patch: Partial<VagaRegistro>, ctx: ContextoTenant): Promise<VagaRegistro | null>;
+  buscarVaga(id: string, ctx: ContextoTenant): Promise<VagaRegistro | null>;
+  listarVagasEmpresa(empresaId: string, ctx: ContextoTenant): Promise<VagaRegistro[]>;
+  listarVagasPublicas(filtro: FiltroVagaPublica): Promise<VagaRegistro[]>;
+  substituirHabilidades(
+    vagaId: string,
+    itens: VagaHabilidadeRegistro[],
+    ctx: ContextoTenant,
+  ): Promise<VagaHabilidadeRegistro[]>;
+  listarHabilidadesVaga(vagaId: string, ctx: ContextoTenant): Promise<VagaHabilidadeRegistro[]>;
+  salvarProcesso(dados: ProcessoRegistro, ctx: ContextoTenant): Promise<ProcessoRegistro>;
+  buscarProcessoPorVaga(vagaId: string, ctx: ContextoTenant): Promise<ProcessoRegistro | null>;
+  buscarProcessoPorId(id: string, ctx: ContextoTenant): Promise<ProcessoRegistro | null>;
+  salvarEtapa(dados: EtapaRegistro, ctx: ContextoTenant): Promise<EtapaRegistro>;
+  listarEtapas(processoId: string, ctx: ContextoTenant): Promise<EtapaRegistro[]>;
+  buscarEtapa(id: string, ctx: ContextoTenant): Promise<EtapaRegistro | null>;
+  removerEtapa(id: string, ctx: ContextoTenant): Promise<void>;
+  criarPergunta(dados: PerguntaRegistro, ctx: ContextoTenant): Promise<PerguntaRegistro>;
+  atualizarPergunta(id: string, patch: Partial<PerguntaRegistro>, ctx: ContextoTenant): Promise<PerguntaRegistro | null>;
+  buscarPergunta(id: string, ctx: ContextoTenant): Promise<PerguntaRegistro | null>;
+  listarPerguntasEmpresa(empresaId: string, ctx: ContextoTenant): Promise<PerguntaRegistro[]>;
+  listarSugestoesEtapa(etapaId: string, ctx: ContextoTenant): Promise<PerguntaRegistro[]>;
+  vincularPergunta(dados: EtapaPerguntaRegistro, ctx: ContextoTenant): Promise<EtapaPerguntaRegistro>;
+  listarVinculosEtapa(etapaId: string, ctx: ContextoTenant): Promise<EtapaPerguntaRegistro[]>;
+  registrarEventoVaga(evento: EventoVagaRegistro, ctx: ContextoTenant): Promise<EventoVagaRegistro>;
+  buscarEventoVaga(id: string, ctx: ContextoTenant): Promise<EventoVagaRegistro | null>;
+  marcarEventoConsumido(id: string, quando: Date, ctx: ContextoTenant): Promise<void>;
+  listarEventosVaga(vagaId: string, ctx: ContextoTenant): Promise<EventoVagaRegistro[]>;
+  listarPublicadasVencidas(agora: Date, ctx: ContextoTenant): Promise<VagaRegistro[]>;
+  listarPausasParaAlerta(limite: Date, ctx: ContextoTenant): Promise<VagaRegistro[]>;
 }

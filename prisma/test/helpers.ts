@@ -38,14 +38,18 @@ export function createPrisma(databaseUrl: string): PrismaClient {
 
 export async function setSessionContext(
   prisma: PrismaClient,
-  context: { empresaId?: string; isAdmin?: boolean },
+  context: { empresaId?: string; isAdmin?: boolean; leituraPublica?: boolean; sistema?: boolean },
 ): Promise<void> {
   const empresaId = context.empresaId ?? '';
   const isAdmin = context.isAdmin ? 'true' : 'false';
+  const leitura = context.leituraPublica ? 'true' : 'false';
+  const sistema = context.sistema ? 'true' : 'false';
   await prisma.$executeRaw`
     SELECT
       set_config('app.empresa_id', ${empresaId}, false),
-      set_config('app.is_admin', ${isAdmin}, false)
+      set_config('app.is_admin', ${isAdmin}, false),
+      set_config('app.leitura_publica', ${leitura}, false),
+      set_config('app.is_system', ${sistema}, false)
   `;
 }
 

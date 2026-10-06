@@ -15,6 +15,7 @@ export interface ConfiguracaoApp {
   refreshAdminTtlSegundos: number;
   reauthTtlSegundos: number;
   bcryptRounds: number;
+  pausaMaxDias: number;
 }
 
 export function lerConfiguracao(env: NodeJS.ProcessEnv = process.env): ConfiguracaoApp {
@@ -49,5 +50,15 @@ export function lerConfiguracao(env: NodeJS.ProcessEnv = process.env): Configura
     refreshAdminTtlSegundos: 8 * 60 * 60,
     reauthTtlSegundos: 5 * 60,
     bcryptRounds: env.NODE_ENV === 'test' ? 4 : 10,
+    pausaMaxDias: inteiroPositivo(env.PAUSA_MAX_DIAS, 30),
   };
+}
+
+function inteiroPositivo(valor: string | undefined, padrao: number): number {
+  if (!valor) return padrao;
+  const numero = Number(valor);
+  if (!Number.isInteger(numero) || numero < 1 || numero > 365) {
+    throw new Error('PAUSA_MAX_DIAS deve ser um inteiro entre 1 e 365');
+  }
+  return numero;
 }

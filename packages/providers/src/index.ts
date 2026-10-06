@@ -10,9 +10,7 @@ export interface SttProvider {
   transcribe(audioUrl: string): Promise<{ text: string; confidence: number }>;
 }
 
-export interface LlmProvider {
-  complete(prompt: string): Promise<string>;
-}
+export type { LlmProvider, PedidoLlm, RespostaLlm } from '@scv/llm';
 
 export interface OcrProvider {
   extractText(imageBuffer: Buffer): Promise<string>;
@@ -24,6 +22,7 @@ export { AntivirusClamAv, AntivirusMock, criarAntivirus } from './antivirus';
 export type { Antivirus, ResultadoAntivirus } from './antivirus';
 export { ExtratorEstruturadoMock } from './extrator-estruturado';
 export type { ExtratorEstruturadoCurriculo } from './extrator-estruturado';
+export { criarExtratorEstruturado, ExtratorEstruturadoLlm } from './extrator-estruturado-llm';
 export { executarJobCurriculo } from './job-curriculo';
 export { OcrMock, TesseractOcr } from './ocr';
 export { criarDepsOcrMock, criarDepsOcrReal, processarArquivoCurriculo } from './processar-curriculo';

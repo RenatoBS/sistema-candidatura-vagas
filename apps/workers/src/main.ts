@@ -6,6 +6,7 @@ import express from 'express';
 import pino from 'pino';
 
 import { FILA_CV, processarJobCurriculo } from './processar-cv';
+import { aplicarEventoVaga, encerrarInscricoesVaga, reconciliarVagas, sugerirPerguntasVaga } from './vagas-jobs';
 import { executarVerificacaoCnpj } from './verificar-cnpj';
 
 const logger = pino({ level: process.env.LOG_LEVEL ?? 'info' });
@@ -18,6 +19,11 @@ const redisConnection = {
 const exampleQueue = new Queue('exemplo', { connection: redisConnection });
 const filaCnpj = new Queue('verificar-cnpj', { connection: redisConnection });
 const filaCv = new Queue(FILA_CV, { connection: redisConnection });
+const filaPrazos = new Queue('vagas-prazos', { connection: redisConnection });
+const filaSugestoes = new Queue('ia-perguntas', { connection: redisConnection });
+const filaEfeitos = new Queue('vagas-efeitos', { connection: redisConnection });
+
+void filaPrazos.add('reconciliar', {}, { repeat: { every: 15 * 60 * 1000 }, jobId: 'reconciliar-vagas' });
 
 const worker = new Worker(
   'exemplo',
@@ -59,11 +65,45 @@ workerCnpj.on('failed', (job, err) => {
   logger.error({ jobId: job?.id, err }, 'Verificação de CNPJ falhou');
 });
 
+const workerPrazos = new Worker(
+  'vagas-prazos',
+  async (job: { name: string; data: { vagaId?: string } }) => {
+    if (job.name === 'reconciliar' || !job.data.vagaId) return reconciliarVagas();
+    return encerrarInscricoesVaga(job.data.vagaId);
+  },
+  { connection: redisConnection },
+);
+
+const workerSugestoes = new Worker(
+  'ia-perguntas',
+  async (job: { data: { etapaId: string } }) => sugerirPerguntasVaga(job.data.etapaId),
+  { connection: redisConnection },
+);
+
+const workerEfeitos = new Worker(
+  'vagas-efeitos',
+  async (job: { data: { eventoId: string } }) => aplicarEventoVaga(job.data.eventoId),
+  { connection: redisConnection },
+);
+
+for (const workerFila of [workerPrazos, workerSugestoes, workerEfeitos]) {
+  workerFila.on('failed', (job, err) => {
+    logger.error({ jobId: job?.id, err }, 'Job de vaga falhou');
+  });
+}
+
 const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath('/admin/queues');
 
 createBullBoard({
-  queues: [new BullMQAdapter(exampleQueue), new BullMQAdapter(filaCnpj), new BullMQAdapter(filaCv)],
+  queues: [
+    new BullMQAdapter(exampleQueue),
+    new BullMQAdapter(filaCnpj),
+    new BullMQAdapter(filaCv),
+    new BullMQAdapter(filaPrazos),
+    new BullMQAdapter(filaSugestoes),
+    new BullMQAdapter(filaEfeitos),
+  ],
   serverAdapter,
 });
 
@@ -85,8 +125,14 @@ process.on('SIGTERM', async () => {
   await worker.close();
   await workerCnpj.close();
   await workerCv.close();
+  await workerPrazos.close();
+  await workerSugestoes.close();
+  await workerEfeitos.close();
   await exampleQueue.close();
   await filaCnpj.close();
   await filaCv.close();
+  await filaPrazos.close();
+  await filaSugestoes.close();
+  await filaEfeitos.close();
   process.exit(0);
 });

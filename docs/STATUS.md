@@ -27,8 +27,8 @@
 | 1 | Setup do repo e ambientes | ✅ Concluída |
 | 2 | Modelo de dados | ✅ Concluída |
 | 3 | Auth e papéis | 🟢 Em revisão (ADR 0003 provisório) |
-| 4 | CRUD de vagas | ⬜ Pendente |
-| 5 | Perfil do candidato com OCR | 🟢 Implementada nesta branch |
+| 4 | CRUD de vagas | 🟢 Implementada (ADR 0004 provisório) |
+| 5 | Perfil do candidato com OCR | 🟢 Implementada |
 | 6 | Candidatura e notificações | ⬜ Pendente |
 | 7 | Entrevista WhatsApp (Uazapi) | ⬜ Pendente |
 | 8 | Entrevista IA por voz | ⬜ Pendente |
@@ -100,6 +100,24 @@ A POC 8.1 pode começar após a Fase 1 (conforme plano §7.1) e roda em paralelo
 | F3-14 | Adapter Uazapi de instâncias, token cifrado, `/empresas/{id}/whatsapp/*` | ✅ Feito | Cursor |
 | F3-15 | Etapa Conectar WhatsApp (QR, status, banner, visão admin) | ✅ Feito | Cursor |
 
+## Checklist Fase 4
+
+| ID | Tarefa | Status | Responsável |
+|----|--------|:------:|-------------|
+| F4-01 | Contrato OpenAPI de vagas, processo, perguntas e ciclo de vida | ✅ Feito | Cursor |
+| F4-02 | LLM e padrões provisórios de Q11–Q14 | 🟡 Provisório (ADR 0004, revisável pelo Renato) | Orquestrador |
+| F4-03 | CRUD de vaga + habilidades requeridas | ✅ Feito | Cursor |
+| F4-04 | Processo seletivo, tempos e política de retry | ✅ Feito | Cursor |
+| F4-05 | Perguntas exigidas e banco de perguntas | ✅ Feito | Cursor |
+| F4-06 | `LlmProvider` em `@scv/llm`, prompts versionados e sugestão | ✅ Feito | Cursor |
+| F4-07 | Máquina de estados (publicar, prorrogar, pausar, retomar, fechar) | ✅ Feito | Cursor |
+| F4-08 | Encerramento automático (job, checagem na API, reconciliação) | ✅ Feito | Cursor |
+| F4-09 | Eventos `VagaPausada` / `VagaRetomada` / `VagaFechada` | ✅ Feito | Cursor |
+| F4-10 | Lista pública só com `PUBLICADA` e prazo futuro | ✅ Feito | Cursor |
+| F4-11 | Telas da empresa | ✅ Feito | Cursor |
+| F4-12 | Telas do candidato com prazo em Brasília | ✅ Feito | Cursor |
+| F4-13 | Testes do ciclo de vida | ✅ Feito | Cursor |
+
 ## Checklist Fase 5
 
 | ID | Tarefa | Status | Responsável |
@@ -108,7 +126,7 @@ A POC 8.1 pode começar após a Fase 1 (conforme plano §7.1) e roda em paralelo
 | F5-02 | Upload pré-assinado, tipo/tamanho e antivírus (ClamAV opcional, mock nos testes) | ✅ Feito | Cursor |
 | F5-03 | Extração nativa de PDF com texto e DOCX | ✅ Feito | Cursor |
 | F5-04 | OCR Tesseract local no worker dedicado (`por+eng`, só páginas sem texto) | ✅ Feito | Cursor |
-| F5-05 | Extração estruturada: interface + mock determinístico (LLM fica para `@scv/llm`) | ✅ Feito | Cursor |
+| F5-05 | Extração estruturada: mock por padrão e `ExtratorEstruturadoLlm` via `@scv/llm` | ✅ Feito | Cursor |
 | F5-06 | Consentimentos (termos, WhatsApp, áudio, gravação, IA) na API e nas telas | ✅ Feito | Cursor |
 | F5-07 | Telas do candidato: perfil, upload, revisão, habilidades, LinkedIn, privacidade | ✅ Feito | Cursor |
 | F5-08 | Fixtures de CV e teste de qualidade do OCR (job `ocr-tesseract` na CI) | ✅ Feito | Cursor |
@@ -123,6 +141,7 @@ Detalhes de execução, profiles Docker e o que ficou de fora: [fase-5-perfil-oc
 - [ADR 0001 — Contexto inicial](adr/0001-contexto-inicial.md)
 - [ADR 0002 — Multi-tenant (aceito)](adr/0002-multi-tenant.md)
 - [ADR 0003 — CNPJ e revisão de empresa (provisório)](adr/0003-verificacao-empresa.md)
+- [ADR 0004 — LLM e regras de vaga (provisório)](adr/0004-vagas-llm.md)
 - [Diagrama ER Fase 2](diagrama-er-fase2.md)
 - [Proteção da branch main](protecao-branch-main.md)
 - [AGENTS.md](../AGENTS.md)

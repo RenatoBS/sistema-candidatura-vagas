@@ -8,10 +8,19 @@ interface CampoProps {
   onChangeText: (valor: string) => void;
   secureTextEntry?: boolean;
   autoCapitalize?: 'none' | 'sentences';
+  placeholder?: string;
   multiline?: boolean;
 }
 
-export function Campo({ label, value, onChangeText, secureTextEntry, autoCapitalize = 'sentences', multiline }: CampoProps) {
+export function Campo({
+  label,
+  value,
+  onChangeText,
+  secureTextEntry,
+  autoCapitalize = 'sentences',
+  placeholder,
+  multiline,
+}: CampoProps) {
   return (
     <>
       <Text style={styles.label}>{label}</Text>
@@ -22,6 +31,7 @@ export function Campo({ label, value, onChangeText, secureTextEntry, autoCapital
         secureTextEntry={secureTextEntry}
         autoCapitalize={autoCapitalize}
         autoCorrect={false}
+        placeholder={placeholder}
         multiline={multiline}
       />
     </>

@@ -2,7 +2,7 @@
   "home": {
     "title": "Sistema de Candidatura a Vagas",
     "subtitle": "Recrutamento com IA — candidato, empresa e admin em um único app.",
-    "phase": "Fase 3: autenticação, papéis e WhatsApp da empresa.",
+    "phase": "Vagas com prazo e perfil do candidato.",
     "entrar": "Entrar",
     "cadastrar": "Criar conta"
   },
@@ -88,7 +88,8 @@
   },
   "candidato": {
     "titulo": "Visão do candidato",
-    "texto": "Seu perfil, currículo e privacidade ficam nesta visão. O score não aparece aqui.",
+    "texto": "Seu perfil, currículo, vagas e privacidade ficam nesta visão. O score não aparece aqui.",
+    "vagas": "Vagas abertas",
     "perfil": "Perfil",
     "curriculo": "Currículo",
     "habilidades": "Habilidades",
@@ -124,5 +125,37 @@
       "AVALIACAO_IA": "Avaliação por IA com revisão humana",
       "VISIBILIDADE_MATCH": "Visibilidade para match"
     }
+  },
+  "vaga": {
+    "nova": "Nova vaga",
+    "titulo": "Título",
+    "descricao": "Descrição",
+    "senioridade": "Senioridade",
+    "modelo": "Modelo",
+    "localidade": "Localidade",
+    "prazo": "Prazo (horário de Brasília)",
+    "prazoAjuda": "Ex.: 2026-11-20T23:59",
+    "habilidade": "Habilidade",
+    "nivel": "Nível mínimo (1 a 5)",
+    "peso": "Peso",
+    "obrigatoria": "Obrigatória",
+    "salvar": "Salvar vaga",
+    "processo": "Definir processo (5 perguntas)",
+    "pergunta": "Pergunta exigida",
+    "adicionar": "Adicionar pergunta",
+    "sugerir": "Sugerir perguntas com IA",
+    "aceitar": "Aceitar",
+    "descartar": "Descartar",
+    "publicar": "Publicar",
+    "prorrogar": "Prorrogar prazo",
+    "pausar": "Pausar",
+    "retomar": "Retomar",
+    "fechar": "Fechar vaga",
+    "motivo": "Motivo do fechamento",
+    "duplicar": "Duplicar vaga",
+    "vazia": "Nenhuma vaga por aqui.",
+    "status": "Status",
+    "ate": "Inscrições até",
+    "detalhe": "Detalhe da vaga"
   }
 }

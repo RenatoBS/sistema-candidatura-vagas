@@ -23,15 +23,6 @@ export interface HealthResponse {
 }
 
 export {
-  aceitarConviteSchema,
-  cadastroEmpresaSchema,
-  codigoVerificacaoSchema,
-  conviteMembroSchema,
-  motivoOpcionalSchema,
-  motivoSchema,
-} from './empresas';
-export { openApiFase3, type CaminhoApi } from './openapi';
-export {
   alterarVisaoSchema,
   cadastroAuthSchema,
   confirmarEmailSchema,
@@ -46,3 +37,27 @@ export {
   senhaSchema,
   visaoSchema,
 } from './auth';
+export {
+  aceitarConviteSchema,
+  cadastroEmpresaSchema,
+  codigoVerificacaoSchema,
+  conviteMembroSchema,
+  motivoOpcionalSchema,
+  motivoSchema,
+} from './empresas';
+export { openApi, openApiFase3, openApiFase4, type CaminhoApi } from './openapi';
+export {
+  atualizarVagaSchema,
+  criarPerguntaSchema,
+  criarVagaSchema,
+  fecharVagaSchema,
+  prorrogarVagaSchema,
+  revisarSugestaoSchema,
+  salvarProcessoSchema,
+  vincularPerguntaSchema,
+  type AtualizarVagaInput,
+  type CriarPerguntaInput,
+  type CriarVagaInput,
+  type SalvarProcessoInput,
+  type VincularPerguntaInput,
+} from './vagas';
