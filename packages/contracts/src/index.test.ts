@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { API_VERSION } from './index.js';
+import { API_VERSION } from './index';
 
 describe('contracts', () => {
   it('define a versão da API', () => {
