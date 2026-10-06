@@ -823,7 +823,7 @@ stateDiagram-v2
 - **Encerramento automático da entrada**: job atrasado em `vagas-prazos` agendado para `prazoInscricoes` (reagendado na prorrogação) **e** checagem na API em toda candidatura ou aceite de convite, como defesa caso o job atrase. Uma varredura periódica encontra vagas vencidas sem job.
 - Ao expirar: `status = INSCRICOES_ENCERRADAS` e `inscricoesEncerradasEm` = agora (UTC); a vaga sai da lista e do match; convites ainda não aceitos expiram; **os inscritos seguem as fases**.
 - **Prorrogação** pela empresa enquanto a vaga está `PUBLICADA` (o novo prazo deve ser maior que o atual).
-- Em aberto (§18): reabrir inscrições após expirar e congelar o prazo durante a pausa (**padrão: não congela**).
+- Padrão provisório (ADR 0004, revisável): reabrir inscrições só por prorrogação com prazo futuro; o prazo **não** congela na pausa.
 
 ## 7.3 Pausar e retomar (suspensão temporária)
 
@@ -834,7 +834,7 @@ stateDiagram-v2
 - Nenhuma entrevista nova começa: o app bloqueia o início da 2ª fase com aviso de vaga pausada.
 - Retomar: as candidaturas voltam ao `statusAntesDaEspera`, os retries são reagendados com o tempo restante e a vaga volta a `PUBLICADA` (ou a `INSCRICOES_ENCERRADAS`, se o prazo venceu durante a pausa).
 - Candidatos ativos recebem notificações de pausa e de retomada; nenhuma notificação de "candidato novo" ou "match forte" é gerada para vaga pausada.
-- Em aberto: duração máxima de pausa.
+- Padrão provisório (ADR 0004): pausa máxima de 30 dias (`PAUSA_MAX_DIAS`); ao estourar, alerta a empresa e a vaga continua pausada.
 
 ## 7.4 Fechar (encerramento definitivo)
 
@@ -843,7 +843,7 @@ stateDiagram-v2
 - **Entrevistas em curso terminam a sessão atual e depois encerram**: na voz, a sessão vai até o fim; no WhatsApp, o bot recebe a resposta pendente, agradece e encerra.
 - Candidaturas ativas viram `ENCERRADA_VAGA_FECHADA`, que **não é reprovação nem abandono**.
 - Candidatos são notificados; os **dados são preservados** (respostas, avaliações, scores), conforme a retenção.
-- Em aberto: reabertura de vaga fechada.
+- Padrão provisório (ADR 0004): vaga fechada não reabre; a saída é duplicar a vaga.
 
 ```mermaid
 sequenceDiagram
