@@ -34,6 +34,8 @@ export default function EmpresaHome() {
       <Link href="/empresa/verificacao">{t('empresa.status')}</Link>
       <Link href="/empresa/whatsapp">{t('empresa.whatsapp')}</Link>
       <Link href="/empresa/vagas">{t('empresa.vagas')}</Link>
+      <Link href="/empresa/notificacoes">Central de notificações</Link>
+      <Link href="/empresa/notificacoes-preferencias">Preferências de notificações</Link>
       {podeMembros ? <Link href="/empresa/membros">{t('empresa.membros')}</Link> : null}
       <TrocaVisao />
     </View>
