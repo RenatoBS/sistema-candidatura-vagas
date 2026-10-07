@@ -92,3 +92,13 @@ export function podeAcessarGrupo(
 export function chaveConsulta(visao: Visao | null, empresaId: string | null, partes: string[]): unknown[] {
   return [visao ?? 'anon', empresaId ?? 'sem-empresa', ...partes];
 }
+
+/** Destino após login: cada usuário cai direto na sua área; só vai ao seletor se não houver visão válida. */
+export function rotaInicial(sessao: SessaoApp | null): '/login' | '/onboarding' | '/candidato' | '/empresa' | '/admin' | '/mfa' {
+  if (!sessao) return '/login';
+  if (podeAcessarGrupo(sessao, 'admin').ok) return '/admin';
+  if (podeAcessarGrupo(sessao, 'empresa').ok) return '/empresa';
+  if (podeAcessarGrupo(sessao, 'candidato').ok) return '/candidato';
+  if (sessao.visao === 'ADMIN' && sessao.papeisGlobais.includes('ADMIN_PLATAFORMA')) return '/mfa';
+  return '/onboarding';
+}

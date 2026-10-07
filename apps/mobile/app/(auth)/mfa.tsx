@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/api/cliente';
+import { rotaInicial } from '@/auth/acesso';
 import { useAuth } from '@/auth/AuthContext';
 import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
@@ -12,7 +13,7 @@ import { Tela } from '@/design-system/Tela';
 
 export default function MfaScreen() {
   const { t } = useTranslation();
-  const { accessToken, entrar, sessao } = useAuth();
+  const { accessToken, entrar } = useAuth();
   const router = useRouter();
   const [uri, setUri] = useState('');
   const [codigo, setCodigo] = useState('');
@@ -38,9 +39,8 @@ export default function MfaScreen() {
       { method: 'POST', body: JSON.stringify({ codigo }) },
       accessToken,
     );
-    await entrar(tokens);
-    if (sessao?.papeisGlobais.includes('ADMIN_PLATAFORMA')) router.replace('/admin');
-    else router.replace('/onboarding');
+    const nova = await entrar(tokens);
+    router.replace(rotaInicial(nova));
   }
 
   return (

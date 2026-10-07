@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { chaveConsulta, podeAcessarGrupo, podeAcao, type SessaoApp } from './acesso';
+import { chaveConsulta, rotaInicial, podeAcessarGrupo, podeAcao, type SessaoApp } from './acesso';
 
 function sessao(parcial: Partial<SessaoApp>): SessaoApp {
   return {
@@ -49,5 +49,13 @@ describe('navegação por papel', () => {
     assert.deepEqual(chaveConsulta('EMPRESA', 'e1', ['whatsapp']), ['EMPRESA', 'e1', 'whatsapp']);
     assert.notDeepEqual(chaveConsulta('EMPRESA', 'e1', ['whatsapp']), chaveConsulta('EMPRESA', 'e2', ['whatsapp']));
     assert.notDeepEqual(chaveConsulta('ADMIN', 'e1', ['whatsapp']), chaveConsulta('EMPRESA', 'e1', ['whatsapp']));
+  });
+});
+describe('rotaInicial', () => {
+  it('candidato puro vai direto para /candidato', () => {
+    assert.equal(rotaInicial(sessao({ ehCandidato: true, visao: 'CANDIDATO', empresas: [] })), '/candidato');
+  });
+  it('sem sessão vai para /login', () => {
+    assert.equal(rotaInicial(null), '/login');
   });
 });

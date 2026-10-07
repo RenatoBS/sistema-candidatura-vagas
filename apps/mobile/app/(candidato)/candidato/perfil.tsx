@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text } from 'react-native';
 
@@ -30,6 +30,10 @@ export default function PerfilCandidato() {
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [mensagem, setMensagem] = useState('');
   const [erro, setErro] = useState(false);
+
+  useEffect(() => {
+    void carregar().catch(() => undefined);
+  }, [accessToken]);
 
   async function carregar() {
     const perfil = await api<PerfilResposta>('/candidatos/me', {}, accessToken);

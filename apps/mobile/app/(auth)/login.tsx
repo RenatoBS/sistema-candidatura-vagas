@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/api/cliente';
+import { rotaInicial } from '@/auth/acesso';
 import { useAuth } from '@/auth/AuthContext';
 import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
@@ -24,8 +25,8 @@ export default function LoginScreen() {
         method: 'POST',
         body: JSON.stringify({ email, senha }),
       });
-      await entrar(tokens);
-      router.replace(tokens.mfaObrigatorio ? '/mfa' : '/onboarding');
+      const sessao = await entrar(tokens);
+      router.replace(tokens.mfaObrigatorio ? '/mfa' : rotaInicial(sessao));
     } catch {
       setErro(t('comum.erro'));
     }

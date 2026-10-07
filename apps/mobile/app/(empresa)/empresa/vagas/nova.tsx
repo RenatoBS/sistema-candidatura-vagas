@@ -37,7 +37,7 @@ export default function NovaVagaScreen() {
             senioridade,
             modelo,
             localidade: localidade || null,
-            prazoInscricoes: prazo || null,
+            prazoInscricoes: normalizarPrazo(prazo),
             habilidades: habilidade ? [{ nome: habilidade, nivelMinimo: 3, peso: 1, obrigatoria: true }] : [],
           }),
         },
@@ -62,4 +62,14 @@ export default function NovaVagaScreen() {
       <Campo label={t('vaga.habilidade')} value={habilidade} onChangeText={setHabilidade} />
     </Tela>
   );
+}
+
+/** Aceita também o formato brasileiro (dd/mm/aaaa [hh:mm]) e converte para AAAA-MM-DDTHH:mm. */
+export function normalizarPrazo(valor: string): string | null {
+  const texto = valor.trim();
+  if (!texto) return null;
+  const br = /^(\d{2})\/(\d{2})\/(\d{4})(?:[ T](\d{2}):(\d{2}))?$/.exec(texto);
+  if (!br) return texto;
+  const [, dia, mes, ano, hora = '23', minuto = '59'] = br;
+  return `${ano}-${mes}-${dia}T${hora}:${minuto}`;
 }

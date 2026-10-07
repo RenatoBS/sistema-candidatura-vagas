@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/api/cliente';
@@ -20,6 +20,10 @@ export default function PrivacidadeCandidato() {
   const [visivel, setVisivel] = useState(true);
   const [mensagem, setMensagem] = useState('');
   const [erro, setErro] = useState(false);
+
+  useEffect(() => {
+    void carregar().catch(() => undefined);
+  }, [accessToken]);
 
   async function carregar() {
     const [perfil, lista] = await Promise.all([

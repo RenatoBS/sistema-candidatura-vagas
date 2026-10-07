@@ -184,7 +184,7 @@
     "modelo": "Modelo",
     "localidade": "Localidade",
     "prazo": "Prazo (horário de Brasília)",
-    "prazoAjuda": "Ex.: 2026-11-20T23:59",
+    "prazoAjuda": "Ex.: 20/11/2026 23:59",
     "habilidade": "Habilidade",
     "nivel": "Nível mínimo (1 a 5)",
     "peso": "Peso",
