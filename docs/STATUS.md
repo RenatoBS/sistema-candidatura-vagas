@@ -272,7 +272,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 docker compose -f infra/docker-compose.yml up -d postgres
 
 # 3. Banco — migrações e seeds
-export DATABASE_URL=postgresql://scv:scv_dev_password@localhost:5432/scv?schema=public
+export DATABASE_URL="$MIGRATION_DATABASE_URL"
 pnpm --filter @scv/prisma db:generate
 pnpm --filter @scv/prisma db:migrate:deploy
 pnpm --filter @scv/prisma db:seed

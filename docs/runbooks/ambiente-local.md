@@ -18,13 +18,14 @@ As variáveis `TESSERACT_BIN` e `PDFTOPPM_BIN` do `.env` apontam para os binári
 ## 2. Infra com Docker Compose
 
 ```bash
-cp .env.example .env          # ajuste JWT_SECRET, APP_ENCRYPTION_KEY, INTERNAL_JOB_TOKEN
+cp .env.example .env          # preencha os placeholders e ajuste JWT_SECRET, APP_ENCRYPTION_KEY, INTERNAL_JOB_TOKEN
 docker compose -f infra/docker-compose.yml up -d
 ```
 
 O `up -d` do zero já entrega tudo pronto, sem passo manual:
 
-- **Postgres** (`pgvector/pgvector:pg16`) cria o papel de runtime **`scv_app`** (sem superuser, sem `BYPASSRLS`) pelo script `infra/postgres/init/01-papel-scv-app.sql`. Ele só roda na **primeira** inicialização do volume; em ambiente existente, rode `docker compose -f infra/docker-compose.yml down -v` (apaga os dados locais) ou execute o script à mão: `docker exec -i scv-postgres psql -U scv -d scv < infra/postgres/init/01-papel-scv-app.sql`.
+- **Postgres** (`pgvector/pgvector:pg16`) exige `POSTGRES_PASSWORD` e `SCV_APP_DB_PASSWORD` e cria o papel de runtime **`scv_app`** (sem superuser, sem `BYPASSRLS`) pelo script `infra/postgres/init/01-papel-scv-app.sh`. Ele só roda na **primeira** inicialização do volume; em ambiente existente, rode `docker compose -f infra/docker-compose.yml down -v` (apaga os dados locais) ou execute o script à mão com `SCV_APP_DB_PASSWORD` definida: `docker compose -f infra/docker-compose.yml exec -e SCV_APP_DB_PASSWORD="$SCV_APP_DB_PASSWORD" postgres /docker-entrypoint-initdb.d/01-papel-scv-app.sh`.
+- **MinIO** exige `MINIO_ROOT_USER` e `MINIO_ROOT_PASSWORD`; o worker também exige `S3_ACCESS_KEY` e `S3_SECRET_KEY` (normalmente os mesmos valores). Não há credenciais padrão no Compose.
 - **MinIO** usa imagem **fixada por versão** (`pgsty/minio`, fork mantido). As imagens oficiais `minio/minio` e `quay.io/minio/minio` deixaram de ser publicadas; nunca use `:latest`.
 - **`minio-init`** (`pgsty/mc`) cria o bucket `scv-dev` de forma idempotente e termina. Console do MinIO em `http://localhost:9001`.
 
@@ -35,7 +36,7 @@ O `up -d` do zero já entrega tudo pronto, sem passo manual:
 | `MIGRATION_DATABASE_URL` | `scv` (dono do schema) | `prisma migrate`, seed e testes de migração |
 | `DATABASE_URL` | `scv_app` (runtime) | API — o RLS vale para este papel (os workers falam com a API por HTTP, sem conexão própria com o banco) |
 
-Em desenvolvimento, `DATABASE_URL` usa `scv_app`: assim o RLS protege de verdade e bugs de isolamento aparecem localmente. Conferir:
+Em desenvolvimento, `DATABASE_URL` usa `scv_app`: assim o RLS protege de verdade e bugs de isolamento aparecem localmente. Defina `SCV_APP_DB_PASSWORD` e use a mesma senha na URL. Conferir:
 
 ```sql
 select rolsuper, rolbypassrls from pg_roles where rolname = current_user;  -- false, false
@@ -56,8 +57,8 @@ A API confere o papel ao subir: superuser/BYPASSRLS **impede o boot em produçã
 
 ### Ambiente já existente (volume antigo)
 
-O init só roda em volume novo. Para quem já tem o Postgres local: crie o papel uma vez com
-`docker exec -i scv-postgres psql -U scv -d scv < infra/postgres/init/01-papel-scv-app.sql`, e no `.env` troque
+O init só roda em volume novo. Para quem já tem o Postgres local: defina `SCV_APP_DB_PASSWORD` e crie o papel uma vez com
+`docker compose -f infra/docker-compose.yml exec -e SCV_APP_DB_PASSWORD="$SCV_APP_DB_PASSWORD" postgres /docker-entrypoint-initdb.d/01-papel-scv-app.sh`, e no `.env` troque
 `DATABASE_URL` para o usuário `scv_app` (ver `.env.example`) e adicione `MIGRATION_DATABASE_URL` com o usuário `scv`.
 
 ## 4. Testes que tocam o banco
@@ -66,7 +67,7 @@ Os testes de `prisma/test` e de `apps/api/test-prisma` fazem `DROP SCHEMA public
 
 ```bash
 docker exec scv-postgres psql -U scv -d postgres -c "create database scv_test"
-U='postgresql://scv:scv_dev_password@localhost:5432/scv_test?schema=public'
+U="$SCV_TEST_DATABASE_URL"
 MIGRATION_DATABASE_URL=$U DATABASE_URL=$U pnpm --filter @scv/prisma test
 SCV_TEST_DATABASE_URL=$U pnpm --filter @scv/api test:prisma   # recusa bancos que não terminam em _test; cria o scv_app, sobe a API como ele e roda a suíte de acesso cruzado
 ```

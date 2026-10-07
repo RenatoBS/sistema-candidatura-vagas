@@ -4,7 +4,8 @@ services:
     container_name: scv-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-scv}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-scv_dev_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD deve ser definida no .env}
+      SCV_APP_DB_PASSWORD: ${SCV_APP_DB_PASSWORD:?SCV_APP_DB_PASSWORD deve ser definida no .env}
       POSTGRES_DB: ${POSTGRES_DB:-scv}
     ports:
       - '${POSTGRES_PORT:-5432}:5432'
@@ -39,8 +40,8 @@ services:
     container_name: scv-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER deve ser definida no .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD deve ser definida no .env}
     ports:
       - '${MINIO_PORT:-9000}:9000'
       - '${MINIO_CONSOLE_PORT:-9001}:9001'
@@ -63,15 +64,15 @@ services:
         condition: service_healthy
     restart: 'no'
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER deve ser definida no .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD deve ser definida no .env}
       S3_BUCKET: ${S3_BUCKET:-scv-dev}
     entrypoint: ['/bin/sh', '-c']
     command:
       - mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" && mc mb --ignore-existing "local/$$S3_BUCKET"
 
   livekit:
-    image: livekit/livekit-server:latest
+    image: livekit/livekit-server:v1.9.0
     container_name: scv-livekit
     command: --dev --bind 0.0.0.0
     ports:
@@ -88,7 +89,7 @@ services:
       start_period: 10s
 
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.27.8
     container_name: scv-mailpit
     ports:
       - '${MAILPIT_SMTP_PORT:-1025}:1025'
@@ -123,8 +124,8 @@ services:
       API_PUBLIC_URL: ${API_PUBLIC_URL:-http://host.docker.internal:3000}
       INTERNAL_JOB_TOKEN: ${INTERNAL_JOB_TOKEN:-}
       S3_ENDPOINT: http://minio:9000
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin123}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?S3_ACCESS_KEY deve ser definida no .env}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?S3_SECRET_KEY deve ser definida no .env}
       S3_BUCKET: ${S3_BUCKET:-scv-dev}
       OCR_PROVIDER: tesseract
       LOG_LEVEL: ${LOG_LEVEL:-info}

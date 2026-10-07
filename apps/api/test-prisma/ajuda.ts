@@ -7,9 +7,8 @@ import { execSync } from 'node:child_process';
 import { PrismaClient } from '@prisma/client';
 import { envOu } from '@scv/env';
 
-const PADRAO = 'postgresql://scv:scv_dev_password@localhost:5432/scv_test?schema=public';
-
-export const URL_BANCO_TESTE = envOu(process.env, 'SCV_TEST_DATABASE_URL', PADRAO);
+export const URL_BANCO_TESTE = envOu(process.env, 'SCV_TEST_DATABASE_URL', '');
+if (!URL_BANCO_TESTE) throw new Error('SCV_TEST_DATABASE_URL deve ser definida para os testes Prisma');
 
 function exigirBancoDescartavel(url: string): void {
   const nome = new URL(url).pathname.replace(/^\//, '');
@@ -88,7 +87,8 @@ export async function criarCandidaturaComScore(prisma: PrismaClient, empresaId: 
 }
 
 
-const SENHA_APP = 'scv_app_dev_password';
+const SENHA_APP = envOu(process.env, 'SCV_APP_DB_PASSWORD', '');
+if (!SENHA_APP) throw new Error('SCV_APP_DB_PASSWORD deve ser definida para os testes Prisma');
 
 /** Cria o papel de runtime `scv_app` (sem superuser, sem BYPASSRLS) com os mesmos privilégios do init do compose. */
 export async function prepararPapelApp(url = URL_BANCO_TESTE): Promise<void> {
