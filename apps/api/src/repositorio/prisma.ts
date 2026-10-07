@@ -2,6 +2,8 @@ import { Prisma, PrismaClient } from '@prisma/client';
 
 import { ErroAplicacao } from '../erros';
 import { CandidaturasPrisma } from './candidaturas-prisma';
+import { EntrevistasPrisma } from './entrevistas-prisma';
+import type { EntrevistaRegistro } from './entrevistas-tipos';
 import { MatchPrisma } from './match-prisma';
 import { NotificacoesPrisma } from './notificacoes-prisma';
 import type {
@@ -33,8 +35,6 @@ import type {
   VinculoUsuario,
 } from './tipos';
 import { VagasPrisma } from './vagas-prisma';
-import { EntrevistasPrisma } from './entrevistas-prisma';
-import type { EntrevistaRegistro } from './entrevistas-tipos';
 
 function semId<T extends { id?: string }>(patch: T): Omit<T, 'id'> {
   const copia = { ...patch };

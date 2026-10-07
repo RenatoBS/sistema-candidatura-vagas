@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 
 import { ErroAplicacao } from '../erros';
-import type { ContextoTenant } from './tipos';
 import type { EntrevistaRegistro } from './entrevistas-tipos';
+import type { ContextoTenant } from './tipos';
 
 type Tx = Prisma.TransactionClient;
 

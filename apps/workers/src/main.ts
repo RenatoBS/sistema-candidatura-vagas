@@ -9,8 +9,8 @@ import { FILA_EMBEDDINGS, FILA_MATCH, processarEmbedding, processarMatch } from 
 import { FILA_NOTIFICACOES, processarNotificacao } from './notificacoes-jobs';
 import { FILA_CV, processarJobCurriculo } from './processar-cv';
 import { FILA_STT_TRANSCRICAO } from './triagem-audio';
-import { processarJobTranscricao } from './triagem-jobs';
 import { FILA_TRIAGEM_INATIVIDADE, processarJobInatividade } from './triagem-inatividade';
+import { processarJobTranscricao } from './triagem-jobs';
 import {
   aplicarEventoVaga,
   encerrarInscricoesVaga,

@@ -5,6 +5,7 @@ import type {
   HistoricoStatusRegistro,
   TransicaoCandidaturaRegistro,
 } from './candidaturas-tipos';
+import type { EntrevistaRegistro } from './entrevistas-tipos';
 import type {
   CandidatoSimilar,
   EntradaSugestaoMatch,
@@ -30,7 +31,6 @@ import type {
   VagaHabilidadeRegistro,
   VagaRegistro,
 } from './vagas-tipos';
-import type { CanalEntrevista, EntrevistaRegistro, StatusEntrevista } from './entrevistas-tipos';
 
 export type {
   CandidaturaRegistro,

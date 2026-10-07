@@ -2,6 +2,8 @@ import { CATALOGO_BASE } from '@scv/domain';
 
 import { ErroAplicacao } from '../erros';
 import { CandidaturasMemoria } from './candidaturas-memoria';
+import { EntrevistasMemoria } from './entrevistas-memoria';
+import type { EntrevistaRegistro } from './entrevistas-tipos';
 import { MatchMemoria } from './match-memoria';
 import { NotificacoesMemoria } from './notificacoes-memoria';
 import type {
@@ -33,8 +35,6 @@ import type {
   VinculoUsuario,
 } from './tipos';
 import { VagasMemoria } from './vagas-memoria';
-import { EntrevistasMemoria } from './entrevistas-memoria';
-import type { EntrevistaRegistro } from './entrevistas-tipos';
 
 const CATALOGO_MEMORIA: HabilidadeCatalogo[] = CATALOGO_BASE.map((item, indice) => ({
   ...item,

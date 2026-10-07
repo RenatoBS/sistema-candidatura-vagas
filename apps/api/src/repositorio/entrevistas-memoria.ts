@@ -1,6 +1,6 @@
 import { ErroAplicacao } from '../erros';
-import type { ContextoTenant, Repositorio } from './tipos';
 import type { EntrevistaRegistro } from './entrevistas-tipos';
+import type { ContextoTenant, Repositorio } from './tipos';
 
 function permitido(ctx: ContextoTenant, empresaId: string): boolean {
   return Boolean(ctx.sistema || ctx.isAdmin || ctx.empresaId === empresaId);
