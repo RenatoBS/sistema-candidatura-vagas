@@ -3,13 +3,16 @@ export interface ConversorAudio {
   converter(audio: Buffer, mimetype: string): Promise<{ wav: Buffer; duracaoSegundos: number }>;
 }
 export class ConversorAudioFake implements ConversorAudio {
-  async converter(audio: Buffer): Promise<{ wav: Buffer; duracaoSegundos: number }> {
+  async converter(
+    audio: Buffer,
+    _mimetype?: string,
+  ): Promise<{ wav: Buffer; duracaoSegundos: number }> {
     return { wav: Buffer.from(audio), duracaoSegundos: 1 };
   }
 }
 export class FfmpegConversor implements ConversorAudio {
   constructor(private readonly timeoutMs = 30000) {}
-  converter(audio: Buffer): Promise<{ wav: Buffer; duracaoSegundos: number }> {
+  converter(audio: Buffer, _mimetype?: string): Promise<{ wav: Buffer; duracaoSegundos: number }> {
     return new Promise((resolve, reject) => {
       const processo = spawn('ffmpeg', [
         '-i',
