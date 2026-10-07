@@ -14,6 +14,7 @@ import {
 
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import type { Relogio } from '../auth/auth.service';
+import { primeiroNome } from '../candidatos/identificacao';
 import { ErroAplicacao } from '../erros';
 import type { AvaliacaoRegistro, Repositorio, ScoreRegistro } from '../repositorio/tipos';
 import { ctxDe, deveAuditarBypass, exigir, montarAtor, papelAuditoria, type SessaoRequest } from '../sessao';
@@ -83,12 +84,21 @@ export class RankingService {
     const ids = new Map(candidaturas.map((item) => [item.id, item]));
     const scores = (await this.repo.listarScores(ctx)).filter((item) => ids.has(item.candidaturaId));
     const minimo = filtro?.completudeMin ?? 0;
+    const visiveis = scores
+      .filter((item) => (item.completude ?? 0) >= minimo)
+      .sort((a, b) => (b.scoreFinal ?? 0) - (a.scoreFinal ?? 0));
+    const nomes = new Map<string, string>();
+    for (const item of visiveis) {
+      const candidatoId = ids.get(item.candidaturaId)?.candidatoId;
+      if (candidatoId && !nomes.has(candidatoId)) {
+        nomes.set(candidatoId, primeiroNome((await this.repo.buscarCandidatoPorId(candidatoId))?.nome));
+      }
+    }
     return {
-      itens: scores
-        .filter((item) => (item.completude ?? 0) >= minimo)
-        .sort((a, b) => (b.scoreFinal ?? 0) - (a.scoreFinal ?? 0))
+      itens: visiveis
         .map((item) => ({
           candidaturaId: item.candidaturaId,
+          candidatoNome: nomes.get(ids.get(item.candidaturaId)?.candidatoId ?? '') ?? 'Candidato',
           status: ids.get(item.candidaturaId)?.status ?? null,
           scoreFinal: item.scoreFinal,
           completude: item.completude,
@@ -113,11 +123,14 @@ export class RankingService {
     let comExpiracao = 0;
     const notasCom: number[] = [];
     const notasSem: number[] = [];
+    const entrevistaPorCandidatura = new Map<string, string>();
+    for (const entrevista of await this.repo.listarEntrevistas(ctx)) {
+      if (!entrevistaPorCandidatura.has(entrevista.candidaturaId)) entrevistaPorCandidatura.set(entrevista.candidaturaId, entrevista.id);
+    }
     for (const item of lista.itens) {
-      const respostas = await this.repo.listarRespostasEntrevista(
-        (await this.repo.listarEntrevistas(ctx)).find((entrevista) => entrevista.candidaturaId === item.candidaturaId)?.id ?? '',
-        ctx,
-      );
+      const entrevistaId = entrevistaPorCandidatura.get(item.candidaturaId);
+      if (!entrevistaId) continue; // sem entrevista não há respostas (e '' não é UUID válido no Postgres)
+      const respostas = await this.repo.listarRespostasEntrevista(entrevistaId, ctx);
       for (const resposta of respostas) {
         const avaliacoes = await this.repo.listarAvaliacoes(resposta.id, ctx);
         const ia = avaliacoes.find((avaliacao) => avaliacao.avaliador === 'IA');

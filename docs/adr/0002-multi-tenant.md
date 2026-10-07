@@ -66,6 +66,21 @@ A camada de aplicação (NestJS `TenantGuard`, workers com `empresaId` no payloa
 - Sessão de admin com MFA (`app.is_admin = true`) lê ambas.
 - Admin sem MFA não obtém bypass.
 
+### 7. Atualização 2026-10-07 — o RLS só vale se o runtime usar `scv_app` (FC-03)
+
+O teste local de 2026-10-07 (S7) mostrou que o usuário do banco `scv` era superuser/BYPASSRLS: localmente o RLS não protegia nada e nenhum teste HTTP rodava contra Postgres. O procedimento passa a ser:
+
+- **Dois papéis, duas URLs.** `DATABASE_URL` = `scv_app` (a API; sem superuser, sem BYPASSRLS — os workers falam com a API por HTTP e não abrem conexão com o banco). `MIGRATION_DATABASE_URL` = `scv` (dono do schema; migrações, seed e reset). Os scripts `db:*` de `@scv/prisma` usam a URL de migração (`prisma/scripts/prisma-migracao.mjs`).
+- **O papel nasce com o ambiente.** `infra/postgres/init/01-papel-scv-app.sql` (montado no compose) cria `scv_app` com `NOSUPERUSER NOBYPASSRLS` e privilégios padrão sobre o que o dono criar. Em produção, o IaC faz o equivalente.
+- **Checagem de boot.** A API consulta `pg_roles` ao subir: papel superuser/BYPASSRLS **impede o boot em produção** e emite aviso fora dela (`apps/api/src/repositorio/papel-runtime.ts`).
+- **Testes contra Postgres como `scv_app`** (`pnpm --filter @scv/api test:prisma`, job `api-postgres` da CI):
+  1. o papel de runtime não é superuser nem tem BYPASSRLS e a API (não só o teste) conecta como ele;
+  2. para **toda** tabela com `empresaId` (17 hoje), a empresa B não vê linha da empresa A, nem sem contexto; B não insere, atualiza nem apaga dados da A; admin com `is_admin` vê tudo;
+  3. suíte HTTP de acesso cruzado que itera as **rotas realmente registradas** no Express: membro da empresa B, candidato e o inverso (A → B) recebem 400/403/404 em toda rota `empresas/:empresaId/*` e `vagas/:vagaId/*`; membro de empresa recebe 403 em toda rota `admin/*`; outro candidato não alcança candidaturas, convites, CVs, notificações nem voz alheios.
+- **Defesa em profundidade na aplicação.** `escopoTenant(ctx)` (`apps/api/src/repositorio/escopo.ts`) filtra por `empresaId` as leituras/atualizações por `id` nos repositórios Prisma de vaga, pergunta, processo, evento, candidatura, entrevista, membro e convite, de modo que um papel que ignore RLS (ex.: conexão mal configurada) continua isolado.
+- **Experimento de controle (registrado na PR do FC-03).** Removendo as checagens do FC-02 (`exigirMesmaEmpresa`, `escopoTenant`, comparação de empresa em `exigirVaga`), a suíte **continua verde** com `scv_app` (o RLS bloqueia sozinho). Repetindo com a API conectada como superuser, a suíte **falha** em `GET vagas/:vagaId/candidaturas` (200, vazamento) e `POST vagas/:vagaId/sugestoes-match/:id/convidar` — exatamente S2/S3. Ou seja, a suíte detecta os dois cenários.
+- **Fora do RLS por desenho.** `usuarios`, `candidatos`, `candidatos_habilidades`, `consentimentos`, `curriculos`, `dispositivos_push`, `refresh_tokens`, `codigos_recuperacao_mfa`, `solicitacoes_lgpd` e `habilidades` não têm `empresaId`; o isolamento é por usuário na camada de aplicação (a suíte de acesso cruzado cobre o lado do candidato).
+
 ## Alternativas consideradas
 
 | Alternativa | Motivo de rejeição |

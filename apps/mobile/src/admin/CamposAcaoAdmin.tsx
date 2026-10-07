@@ -1,12 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { Text } from 'react-native';
 
+import type { useAcaoAdmin } from '@/admin/useAcaoAdmin';
 import { Banner } from '@/design-system/Banner';
 import { Campo } from '@/design-system/Campo';
 import { Cartao } from '@/design-system/Cartao';
 import { estilos } from '@/design-system/estilos';
-
-import type { useAcaoAdmin } from './useAcaoAdmin';
 
 export function CamposAcaoAdmin({ acao }: { acao: ReturnType<typeof useAcaoAdmin> }) {
   const { t } = useTranslation();

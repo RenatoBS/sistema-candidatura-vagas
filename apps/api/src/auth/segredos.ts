@@ -65,12 +65,18 @@ export function codigoTotp(segredo: string, momento = Date.now()): string {
   return (bin % 1_000_000).toString().padStart(6, '0');
 }
 
-export function totpConfere(segredo: string, codigo: string, momento = Date.now()): boolean {
+/** Passo (janela de 30 s) cujo código confere, dentro da tolerância de ±1 passo; null se nenhum. */
+export function totpPasso(segredo: string, codigo: string, momento = Date.now()): number | null {
   const limpo = codigo.replace(/\s/g, '');
   for (const delta of [-1, 0, 1]) {
-    if (codigoTotp(segredo, momento + delta * 30_000) === limpo) return true;
+    const instante = momento + delta * 30_000;
+    if (codigoTotp(segredo, instante) === limpo) return Math.floor(instante / 1000 / 30);
   }
-  return false;
+  return null;
+}
+
+export function totpConfere(segredo: string, codigo: string, momento = Date.now()): boolean {
+  return totpPasso(segredo, codigo, momento) !== null;
 }
 
 export function uriTotp(segredo: string, email: string): string {

@@ -17,6 +17,7 @@ import {
   type EstadoVoz,
   type StatusCandidatura,
 } from '@scv/domain';
+import { envNumero } from '@scv/env';
 import type { Armazenamento } from '@scv/providers';
 
 import { AuditoriaService } from '../auditoria/auditoria.service';
@@ -40,6 +41,9 @@ interface ItemRoteiro {
   tempoLimiteSegundos: number;
 }
 
+/** Candidaturas que podem abrir/retomar a entrevista por voz: triagem concluída (ou em curso de voz). */
+const STATUS_PREPARO_VOZ = new Set(['TRIAGEM_CONCLUIDA', 'ENTREVISTA_VOZ', 'ENTREVISTA_ABANDONADA']);
+
 @Injectable()
 export class VozService {
   constructor(
@@ -60,6 +64,9 @@ export class VozService {
     }
     await this.exigirGravacao(candidatura.candidatoId);
     const etapa = await this.etapaVoz(candidatura.vagaId);
+    if (!STATUS_PREPARO_VOZ.has(candidatura.status)) {
+      throw new ErroAplicacao('TRIAGEM_NAO_CONCLUIDA', 409, 'a entrevista por voz só abre depois da triagem concluída');
+    }
     const existente = await this.repo.buscarEntrevistaPorCandidaturaEtapa(candidaturaId, etapa.id, SISTEMA);
     if (existente) {
       if (this.tentativaConsumida(existente)) {
@@ -288,8 +295,11 @@ export class VozService {
     exigir(alinhada, 'revisao_humana');
     const ctx = ctxDe(alinhada, empresaId);
     const entrevista = await this.repo.buscarEntrevista(entrevistaId, ctx);
-    if (!entrevista || entrevista.empresaId !== empresaId || entrevista.status !== 'ABANDONADA') {
+    if (!entrevista || entrevista.empresaId !== empresaId) {
       throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'entrevista não encontrada');
+    }
+    if (entrevista.status !== 'ABANDONADA') {
+      throw new ErroAplicacao('ESTADO_INVALIDO', 409, 'só entrevista abandonada pode receber exceção');
     }
     const decisao = concederExcecao(entrevista.excecaoConcedida);
     if (!decisao.ok) throw new ErroAplicacao(decisao.codigo, 409, 'exceção já concedida');
@@ -752,7 +762,7 @@ export class VozService {
   }
 
   private maxSessoes(): number {
-    const valor = Number(process.env.VOZ_MAX_SESSOES ?? VOZ_MAX_SESSOES_SIMULTANEAS);
+    const valor = envNumero(process.env, 'VOZ_MAX_SESSOES', VOZ_MAX_SESSOES_SIMULTANEAS);
     return Number.isFinite(valor) && valor > 0 ? valor : VOZ_MAX_SESSOES_SIMULTANEAS;
   }
 

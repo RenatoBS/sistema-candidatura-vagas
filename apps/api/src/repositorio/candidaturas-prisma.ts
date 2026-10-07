@@ -7,6 +7,7 @@ import type {
   HistoricoStatusRegistro,
   TransicaoCandidaturaRegistro,
 } from './candidaturas-tipos';
+import { escopoTenant } from './escopo';
 import type { ContextoTenant } from './tipos';
 
 type Tx = Prisma.TransactionClient;
@@ -49,7 +50,7 @@ export class CandidaturasPrisma {
   }
 
   buscarCandidatura(id: string, ctx: ContextoTenant): Promise<CandidaturaRegistro | null> {
-    return this.com(ctx, (tx) => tx.candidatura.findUnique({ where: { id } }));
+    return this.com(ctx, (tx) => tx.candidatura.findFirst({ where: { id, ...escopoTenant(ctx) } }));
   }
 
   listarCandidaturasVaga(vagaId: string, ctx: ContextoTenant): Promise<CandidaturaRegistro[]> {
@@ -68,6 +69,7 @@ export class CandidaturasPrisma {
       const { count } = await tx.candidatura.updateMany({
         where: {
           id: transicao.candidaturaId,
+          ...escopoTenant(ctx),
           status: transicao.esperado.status,
           atualizadoEm: transicao.esperado.atualizadoEm,
         },
@@ -75,7 +77,7 @@ export class CandidaturasPrisma {
       });
       if (count === 0) return null;
       await tx.historicoStatus.create({ data: transicao.historico });
-      return tx.candidatura.findUnique({ where: { id: transicao.candidaturaId } });
+      return tx.candidatura.findFirst({ where: { id: transicao.candidaturaId, ...escopoTenant(ctx) } });
     });
   }
 

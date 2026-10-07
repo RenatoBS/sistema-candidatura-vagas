@@ -1,3 +1,4 @@
+import { envNumero, envOu } from '@scv/env';
 import { Queue } from 'bullmq';
 
 export interface FilaCnpj {
@@ -20,8 +21,8 @@ export class FilaCnpjBull implements FilaCnpj {
   private fila: Queue | null = null;
 
   constructor(
-    private readonly host = process.env.REDIS_HOST ?? 'localhost',
-    private readonly port = Number(process.env.REDIS_PORT ?? 6379),
+    private readonly host = envOu(process.env, 'REDIS_HOST', 'localhost'),
+    private readonly port = envNumero(process.env, 'REDIS_PORT', 6379),
   ) {}
 
   async enfileirar(empresaId: string): Promise<void> {

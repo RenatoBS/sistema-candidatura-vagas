@@ -66,7 +66,10 @@ export { openApi, openApiFase3, openApiFase4, openApiFase6Match, type CaminhoApi
 export {
   atualizarVagaSchema,
   criarPerguntaSchema,
+  consultaRankingSchema,
+  consultaVagasPublicasSchema,
   criarVagaSchema,
+  erroPerguntasIncompletasSchema,
   fecharVagaSchema,
   prorrogarVagaSchema,
   revisarSugestaoSchema,
@@ -75,6 +78,7 @@ export {
   type AtualizarVagaInput,
   type CriarPerguntaInput,
   type CriarVagaInput,
+  type ErroPerguntasIncompletas,
   type SalvarProcessoInput,
   type VincularPerguntaInput,
 } from './vagas';

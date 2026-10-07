@@ -3,7 +3,16 @@ title = "scv"
 [extend]
 useDefault = true
 
-[allowlist]
+[[allowlists]]
 description = "Referência à variável de ambiente do MinIO local, não um segredo"
 regexTarget = "secret"
 regexes = ['''^env\.S3_SECRET_KEY$''']
+
+# Falso positivo: a regra linkedin-client-id casa com a palavra "LinkedIn" na tabela de módulos
+# (docs/plano-sistema.md). Só essa linha, só nesse arquivo (condição AND).
+[[allowlists]]
+description = "Texto de documentação: tabela de módulos cita LinkedIn (falso positivo de linkedin-client-id)"
+condition = "AND"
+paths = ['''(^|/)docs/plano-sistema\.md$''']
+regexTarget = "line"
+regexes = ['''Perfil, habilidades, LinkedIn, consentimentos''']

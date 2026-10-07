@@ -6,6 +6,7 @@ import {
   criarVagaSchema,
   fecharVagaSchema,
   prorrogarVagaSchema,
+  consultaVagasPublicasSchema,
   revisarSugestaoSchema,
   salvarProcessoSchema,
   vincularPerguntaSchema,
@@ -190,8 +191,8 @@ export class VagasController {
 
   @Publico()
   @Get('vagas-publicas')
-  publicas(@Query() query: { habilidade?: string; senioridade?: string; modelo?: string; localidade?: string }) {
-    return this.vagas.listarPublicas(query);
+  publicas(@Query() query: unknown) {
+    return this.vagas.listarPublicas(validar(consultaVagasPublicasSchema, query ?? {}));
   }
 
   @Publico()

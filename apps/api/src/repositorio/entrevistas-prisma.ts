@@ -4,6 +4,7 @@ import { lerContexto } from '@scv/domain';
 
 import { ErroAplicacao } from '../erros';
 import type { EntrevistaRegistro, SessaoVozRegistro } from './entrevistas-tipos';
+import { escopoTenant } from './escopo';
 import type { ContextoTenant } from './tipos';
 
 function jsonContexto(valor: unknown): Prisma.InputJsonValue {
@@ -37,7 +38,7 @@ export class EntrevistasPrisma {
   }
 
   async buscar(id: string, ctx: ContextoTenant): Promise<EntrevistaRegistro | null> {
-    const row = await this.com(ctx, (tx) => tx.entrevista.findUnique({ where: { id } }));
+    const row = await this.com(ctx, (tx) => tx.entrevista.findFirst({ where: { id, ...escopoTenant(ctx) } }));
     return row ? this.registro(row) : null;
   }
 
@@ -47,7 +48,7 @@ export class EntrevistasPrisma {
     ctx: ContextoTenant,
   ): Promise<EntrevistaRegistro | null> {
     const row = await this.com(ctx, (tx) =>
-      tx.entrevista.findUnique({ where: { candidaturaId_etapaId: { candidaturaId, etapaId } } }),
+      tx.entrevista.findFirst({ where: { candidaturaId, etapaId, ...escopoTenant(ctx) } }),
     );
     return row ? this.registro(row) : null;
   }
@@ -65,10 +66,10 @@ export class EntrevistasPrisma {
       };
       delete data.id;
       const result = await tx.entrevista.updateMany({
-        where: { id, ...(esperadoAtualizadoEm ? { atualizadoEm: esperadoAtualizadoEm } : {}) },
+        where: { id, ...escopoTenant(ctx), ...(esperadoAtualizadoEm ? { atualizadoEm: esperadoAtualizadoEm } : {}) },
         data,
       });
-      return result.count ? tx.entrevista.findUnique({ where: { id } }) : null;
+      return result.count ? tx.entrevista.findFirst({ where: { id, ...escopoTenant(ctx) } }) : null;
     }).then((row) => (row ? this.registro(row) : null));
   }
 
@@ -83,8 +84,8 @@ export class EntrevistasPrisma {
 
   async marcarRespostasParciais(entrevistaId: string, ctx: ContextoTenant): Promise<void> {
     await this.com(ctx, async (tx) => {
-      await tx.resposta.updateMany({ where: { entrevistaId }, data: { parcial: true } });
-      const entrevista = await tx.entrevista.findUnique({ where: { id: entrevistaId } });
+      await tx.resposta.updateMany({ where: { entrevistaId, ...escopoTenant(ctx) }, data: { parcial: true } });
+      const entrevista = await tx.entrevista.findFirst({ where: { id: entrevistaId, ...escopoTenant(ctx) } });
       if (!entrevista) return;
       const perguntas = await tx.etapaPergunta.findMany({
         where: { etapaId: entrevista.etapaId },

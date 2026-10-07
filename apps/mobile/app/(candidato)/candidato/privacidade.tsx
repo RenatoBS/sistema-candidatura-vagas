@@ -9,7 +9,7 @@ import { Cabecalho } from '@/design-system/Cabecalho';
 import { Cartao } from '@/design-system/Cartao';
 import { LinhaInterruptor } from '@/design-system/LinhaInterruptor';
 import { Tela } from '@/design-system/Tela';
-import { TIPOS_PRIVACIDADE } from '@/perfil/regras';
+import { consentimentosParaSalvar, TIPOS_PRIVACIDADE_EXIBIDOS } from '@/perfil/regras';
 
 const VERSAO = '2026-10-06';
 
@@ -39,10 +39,10 @@ export default function PrivacidadeCandidato() {
   async function salvar() {
     try {
       await api('/candidatos/me', { method: 'PUT', body: JSON.stringify({ visivelParaMatch: visivel }) }, accessToken);
-      for (const tipo of TIPOS_PRIVACIDADE) {
+      for (const { tipo, concedido } of consentimentosParaSalvar(concedidos, visivel)) {
         await api(
           '/candidatos/me/consentimentos',
-          { method: 'POST', body: JSON.stringify({ tipo, concedido: Boolean(concedidos[tipo]), versaoTermo: VERSAO }) },
+          { method: 'POST', body: JSON.stringify({ tipo, concedido, versaoTermo: VERSAO }) },
           accessToken,
         );
       }
@@ -60,7 +60,7 @@ export default function PrivacidadeCandidato() {
       <Button label={t('candidato.carregar')} variante="secundario" onPress={() => void carregar()} />
       <Cartao>
         <LinhaInterruptor label={t('candidato.visivelMatch')} value={visivel} onValueChange={setVisivel} />
-        {TIPOS_PRIVACIDADE.map((tipo) => (
+        {TIPOS_PRIVACIDADE_EXIBIDOS.map((tipo) => (
           <LinhaInterruptor
             key={tipo}
             label={t(`candidato.consentimento.${tipo}`)}

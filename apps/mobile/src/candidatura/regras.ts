@@ -2,6 +2,13 @@ export function rotuloStatus(status: string | undefined, fase?: string | null): 
   return fase || status || '—';
 }
 
+export const CONSENTIMENTOS_CANDIDATURA = [{ tipo: 'TERMOS', concedido: true, versaoTermo: '2026-10-06' }];
+
+/** Convite pendente (candidatura CONVIDADA) para a vaga, se houver. */
+export function conviteDaVaga<T extends { vaga?: { id: string } }>(convites: T[], vagaId: string): T | null {
+  return convites.find((convite) => convite.vaga?.id === vagaId) ?? null;
+}
+
 export function filtrarNaoLidas<T extends { lida?: boolean; lidoEm?: string | null }>(
   itens: T[],
 ): T[] {

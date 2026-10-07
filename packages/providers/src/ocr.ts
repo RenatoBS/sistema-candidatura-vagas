@@ -1,7 +1,8 @@
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { envOu } from '@scv/env';
 
 export interface ReconhecimentoOcr {
   reconhecer(imagem: Buffer): Promise<{ texto: string; confianca: number }>;
@@ -58,10 +59,10 @@ export function interpretarTsvOcr(tsv: string): { texto: string; confianca: numb
 
 /** Tesseract local (`por+eng`). Não chama serviço de OCR externo. */
 export class TesseractOcr implements ReconhecimentoOcr {
-  constructor(private readonly binario = process.env.TESSERACT_BIN ?? 'tesseract') {}
+  constructor(private readonly binario = envOu(process.env, 'TESSERACT_BIN', 'tesseract')) {}
 
   async reconhecer(imagem: Buffer): Promise<{ texto: string; confianca: number }> {
-    const dir = await mkdtemp(path.join(tmpdir(), 'scv-ocr-'));
+    const dir = await mkdtemp(path.join(await realpath(tmpdir()), 'scv-ocr-'));
     const arquivo = path.join(dir, 'pagina.png');
     try {
       await writeFile(arquivo, imagem);
@@ -78,8 +79,8 @@ export class TesseractOcr implements ReconhecimentoOcr {
 }
 
 export async function rasterizarPaginaPdf(pdf: Buffer, numero: number): Promise<Buffer> {
-  const binario = process.env.PDFTOPPM_BIN ?? 'pdftoppm';
-  const dir = await mkdtemp(path.join(tmpdir(), 'scv-pdf-'));
+  const binario = envOu(process.env, 'PDFTOPPM_BIN', 'pdftoppm');
+  const dir = await mkdtemp(path.join(await realpath(tmpdir()), 'scv-pdf-'));
   const origem = path.join(dir, 'curriculo.pdf');
   const base = path.join(dir, 'pagina');
   try {

@@ -4,7 +4,23 @@
 **Público:** Claude Code, Codex e Cursor (Composer/Grok) trabalhando em paralelo.
 **Precedência:** `AGENTS.md` (proibições) > este plano > planos de referência.
 
-> **Status (2026-10-07):** FC-01, FC-02 (checagens na aplicação + filtro por empresa no Prisma para vaga, membro e convite), FC-04 (redact da API) e FC-05 já estão feitos na branch `fix/correcoes-pos-testes`, com testes em `apps/api/test/fase6.match.test.ts` e `apps/mobile/src/admin/acao-admin.test.ts`. Ainda falta, de FC-02, estender o filtro `escopoTenant` aos demais repositórios Prisma; FC-03 garante isso via RLS.
+> **Status (2026-10-07, fim da sessão do Claude Code na branch `fix/correcoes-pos-testes`):** **FC-00 a FC-19 implementados** na branch (nada commitado nesta sessão após `46b2895`; sem push nem merge). Validação local: `pnpm lint`, `pnpm typecheck`, `pnpm test` (todos os pacotes; Prisma separado, como na CI) e `pnpm build` verdes; gitleaks sem achados.
+>
+> | FC | Estado | Observação |
+> |----|--------|------------|
+> | 00 | feito | MinIO fixado (fork `pgsty`, **decisão do Renato**), bucket `scv-dev` criado no compose, papel `scv_app` no init do Postgres, seed com bcrypt (`Senha123`) e e-mail confirmado, `@scv/env` (`envOu`/`envNumero`: vazio = ausente), allowlist do gitleaks, runbook `docs/runbooks/ambiente-local.md`, Expo não reescreve mais o `tsconfig` |
+> | 01, 02, 04, 05 | feito (commit `46b2895`) | FC-04 ganhou o teste de log capturado (`apps/api/test/fc08.webhook-uazapi.test.ts`) |
+> | 03 | feito | API como `scv_app` (checagem de boot), `MIGRATION_DATABASE_URL` nos scripts `db:*`, suíte HTTP de acesso cruzado por rotas registradas + RLS por tabela contra Postgres (`apps/api/test-prisma`), job `api-postgres` na CI, ADR 0002 §7, `escopoTenant` estendido |
+> | 06 | feito | coluna `usuarios.empresaAtivaId`; login, refresh, MFA e `PATCH /me/visao` mantêm a empresa |
+> | 07 | feito | 409 `PERGUNTAS_INCOMPLETAS` com `detalhes.etapas` (etapa, faltam, pendentes); UI do Codex |
+> | 08 | feito | segredo na query da URL do webhook + header aceito, boot exige `UAZAPI_WEBHOOK_SECRET` e URL pública (ADR 0010, runbook de túnel) |
+> | 09, 10, 11, 12, 13 | feito | ver testes `fc10.*`, `fase7.triagem` (FC-11), `fc12.*`, `test-prisma/fc12.*` e `fc13.*` |
+> | 14 | feito | pipe de UUID global, filtro de erros com correlação e mapeamento Prisma, V1–V8 |
+> | 15 | feito | passo TOTP por usuário (atômico), `LEITURA_ADMIN` auditada no guard |
+> | 16 | feito (L4/L5 só documentados) | exclusão em duas etapas + job idempotente com relatório, URL assinada de 60 s no áudio admin, limpeza diária de push |
+> | 17, 18, 19 | feito | UI do Codex + API (`vagaTitulo`, primeiro nome do candidato, QR code do MFA, confirmação do MFA devolve a sessão) |
+>
+> **Pendências / decisões do Renato:** (1) imagem do MinIO; (2) segredo do webhook na query (a Uazapi não documenta header); (3) L4 (logout não invalida o access token) e L5 (login sem e-mail confirmado): opções no resumo final da sessão; (4) atualizar o `.env` local (`DATABASE_URL` → `scv_app`, `MIGRATION_DATABASE_URL`) e criar o papel no volume existente; (5) a CI nova (`api-postgres`) e a UI (QR code, telas do Codex) ainda não foram exercitadas no GitHub nem num dispositivo.
 
 ---
 

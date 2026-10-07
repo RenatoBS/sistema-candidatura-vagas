@@ -6,7 +6,10 @@ import { Logger as PinoLogger } from 'nestjs-pino';
 
 import { AppModule } from './app.module';
 import { FiltroErros } from './http/filtro-erros';
+import { avaliarPapelDeRuntime } from './repositorio/papel-runtime';
+import { RepositorioPrisma } from './repositorio/prisma';
 import { initTelemetry } from './telemetry';
+import { REPOSITORIO } from './tokens';
 
 async function bootstrap() {
   initTelemetry();
@@ -16,6 +19,14 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
   app.useGlobalFilters(new FiltroErros());
   app.enableCors();
+
+  const repositorio = app.get(REPOSITORIO);
+  if (repositorio instanceof RepositorioPrisma) {
+    const avaliacao = avaliarPapelDeRuntime(await repositorio.papelDaConexao(), process.env.NODE_ENV);
+    if (avaliacao.nivel === 'erro') throw new Error(avaliacao.mensagem);
+    if (avaliacao.nivel === 'aviso') Logger.warn(avaliacao.mensagem, 'Bootstrap');
+    else Logger.log(avaliacao.mensagem, 'Bootstrap');
+  }
 
   const port = process.env.PORT ? Number(process.env.PORT) : 3000;
   await app.listen(port);

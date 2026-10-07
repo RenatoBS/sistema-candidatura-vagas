@@ -18,6 +18,7 @@ import {
   repositorioTeste,
   whatsappMensagensTeste,
 } from '../src/ambiente-teste';
+const INSTANCIA_ID = '00000000-0000-0000-0000-0000000000a1';
 let base = '';
 let fechar: () => Promise<void> = async () => {};
 async function api(path: string, body: unknown, secret = 'segredo-webhook') {
@@ -45,7 +46,7 @@ describe('F7-04 webhook Uazapi', () => {
     limparAmbienteTeste();
     await repositorioTeste.salvarInstancia(
       {
-        id: 'instancia-1',
+        id: INSTANCIA_ID,
         empresaId: '00000000-0000-0000-0000-000000000001',
         instanciaIdProvedorCifrado: cifrar('uazapi-1', process.env.APP_ENCRYPTION_KEY!),
         tokenCifrado: cifrar('token-1', process.env.APP_ENCRYPTION_KEY!),
@@ -58,9 +59,9 @@ describe('F7-04 webhook Uazapi', () => {
     );
   });
   it('rejeita segredo ausente ou errado e aceita uma mensagem apenas uma vez', async () => {
-    const sem = await api('/webhooks/whatsapp/uazapi/instancia-1', {}, '');
+    const sem = await api(`/webhooks/whatsapp/uazapi/${INSTANCIA_ID}`, {}, '');
     assert.equal(sem.status, 401);
-    const errado = await api('/webhooks/whatsapp/uazapi/instancia-1', {}, 'errado');
+    const errado = await api(`/webhooks/whatsapp/uazapi/${INSTANCIA_ID}`, {}, 'errado');
     assert.equal(errado.status, 401);
     const payload = {
       token: 'token-1',
@@ -71,15 +72,15 @@ describe('F7-04 webhook Uazapi', () => {
         text: 'oi',
       },
     };
-    const primeiro = await api('/webhooks/whatsapp/uazapi/instancia-1', payload);
+    const primeiro = await api(`/webhooks/whatsapp/uazapi/${INSTANCIA_ID}`, payload);
     deduplicadorWebhookTeste.limpar();
-    const segundo = await api('/webhooks/whatsapp/uazapi/instancia-1', payload);
+    const segundo = await api(`/webhooks/whatsapp/uazapi/${INSTANCIA_ID}`, payload);
     assert.equal(primeiro.status, 201);
     assert.equal(segundo.json.status, 'duplicado');
     assert.equal(filaWhatsappEntradaTeste.jobs.length, 1);
   });
   it('ignora fromMe, API e grupos, e valida instância e token', async () => {
-    assert.equal((await api('/webhooks/whatsapp/uazapi/inexistente', {})).status, 404);
+    assert.equal((await api('/webhooks/whatsapp/uazapi/00000000-0000-0000-0000-0000000000ff', {})).status, 404);
     const basePayload = {
       message: {
         messageid: 'm-2',
@@ -89,13 +90,13 @@ describe('F7-04 webhook Uazapi', () => {
       },
     };
     assert.equal(
-      (await api('/webhooks/whatsapp/uazapi/instancia-1', { ...basePayload, token: 'errado' }))
+      (await api(`/webhooks/whatsapp/uazapi/${INSTANCIA_ID}`, { ...basePayload, token: 'errado' }))
         .status,
       401,
     );
     assert.equal(
       (
-        await api('/webhooks/whatsapp/uazapi/instancia-1', {
+        await api(`/webhooks/whatsapp/uazapi/${INSTANCIA_ID}`, {
           ...basePayload,
           message: { ...basePayload.message, fromMe: true },
         })
@@ -104,7 +105,7 @@ describe('F7-04 webhook Uazapi', () => {
     );
     assert.equal(
       (
-        await api('/webhooks/whatsapp/uazapi/instancia-1', {
+        await api(`/webhooks/whatsapp/uazapi/${INSTANCIA_ID}`, {
           ...basePayload,
           message: { ...basePayload.message, wasSentByApi: true },
         })
@@ -113,7 +114,7 @@ describe('F7-04 webhook Uazapi', () => {
     );
     assert.equal(
       (
-        await api('/webhooks/whatsapp/uazapi/instancia-1', {
+        await api(`/webhooks/whatsapp/uazapi/${INSTANCIA_ID}`, {
           ...basePayload,
           message: { ...basePayload.message, chatid: '123@g.us' },
         })

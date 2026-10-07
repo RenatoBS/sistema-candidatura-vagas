@@ -97,7 +97,11 @@ export interface UsuarioRegistro {
   papeisGlobais: PapelGlobal[];
   mfaAtivo: boolean;
   mfaSecretCifrado: string | null;
+  /** Último passo TOTP (janela de 30 s) aceito; um código só vale se o passo for maior. */
+  mfaUltimoPasso?: number | null;
   visaoPreferida: Visao;
+  /** Última empresa escolhida na visão EMPRESA (FC-06); ausente em fixtures antigas. */
+  empresaAtivaId?: string | null;
   emailConfirmadoEm: Date | null;
 }
 
@@ -253,7 +257,26 @@ export interface SolicitacaoLgpdRegistro {
   usuarioId: string;
   candidatoId: string | null;
   tipo: 'EXPORTACAO' | 'EXCLUSAO';
+  /** EXCLUSAO fica PENDENTE até o job apagar todos os arquivos do storage. */
+  status?: 'PENDENTE' | 'CONCLUIDA';
+  arquivosPendentes?: string[];
+  relatorio?: Record<string, number>;
+  concluidaEm?: Date | null;
   criadoEm: Date;
+}
+
+/** Contagens do expurgo (sem dados pessoais). */
+export interface RelatorioExpurgo {
+  respostasLimpas: number;
+  avaliacoesLimpas: number;
+  gravacoesRemovidas: number;
+  curriculosRemovidos: number;
+  embeddingsRemovidos: number;
+  sugestoesRemovidas: number;
+  eventosWhatsappLimpos: number;
+  notificacoesRemovidas: number;
+  dispositivosRemovidos: number;
+  arquivosParaApagar: number;
 }
 
 export interface AuditoriaRegistro {
@@ -374,6 +397,8 @@ export interface Repositorio {
   buscarUsuarioPorEmail(email: string): Promise<UsuarioRegistro | null>;
   buscarUsuarioPorId(id: string): Promise<UsuarioRegistro | null>;
   atualizarUsuario(id: string, patch: Partial<UsuarioRegistro>): Promise<UsuarioRegistro>;
+  /** Grava o passo TOTP só se for maior que o último aceito (atômico); false = reuso ou corrida. */
+  consumirPassoMfa(usuarioId: string, passo: number): Promise<boolean>;
   salvarRefresh(registro: RefreshRegistro): Promise<void>;
   buscarRefreshPorHash(hash: string): Promise<RefreshRegistro | null>;
   marcarRefreshSubstituido(id: string, quando: Date): Promise<void>;
@@ -433,10 +458,18 @@ export interface Repositorio {
   registrarConsentimento(registro: ConsentimentoRegistro): Promise<ConsentimentoRegistro>;
   listarConsentimentos(candidatoId: string): Promise<ConsentimentoRegistro[]>;
   registrarSolicitacaoLgpd(registro: SolicitacaoLgpdRegistro): Promise<void>;
+  buscarSolicitacaoLgpd(id: string): Promise<SolicitacaoLgpdRegistro | null>;
+  atualizarSolicitacaoLgpd(id: string, patch: Partial<SolicitacaoLgpdRegistro>): Promise<void>;
+  /**
+   * Expurga os dados do candidato no banco (transcrições, textos, justificativas, embeddings, gravações,
+   * eventos de WhatsApp, notificações, push, CVs) e grava as chaves de storage a apagar em
+   * `solicitacaoId.arquivosPendentes` na MESMA transação.
+   */
   expurgarDadosCandidato(
     usuarioId: string,
     anon: { email: string; senhaHash: string; nome: string },
-  ): Promise<{ arquivoKeys: string[] }>;
+    solicitacaoId: string,
+  ): Promise<RelatorioExpurgo>;
   registrarAuditoria(registro: AuditoriaRegistro, ctx: ContextoTenant): Promise<AuditoriaRegistro>;
   listarAuditoria(ctx: ContextoTenant, empresaId?: string): Promise<AuditoriaRegistro[]>;
   alterarAuditoria(): Promise<never>;

@@ -47,17 +47,30 @@
     "mfaConfirmar": "Confirmar código",
     "mfaVerificar": "Validar MFA",
     "codigosRecuperacao": "Guarde estes códigos de recuperação. Eles aparecem uma única vez.",
-    "mfaInstrucao": "No app autenticador, adicione uma conta digitando a chave abaixo. Depois informe o código de 6 dígitos e toque em Confirmar código.",
+    "mfaInstrucao": "No app autenticador, escaneie o QR code ou, se preferir, digite a chave abaixo. Depois informe o código de 6 dígitos e toque em Confirmar código.",
+    "mfaQr": "QR code para configurar o app autenticador",
     "mfaSegredo": "Chave do autenticador",
     "mfaUri": "Link de configuração",
-    "mfaConfirmado": "Autenticador configurado.",
-    "mfaContinuarErro": "O código expirou. Digite um novo código e toque em Validar MFA."
+    "mfaConfirmado": "Autenticador configurado."
+  },
+  "calendario": {
+    "abrir": "Escolher no calendário",
+    "fechar": "Fechar calendário",
+    "mesAnterior": "Mês anterior",
+    "proximoMes": "Próximo mês",
+    "meses": ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"],
+    "diasDaSemana": ["D", "S", "T", "Q", "Q", "S", "S"],
+    "hora": "Hora",
+    "minuto": "Minuto",
+    "escolhaDia": "Toque em um dia para escolher o prazo.",
+    "escolhido": "Prazo: {{prazo}} (horário de Brasília)"
   },
   "onboarding": {
     "titulo": "Como você quer usar o app?",
     "candidato": "Quero me candidatar",
     "empresa": "Cadastrar minha empresa",
-    "nome": "Seu nome"
+    "nome": "Seu nome",
+    "nomeObrigatorio": "Informe seu nome (pelo menos 2 letras)."
   },
   "empresa": {
     "titulo": "Minha empresa",
@@ -219,7 +232,16 @@
     "modelo": "Modelo",
     "localidade": "Localidade",
     "prazo": "Prazo (horário de Brasília)",
-    "prazoAjuda": "Ex.: 20/11/2026 23:59",
+    "prazoAjuda": "dd/mm/aaaa hh:mm (só números)",
+    "prazoAtalhos": "Prazo rápido (até 23:59)",
+    "emDias": "Em {{n}} dias",
+    "prazoProblema": {
+      "INCOMPLETO": "Complete a data: dd/mm/aaaa (a hora é opcional).",
+      "INVALIDO": "Data ou hora inválida.",
+      "PASSADO": "O prazo precisa estar no futuro."
+    },
+    "tituloCurto": "O título precisa ter pelo menos 3 letras.",
+    "descricaoCurta": "A descrição precisa ter pelo menos 10 caracteres.",
     "salvarPrazo": "Salvar prazo",
     "opcaoSenioridade": {
       "ESTAGIO": "Estágio",

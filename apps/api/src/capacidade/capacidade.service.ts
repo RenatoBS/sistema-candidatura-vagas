@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { VOZ_MAX_SESSOES_SIMULTANEAS } from '@scv/domain';
 
+import { envNumero } from '@scv/env';
 import type { Repositorio } from '../repositorio/tipos';
 import { REPOSITORIO } from '../tokens';
 import { CotaService } from './cota.service';
@@ -39,7 +40,7 @@ export class CapacidadeService {
   }
 
   private maxSessoes(): number {
-    const valor = Number(process.env.VOZ_MAX_SESSOES ?? VOZ_MAX_SESSOES_SIMULTANEAS);
+    const valor = envNumero(process.env, 'VOZ_MAX_SESSOES', VOZ_MAX_SESSOES_SIMULTANEAS);
     return Number.isFinite(valor) && valor > 0 ? valor : VOZ_MAX_SESSOES_SIMULTANEAS;
   }
 }

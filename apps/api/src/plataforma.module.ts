@@ -1,5 +1,5 @@
 import { type FactoryProvider, Module } from '@nestjs/common';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { criarLlmProvider } from '@scv/llm';
 import {
   BrasilApiFonteCnpj,
@@ -24,6 +24,7 @@ import {
   embeddingsTeste,
   filaCnpjTeste,
   filaCurriculoTeste,
+  filaLgpdTeste,
   filaMatchTeste,
   filaVagasTeste,
   fonteCnpjTeste,
@@ -60,6 +61,7 @@ import { DnsNode } from './dns';
 import { EmpresasService } from './empresas/empresas.service';
 import { FilaCnpjBull } from './fila/fila-cnpj';
 import { FilaCurriculoBull } from './fila/fila-curriculo';
+import { FilaLgpdBull } from './fila/fila-lgpd';
 import { FilaMatchBull, type FilaMatch } from './fila/fila-match';
 import { FilaTriagemBull } from './fila/fila-triagem';
 import { FilaVagasBull } from './fila/fila-vagas';
@@ -75,6 +77,7 @@ import { MatchController } from './http/match.controller';
 import { NotificacoesController } from './http/notificacoes.controller';
 import { RankingController } from './http/ranking.controller';
 import { TriagemController } from './http/triagem.controller';
+import { UuidParamPipe } from './http/uuid-param.pipe';
 import { VagasController } from './http/vagas.controller';
 import { VozController } from './http/voz.controller';
 import { WhatsappController } from './http/whatsapp.controller';
@@ -97,6 +100,7 @@ import {
   EMBEDDINGS,
   FILA_CNPJ,
   FILA_CURRICULO,
+  FILA_LGPD,
   FILA_MATCH,
   FILA_VAGAS,
   FILA_WHATSAPP_ENTRADA,
@@ -144,7 +148,7 @@ const repositorioProvider: FactoryProvider<Repositorio> = {
   provide: REPOSITORIO,
   inject: [CONFIG],
   useFactory: (config: ConfiguracaoApp) =>
-    config.authStore === 'memory' ? repositorioTeste : new RepositorioPrisma(),
+    config.repositorio === 'memory' ? repositorioTeste : new RepositorioPrisma(),
 };
 
 const emailProvider: FactoryProvider = {
@@ -194,6 +198,13 @@ const filaCurriculoProvider: FactoryProvider = {
   inject: [CONFIG],
   useFactory: (config: ConfiguracaoApp) =>
     config.authStore === 'memory' ? filaCurriculoTeste : new FilaCurriculoBull(),
+};
+
+const filaLgpdProvider: FactoryProvider = {
+  provide: FILA_LGPD,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? filaLgpdTeste : new FilaLgpdBull(),
 };
 
 const filaVagasProvider: FactoryProvider = {
@@ -314,6 +325,7 @@ const whatsappClienteProvider: FactoryProvider = {
     NotificacoesController,
   ],
   providers: [
+    { provide: APP_PIPE, useClass: UuidParamPipe },
     configProvider,
     relogioProvider,
     repositorioProvider,
@@ -321,6 +333,7 @@ const whatsappClienteProvider: FactoryProvider = {
     fonteProvider,
     filaProvider,
     filaVagasProvider,
+    filaLgpdProvider,
     filaMatchProvider,
     filaWhatsappEntradaProvider,
     deduplicadorWebhookProvider,
@@ -438,18 +451,19 @@ const whatsappClienteProvider: FactoryProvider = {
     },
     {
       provide: LgpdService,
-      inject: [REPOSITORIO, ARMAZENAMENTO, RELOGIO],
+      inject: [REPOSITORIO, ARMAZENAMENTO, RELOGIO, FILA_LGPD],
       useFactory: (
         repo: Repositorio,
         armazenamento: typeof armazenamentoTeste,
         relogio: typeof relogioSistema,
-      ) => new LgpdService(repo, armazenamento, relogio),
+        fila: typeof filaLgpdTeste,
+      ) => new LgpdService(repo, armazenamento, relogio, fila),
     },
     {
       provide: AcessoSensivelService,
-      inject: [REPOSITORIO, AuditoriaService],
-      useFactory: (repo: Repositorio, auditoria: AuditoriaService) =>
-        new AcessoSensivelService(repo, auditoria),
+      inject: [REPOSITORIO, AuditoriaService, ARMAZENAMENTO],
+      useFactory: (repo: Repositorio, auditoria: AuditoriaService, armazenamento: typeof armazenamentoTeste) =>
+        new AcessoSensivelService(repo, auditoria, armazenamento),
     },
     {
       provide: CandidaturaStateMachine,

@@ -9,6 +9,7 @@ import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
 import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
+import { CampoPrazo } from '@/design-system/CampoPrazo';
 import { Cartao } from '@/design-system/Cartao';
 import { Chip } from '@/design-system/Chip';
 import { estilos } from '@/design-system/estilos';
@@ -17,6 +18,7 @@ import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
 import { useEmpresaAtiva } from '@/hooks/useEmpresaAtiva';
 import { usePermissao } from '@/hooks/usePermissao';
+import { normalizarPrazo } from '@/vaga/prazo';
 import { etapasComPerguntas, etapasIncompletas, processoPronto, situacaoEtapa, type EtapaProcesso } from '@/vaga/processo';
 
 interface VagaEmpresa {
@@ -166,13 +168,13 @@ export default function VagaEmpresaScreen() {
           </Cartao>
         );
       })}
-      <Campo label={t('vaga.prazo')} value={prazo} onChangeText={setPrazo} placeholder={t('vaga.prazoAjuda')} autoCapitalize="none" />
+      <CampoPrazo value={prazo} onChangeText={setPrazo} validar={prazo.length >= 10} />
       {rascunho ? (
         <Button
           label={t('vaga.salvarPrazo')}
           variante="secundario"
           desabilitado={ocupado}
-          onPress={() => void agir(`/vagas/${id}`, 'PATCH', { prazoInscricoes: prazo })}
+          onPress={() => void agir(`/vagas/${id}`, 'PATCH', { prazoInscricoes: normalizarPrazo(prazo) })}
         />
       ) : null}
       {podePublicar && rascunho ? (
@@ -186,7 +188,7 @@ export default function VagaEmpresaScreen() {
         </>
       ) : null}
       {dados?.status === 'PUBLICADA' || dados?.status === 'INSCRICOES_ENCERRADAS' ? (
-        <Button label={t('vaga.prorrogar')} onPress={() => void agir(`/vagas/${id}/prorrogar`, 'POST', { prazoInscricoes: prazo })} />
+        <Button label={t('vaga.prorrogar')} onPress={() => void agir(`/vagas/${id}/prorrogar`, 'POST', { prazoInscricoes: normalizarPrazo(prazo) })} />
       ) : null}
       {dados?.status === 'PUBLICADA' || dados?.status === 'INSCRICOES_ENCERRADAS' ? (
         <Button label={t('vaga.pausar')} variante="secundario" onPress={() => void agir(`/vagas/${id}/pausar`, 'POST')} />

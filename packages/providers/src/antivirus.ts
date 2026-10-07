@@ -1,4 +1,5 @@
 import net from 'node:net';
+import { envNumero } from '@scv/env';
 
 export type ResultadoAntivirus = 'LIMPO' | 'INFECTADO';
 
@@ -66,7 +67,7 @@ export class AntivirusClamAv implements Antivirus {
 
 export function criarAntivirus(env: NodeJS.ProcessEnv = process.env): Antivirus {
   if (env.CLAMAV_HOST) {
-    return new AntivirusClamAv(env.CLAMAV_HOST, Number(env.CLAMAV_PORT ?? 3310));
+    return new AntivirusClamAv(env.CLAMAV_HOST, envNumero(env, 'CLAMAV_PORT', 3310));
   }
   return new AntivirusMock();
 }

@@ -10,6 +10,8 @@ services:
       - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Cria o papel scv_app (runtime, sem BYPASSRLS) na primeira inicialização do volume.
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-scv} -d ${POSTGRES_DB:-scv}']
       interval: 10s
@@ -30,8 +32,10 @@ services:
       timeout: 5s
       retries: 5
 
+  # As imagens oficiais minio/minio e quay.io/minio/minio deixaram de ser publicadas; usamos o fork
+  # mantido pgsty/minio, fixado por versão (nunca :latest). Ver docs/runbooks/ambiente-local.md.
   minio:
-    image: minio/minio:latest
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     container_name: scv-minio
     command: server /data --console-address ":9001"
     environment:
@@ -49,6 +53,22 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # Cria o bucket de desenvolvimento (idempotente) e termina.
+  minio-init:
+    image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
+    container_name: scv-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: 'no'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      S3_BUCKET: ${S3_BUCKET:-scv-dev}
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" && mc mb --ignore-existing "local/$$S3_BUCKET"
 
   livekit:
     image: livekit/livekit-server:latest

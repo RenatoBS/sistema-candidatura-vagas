@@ -1,3 +1,5 @@
+import { envOu } from '@scv/env';
+
 export interface ResultadoStt {
   texto: string;
   confianca: number;
@@ -78,9 +80,9 @@ export class FakeSttProvider implements SttProvider {
 export function criarSttProvider(env: NodeJS.ProcessEnv = process.env): SttProvider {
   return env.STT_PROVIDER === 'openai' && env.OPENAI_API_KEY
     ? new OpenAiWhisperStt(
-        env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
+        envOu(env, 'OPENAI_BASE_URL', 'https://api.openai.com/v1'),
         env.OPENAI_API_KEY,
-        env.STT_MODELO ?? 'whisper-1',
+        envOu(env, 'STT_MODELO', 'whisper-1'),
       )
     : new FakeSttProvider();
 }

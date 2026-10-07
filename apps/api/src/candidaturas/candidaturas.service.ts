@@ -8,6 +8,7 @@ import {
 } from '@scv/domain';
 
 import type { Relogio } from '../auth/auth.service';
+import { primeiroNome } from '../candidatos/identificacao';
 import { ErroAplicacao } from '../erros';
 import type { NotificacoesService } from '../notificacoes/notificacoes.service';
 import type { Repositorio } from '../repositorio/tipos';
@@ -65,9 +66,12 @@ export class CandidaturasService {
   async minhas(sessao: SessaoRequest) {
     const candidato = await this.repo.buscarCandidatoPorUsuario(sessao.usuario.id);
     if (!candidato) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'candidato não encontrado');
-    return (await this.repo.listarCandidaturasCandidato(candidato.id, { sistema: true })).map(
-      (item) => this.dto(item),
-    );
+    const itens = await this.repo.listarCandidaturasCandidato(candidato.id, { sistema: true });
+    const titulos = new Map<string, string | null>();
+    for (const vagaId of new Set(itens.map((item) => item.vagaId))) {
+      titulos.set(vagaId, (await this.repo.buscarVaga(vagaId, { sistema: true }))?.titulo ?? null);
+    }
+    return itens.map((item) => ({ ...this.dto(item), vagaTitulo: titulos.get(item.vagaId) ?? null }));
   }
 
   async minha(sessao: SessaoRequest, id: string) {
@@ -212,7 +216,8 @@ export class CandidaturasService {
     return Promise.all(
       itens.map(async (item) => ({
         ...this.dto(item),
-        candidato: (await this.repo.buscarCandidatoPorId(item.candidatoId))?.nome ?? 'Candidato',
+        // Privacidade: a empresa identifica o candidato só pelo primeiro nome.
+        candidato: { primeiroNome: primeiroNome((await this.repo.buscarCandidatoPorId(item.candidatoId))?.nome) },
       })),
     );
   }

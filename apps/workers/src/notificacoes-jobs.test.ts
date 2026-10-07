@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { processarNotificacao } from './notificacoes-jobs';
+import { EVENTO_LIMPAR_DISPOSITIVOS, processarNotificacao } from './notificacoes-jobs';
 
 describe('jobs de notificação', () => {
   it('match.forte chama a API interna com o token', async () => {
@@ -22,5 +22,15 @@ describe('jobs de notificação', () => {
     await assert.rejects(() => processarNotificacao({ name: 'outro', data: { sugestaoId: 's1' } }, ok), /inválido/);
     const falha = (async () => new Response('erro', { status: 503 })) as typeof fetch;
     await assert.rejects(() => processarNotificacao({ name: 'match.forte', data: { sugestaoId: 's1' } }, falha, {}), /503/);
+  });
+
+  it('limpar-dispositivos chama a rota interna de limpeza de push', async () => {
+    const urls: string[] = [];
+    const fetchImpl = (async (url: string) => {
+      urls.push(url);
+      return new Response(JSON.stringify({ removidos: 2 }), { status: 200 });
+    }) as typeof fetch;
+    await processarNotificacao({ name: EVENTO_LIMPAR_DISPOSITIVOS, data: {} }, fetchImpl, { API_PUBLIC_URL: 'http://api.local' });
+    assert.deepEqual(urls, ['http://api.local/api/v1/interno/dispositivos-push/limpeza']);
   });
 });

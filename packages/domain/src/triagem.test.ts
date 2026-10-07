@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 
 import {
   atrasoHumanoMs,
+  atrasoReenvioConviteMs,
   decidirBorda,
   decidirRateLimit,
   dentroDoHorarioComercial,
@@ -180,5 +181,14 @@ describe('prompt de avaliação', () => {
     assert.equal(interpretarAvaliacaoIa('{"perguntas":[]}'), null);
     assert.equal(notaContaNaMedia({ contaNaMedia: false }), false);
     assert.equal(notaContaNaMedia({ clareza: 8 }), true);
+  });
+
+  it('backoff do reenvio do convite cresce e termina após cinco tentativas', () => {
+    assert.deepEqual(
+      [1, 2, 3, 4, 5].map((tentativa) => atrasoReenvioConviteMs(tentativa)),
+      [60_000, 300_000, 900_000, 3_600_000, 21_600_000],
+    );
+    assert.equal(atrasoReenvioConviteMs(6), null);
+    assert.equal(atrasoReenvioConviteMs(0), null);
   });
 });

@@ -862,4 +862,84 @@ describe('F7 triagem WhatsApp', () => {
     assert.equal(candidatoVe.status, 403);
     assert.equal(JSON.stringify(candidatoVe.json).includes('nota'), false);
   });
+
+  it('FC-11: falha de envio do convite não vira 500, agenda reenvio com backoff e não consome tentativa', async () => {
+    const baseCenario = await cenario();
+    whatsappMensagensTeste.falhar = true;
+    const inicio = await interno(`/interno/triagem/candidaturas/${baseCenario.candidaturaId}/iniciar`);
+    assert.equal(inicio.status, 202, JSON.stringify(inicio.json));
+    assert.equal(inicio.json.iniciada, false);
+    assert.equal(inicio.json.motivo, 'ENVIO_FALHOU');
+    const entrevista = await repositorioTeste.buscarEntrevistaPorCandidaturaEtapa(
+      baseCenario.candidaturaId,
+      baseCenario.etapaId,
+      SISTEMA,
+    );
+    assert.ok(entrevista);
+    assert.equal(entrevista.status, 'AGUARDANDO_INICIO');
+    assert.equal(entrevista.retryAtual, 0);
+    assert.equal(entrevista.iniciadaEm, null);
+    const reenvio = filaTriagemTeste.jobs.find((item) => item.nome === 'reenviar-convite' && item.data.entrevistaId === entrevista.id);
+    assert.ok(reenvio, 'reenvio não foi agendado');
+    assert.equal(reenvio.delayMs, 60_000);
+
+    // Segunda falha: próximo reenvio com atraso maior.
+    const falhaDeNovo = await interno(`/interno/triagem/entrevistas/${entrevista.id}/reenviar-convite`, { tentativa: 1 });
+    assert.equal(falhaDeNovo.json.reenviado, false);
+    const segundo = filaTriagemTeste.jobs.find((item) => item.jobId === `reenvio:${entrevista.id}:2`);
+    assert.ok(segundo);
+    assert.ok(segundo.delayMs > 60_000);
+
+    // Provedor volta: o reenvio entrega o convite e entra no ciclo normal de lembretes.
+    whatsappMensagensTeste.falhar = false;
+    const ok = await interno(`/interno/triagem/entrevistas/${entrevista.id}/reenviar-convite`, { tentativa: 2 });
+    assert.equal(ok.json.reenviado, true, JSON.stringify(ok.json));
+    assert.ok(whatsappMensagensTeste.enviados.some((item) => item.tipo === 'menu'));
+    const depois = await repositorioTeste.buscarEntrevista(entrevista.id, SISTEMA);
+    assert.equal(depois?.status, 'AGUARDANDO_INICIO');
+    assert.equal(depois?.retryAtual, 0);
+    assert.ok(filaTriagemTeste.jobs.some((item) => item.jobId.startsWith(`retry:${entrevista.id}`)));
+    const repetido = await interno(`/interno/triagem/entrevistas/${entrevista.id}/reenviar-convite`, { tentativa: 3 });
+    assert.equal(repetido.json.reenviado, false);
+    assert.equal(whatsappMensagensTeste.enviados.filter((item) => item.tipo === 'menu').length, 1);
+  });
+
+  it('FC-11: entrevista suspensa não muda de estado ao aceitar nem ao esgotar o prazo', async () => {
+    const baseCenario = await cenario();
+    await interno(`/interno/triagem/candidaturas/${baseCenario.candidaturaId}/iniciar`);
+    const entrevista = await repositorioTeste.buscarEntrevistaPorCandidaturaEtapa(
+      baseCenario.candidaturaId,
+      baseCenario.etapaId,
+      SISTEMA,
+    );
+    assert.ok(entrevista);
+    const pausaId = randomUUID();
+    await repositorioTeste.registrarEventoVaga(
+      { id: pausaId, empresaId: baseCenario.empresaId, vagaId: baseCenario.vagaId, tipo: 'VagaPausada', payload: {}, criadoEm: AGORA, consumidoEm: null },
+      SISTEMA,
+    );
+    assert.equal((await interno(`/interno/eventos-vaga/${pausaId}/aplicar`)).status, 201);
+    assert.equal((await repositorioTeste.buscarEntrevista(entrevista.id, SISTEMA))?.status, 'SUSPENSA_PAUSA');
+
+    const aceite = await interno(`/interno/triagem/entrevistas/${entrevista.id}/aceitar`);
+    assert.equal(aceite.status, 409, JSON.stringify(aceite.json));
+    assert.equal(aceite.json.codigo, 'ENTREVISTA_SUSPENSA');
+    const comecar = await processarUltimo(baseCenario.instanciaId, baseCenario.tokenInstancia, {
+      messageid: 'btn-comecar-suspensa',
+      sender: `${baseCenario.numero}@s.whatsapp.net`,
+      messageType: 'ButtonResponse',
+      buttonOrListid: 'comecar',
+      text: 'Começar',
+    });
+    assert.equal(comecar.status, 'PROCESSADO');
+    const esgotar = await interno(`/interno/triagem/entrevistas/${entrevista.id}/esgotar`);
+    assert.equal(esgotar.json.semResposta, false);
+    const retryFinal = await interno(`/interno/triagem/entrevistas/${entrevista.id}/retry`, { numero: 9 });
+    assert.equal(retryFinal.json.enviado, false);
+    const final = await repositorioTeste.buscarEntrevista(entrevista.id, SISTEMA);
+    assert.equal(final?.status, 'SUSPENSA_PAUSA');
+    assert.equal(final?.aceiteTentativaEm, null);
+    const candidatura = await repositorioTeste.buscarCandidatura(baseCenario.candidaturaId, SISTEMA);
+    assert.notEqual(candidatura?.status, 'TRIAGEM_SEM_RESPOSTA');
+  });
 });

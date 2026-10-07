@@ -7,6 +7,7 @@ import {
   type DadosCurriculo,
   type ItemCatalogo,
 } from '@scv/domain';
+import { envOu } from '@scv/env';
 import { criarLlmProvider, lerPrompt, VERSAO_PROMPT_CURRICULO, type LlmProvider } from '@scv/llm';
 
 import type { ExtratorEstruturadoCurriculo } from './extrator-estruturado';
@@ -35,7 +36,7 @@ export class ExtratorEstruturadoLlm implements ExtratorEstruturadoCurriculo {
 }
 
 export function criarExtratorEstruturado(env: NodeJS.ProcessEnv = process.env): ExtratorEstruturadoCurriculo {
-  if ((env.EXTRATOR_CURRICULO ?? 'mock').toLowerCase() === 'llm') {
+  if ((envOu(env, 'EXTRATOR_CURRICULO', 'mock')).toLowerCase() === 'llm') {
     return new ExtratorEstruturadoLlm(criarLlmProvider(env));
   }
   return new ExtratorEstruturadoMock();

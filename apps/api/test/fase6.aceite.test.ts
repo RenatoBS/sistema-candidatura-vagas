@@ -512,6 +512,10 @@ describe('Fase 6 — critérios de aceite HTTP (F6-12)', () => {
     const listaAntesDaPausa = await api('/candidatos/me/candidaturas', {}, pessoa.token);
     assert.equal(listaAntesDaPausa.status, 200);
     assertSemRanking(listaAntesDaPausa.json);
+    // FC-17/U1: a lista mostra o título da vaga (não só o vagaId), sem score nem posição.
+    const [primeira] = listaAntesDaPausa.json as unknown as Array<{ vagaTitulo?: string }>;
+    assert.equal(typeof primeira?.vagaTitulo, 'string');
+    assert.ok((primeira?.vagaTitulo ?? '').length > 0);
     const detalheAntesDaPausa = await api(
       `/candidatos/me/candidaturas/${criada.json.id}`,
       {},
@@ -519,6 +523,7 @@ describe('Fase 6 — critérios de aceite HTTP (F6-12)', () => {
     );
     assert.equal(detalheAntesDaPausa.status, 200);
     assertSemRanking(detalheAntesDaPausa.json);
+    assert.equal(detalheAntesDaPausa.json.vagaTitulo, primeira?.vagaTitulo);
     const semTermo = await candidato('aceite-direta-sem-termo@pessoal.test');
     assert.equal(
       (

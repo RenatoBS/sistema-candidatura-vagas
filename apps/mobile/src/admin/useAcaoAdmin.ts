@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { executarAcaoAdmin, type CaminhoAcaoAdmin } from '@/admin/acao-admin';
+import { validarAcaoAdmin } from '@/admin/regras';
 import { ErroApi } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
-
-import { executarAcaoAdmin, type CaminhoAcaoAdmin } from './acao-admin';
-import { validarAcaoAdmin } from './regras';
 
 /** Fluxo compartilhado das ações de moderação: senha só na reautenticação, motivo só na ação. */
 export function useAcaoAdmin(aoConcluir: () => Promise<unknown>) {

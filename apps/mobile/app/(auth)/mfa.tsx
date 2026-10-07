@@ -12,6 +12,7 @@ import { Button } from '@/design-system/Button';
 import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
 import { Cartao } from '@/design-system/Cartao';
+import { CodigoQr } from '@/design-system/CodigoQr';
 import { estilos } from '@/design-system/estilos';
 import { Tela } from '@/design-system/Tela';
 import { colors, tipo } from '@/design-system/tokens';
@@ -23,6 +24,7 @@ export default function MfaScreen() {
   const [uri, setUri] = useState('');
   const [codigo, setCodigo] = useState('');
   const [codigos, setCodigos] = useState<string[]>([]);
+  const [sessaoVerificada, setSessaoVerificada] = useState<{ accessToken: string; refreshToken: string } | null>(null);
   const [erro, setErro] = useState('');
 
   function mensagem(falha: unknown): string {
@@ -43,18 +45,26 @@ export default function MfaScreen() {
   async function confirmar() {
     setErro('');
     try {
-      const resposta = await api<{ codigosRecuperacao: string[] }>(
+      const resposta = await api<{ codigosRecuperacao: string[]; accessToken: string; refreshToken: string }>(
         '/auth/mfa/confirmar',
         { method: 'POST', body: JSON.stringify({ codigo }) },
         accessToken,
       );
+      setSessaoVerificada({ accessToken: resposta.accessToken, refreshToken: resposta.refreshToken });
       setCodigos(resposta.codigosRecuperacao);
     } catch (falha) {
       setErro(mensagem(falha));
     }
   }
 
-  async function verificar(depoisDeConfirmar = false) {
+  /** A confirmação já devolve a sessão com MFA verificado: segue para a área sem pedir outro código. */
+  async function continuar() {
+    if (!sessaoVerificada) return;
+    const nova = await entrar(sessaoVerificada);
+    router.replace(rotaInicial(nova));
+  }
+
+  async function verificar() {
     setErro('');
     try {
       const tokens = await api<{ accessToken: string; refreshToken: string }>(
@@ -65,12 +75,7 @@ export default function MfaScreen() {
       const nova = await entrar(tokens);
       router.replace(rotaInicial(nova));
     } catch (falha) {
-      if (depoisDeConfirmar) {
-        setCodigo('');
-        setErro(t('auth.mfaContinuarErro'));
-      } else {
-        setErro(mensagem(falha));
-      }
+      setErro(mensagem(falha));
     }
   }
 
@@ -92,9 +97,7 @@ export default function MfaScreen() {
               </Text>
             ))}
           </Cartao>
-          <Button label={t('comum.continuar')} onPress={() => void verificar(true)} />
-          <Campo label={t('auth.codigo')} value={codigo} onChangeText={setCodigo} autoCapitalize="none" keyboardType="number-pad" />
-          <Button label={t('auth.mfaVerificar')} variante="secundario" onPress={() => void verificar()} />
+          <Button label={t('comum.continuar')} onPress={() => void continuar().catch((falha) => setErro(mensagem(falha)))} />
         </>
       ) : (
         <>
@@ -102,6 +105,7 @@ export default function MfaScreen() {
           {uri ? (
             <Cartao>
               <Text style={estilos.corpo}>{t('auth.mfaInstrucao')}</Text>
+              <CodigoQr valor={uri} accessibilityLabel={t('auth.mfaQr')} />
               {segredo ? (
                 <>
                   <Text style={estilos.legenda}>{t('auth.mfaSegredo')}</Text>

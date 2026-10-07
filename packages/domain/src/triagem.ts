@@ -277,7 +277,19 @@ export function dentroDaJanelaAgregacao(desde: Date, agora: Date, janelaSegundos
   return agora.getTime() - desde.getTime() < janelaSegundos * 1000;
 }
 
+/** Atraso (minutos) antes de cada reenvio do convite quando o provedor falha; índice 0 = 1º reenvio. */
+export const REENVIO_CONVITE_BACKOFF_MINUTOS = [1, 5, 15, 60, 360] as const;
+
+/** Atraso em ms para o reenvio número `tentativa` (1-based); `null` quando as tentativas se esgotaram. */
+export function atrasoReenvioConviteMs(tentativa: number): number | null {
+  const minutos = REENVIO_CONVITE_BACKOFF_MINUTOS[tentativa - 1];
+  return minutos === undefined ? null : minutos * 60 * 1000;
+}
+
 export interface ContextoEntrevista {
+  /** Convite (ou confirmação de número) que falhou no envio e aguarda reenvio. */
+  reenvioPendente?: 'convite' | 'confirmacao_numero' | null;
+  conviteEnviadoEm?: string | null;
   pediuAudio?: boolean;
   aguardandoConfirmacaoNumero?: boolean;
   numeroRecusado?: boolean;

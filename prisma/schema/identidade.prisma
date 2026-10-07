@@ -7,11 +7,14 @@ model Usuario {
   papeisGlobais      PapelGlobal[]
   mfaAtivo           Boolean        @default(false)
   mfaSecretCifrado   String?
+  mfaUltimoPasso     Int?
   visaoPreferida     VisaoPreferida @default(CANDIDATO)
+  empresaAtivaId     String?        @db.Uuid
   emailConfirmadoEm  DateTime?      @db.Timestamptz
   criadoEm           DateTime       @default(now()) @db.Timestamptz
   atualizadoEm       DateTime       @updatedAt @db.Timestamptz
 
+  empresaAtiva           Empresa?       @relation("EmpresaAtiva", fields: [empresaAtivaId], references: [id], onDelete: SetNull)
   candidato              Candidato?
   membrosEmpresa         MembroEmpresa[]
   verificacoesFeitas     VerificacaoEmpresa[] @relation("RevisorVerificacao")
@@ -63,6 +66,7 @@ model Empresa {
   eventosVaga        EventoVaga[]
   eventosWhatsappEntrada EventoWhatsappEntrada[]
   quedasInstanciaWhatsapp QuedaInstanciaWhatsapp[]
+  usuariosComEmpresaAtiva Usuario[] @relation("EmpresaAtiva")
 
   @@index([statusVerificacao])
   @@map("empresas")

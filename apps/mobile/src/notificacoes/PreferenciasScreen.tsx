@@ -32,8 +32,8 @@ export function PreferenciasScreen() {
   const [erro, setErro] = useState(false);
 
   useEffect(() => {
-    void api<PreferenciaNotificacao[]>('/notificacoes/preferencias', {}, accessToken)
-      .then(setItens)
+    void api<{ itens: PreferenciaNotificacao[] }>('/notificacoes/preferencias', {}, accessToken)
+      .then((resposta) => setItens(Array.isArray(resposta.itens) ? resposta.itens : []))
       .catch(() => {
         setErro(true);
         setMensagem(t('notificacoes.erroCarregar'));

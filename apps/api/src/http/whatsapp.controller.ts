@@ -1,4 +1,4 @@
-import { Controller, Get, Headers, Inject, Param, Post, Req, Body } from '@nestjs/common';
+import { Controller, Get, Headers, Inject, Param, Post, Query, Req, Body } from '@nestjs/common';
 
 import type { SessaoRequest } from '../sessao';
 import { WebhookUazapiService } from '../whatsapp/webhook-uazapi.service';
@@ -46,9 +46,10 @@ export class WhatsappController {
   @Post('webhooks/whatsapp/uazapi/:instanciaId')
   async webhook(
     @Param('instanciaId') instanciaId: string,
-    @Headers('x-webhook-secret') segredo: string | undefined,
+    @Headers('x-webhook-secret') segredoHeader: string | undefined,
+    @Query('segredo') segredoQuery: string | undefined,
     @Body() payload: unknown,
   ) {
-    return this.webhookService.receber(instanciaId, segredo, payload);
+    return this.webhookService.receber(instanciaId, segredoHeader ?? segredoQuery, payload);
   }
 }

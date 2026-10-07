@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Put, Query, Req } from '@nestjs/common';
 import { preferenciasNotificacaoSchema } from '@scv/contracts';
 
+import { envNumero } from '@scv/env';
 import type { ConfiguracaoApp } from '../configuracao';
 import { ErroAplicacao } from '../erros';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
@@ -41,7 +42,7 @@ export class NotificacoesController {
   limparDispositivos(@Req() req: RequisicaoComSessao) {
     const token = req.headers['x-internal-token'];
     if (!this.config.internalToken || token !== this.config.internalToken) throw new ErroAplicacao('NAO_AUTENTICADO', 401, 'token interno inválido');
-    const dias = Number(process.env.PUSH_TOKEN_RETENCAO_DIAS ?? 90);
+    const dias = envNumero(process.env, 'PUSH_TOKEN_RETENCAO_DIAS', 90);
     if (!Number.isInteger(dias) || dias < 1) throw new ErroAplicacao('DADOS_INVALIDOS', 400, 'PUSH_TOKEN_RETENCAO_DIAS inválido');
     return this.notificacoes.limparDispositivosInativos(dias);
   }
