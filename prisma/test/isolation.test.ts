@@ -117,7 +117,10 @@ describe('isolamento multi-tenant RLS (F2-10)', () => {
     await setSessionContext(prisma, { leituraPublica: true });
     const vagas = await prisma.vaga.findMany();
     assert.ok(vagas.some((vaga) => vaga.id === futura));
-    assert.equal(vagas.some((vaga) => vaga.id === rascunho), false);
+    assert.equal(
+      vagas.some((vaga) => vaga.id === rascunho),
+      false,
+    );
     assert.ok(vagas.every((vaga) => vaga.status === 'PUBLICADA'));
     await prisma.$disconnect();
   });
@@ -151,6 +154,32 @@ describe('isolamento multi-tenant RLS (F2-10)', () => {
       where: { empresaId: empresaAId },
     });
     assert.equal(candidaturas.length, 0);
+    await prisma.$disconnect();
+  });
+
+  it('RLS bloqueia eventos de WhatsApp de outra empresa', async () => {
+    const admin = createPrisma(MIGRATION_DATABASE_URL);
+    const instancia = await admin.instanciaWhatsapp.upsert({
+      where: { empresaId: empresaBId },
+      update: {},
+      create: { empresaId: empresaBId, instanciaIdProvedorCifrado: 'teste', tokenCifrado: 'teste' },
+    });
+    await admin.eventoWhatsappEntrada.create({
+      data: {
+        empresaId: empresaBId,
+        instanciaWhatsappId: instancia.id,
+        mensagemIdProvedor: 'rls-evento-1',
+        tipo: 'TEXTO',
+        payloadNormalizado: { texto: 'teste' },
+      },
+    });
+    await admin.$disconnect();
+    const prisma = createPrisma(RLS_DATABASE_URL);
+    await setSessionContext(prisma, { empresaId: empresaAId, isAdmin: false });
+    const eventos = await prisma.eventoWhatsappEntrada.findMany({
+      where: { empresaId: empresaBId },
+    });
+    assert.equal(eventos.length, 0);
     await prisma.$disconnect();
   });
 });

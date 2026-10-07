@@ -4,8 +4,8 @@ ALTER TABLE respostas ADD COLUMN "mensagemIdProvedor" TEXT;
 
 CREATE TABLE "eventos_whatsapp_entrada" (
   "id" UUID NOT NULL DEFAULT gen_random_uuid(),
-  "empresaId" UUID NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
-  "instanciaWhatsappId" UUID NOT NULL REFERENCES instancias_whatsapp(id) ON DELETE CASCADE,
+  "empresaId" UUID NOT NULL,
+  "instanciaWhatsappId" UUID NOT NULL,
   "mensagemIdProvedor" TEXT NOT NULL,
   "tipo" "TipoMensagemWhatsapp" NOT NULL,
   "payloadNormalizado" JSONB NOT NULL,
