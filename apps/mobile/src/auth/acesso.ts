@@ -59,10 +59,15 @@ export function atorDaSessao(sessao: SessaoApp | null): Ator {
   };
 }
 
+/** Empresa em uso: a ativa da sessão ou, sem ela, a primeira do usuário ('' quando não há empresa). */
+export function empresaAtivaDaSessao(sessao: SessaoApp | null): string {
+  return sessao?.empresaAtivaId ?? sessao?.empresas[0]?.empresaId ?? '';
+}
+
 export function podeAcao(sessao: SessaoApp | null, acao: Acao, empresaId?: string): boolean {
   const ator = atorDaSessao(sessao);
-  const empresa = empresaId ?? sessao?.empresaAtivaId ?? undefined;
-  return decidirPermissao(ator, acao, { empresaId: empresa ?? undefined }).permitido;
+  const empresa = empresaId || empresaAtivaDaSessao(sessao);
+  return decidirPermissao(ator, acao, { empresaId: empresa || undefined }).permitido;
 }
 
 export function podeAcessarGrupo(

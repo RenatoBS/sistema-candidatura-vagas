@@ -35,6 +35,9 @@ function notificacaoDe(item: {
   return { ...item, tipo: item.tipo as TipoNotificacaoEmpresa, dados: objeto(item.dados) };
 }
 
+/** Alertas da empresa gravados sem `dados.central` (monitor de WhatsApp, alertas da triagem). */
+const TIPOS_SEMPRE_NA_CENTRAL = ['WHATSAPP_DESCONECTADO', 'OPERACIONAL'] as const;
+
 /**
  * Notificações e preferências sob o RLS do tenant (`empresaId` da vaga).
  * Toda linha gravada aqui tem `dados.central` (true/false): a central filtra por igualdade.
@@ -67,7 +70,8 @@ export class NotificacoesPrisma {
   async listarNotificacoes(filtro: FiltroNotificacoes, ctx: ContextoTenant): Promise<PaginaNotificacoes> {
     const where: Prisma.NotificacaoWhereInput = {
       usuarioId: filtro.usuarioId,
-      dados: { path: ['central'], equals: true },
+      // Alertas operacionais não passam por preferência de canal: sempre aparecem (como no repositório em memória).
+      OR: [{ dados: { path: ['central'], equals: true } }, { tipo: { in: [...TIPOS_SEMPRE_NA_CENTRAL] } }],
       ...(filtro.empresaId === undefined ? {} : { empresaId: filtro.empresaId }),
     };
     return this.com(ctx, async (tx) => {

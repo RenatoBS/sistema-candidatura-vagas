@@ -8,7 +8,7 @@ import type { Repositorio } from '../repositorio/tipos';
 import type { AuthService } from './auth.service';
 import type { Relogio } from './auth.service';
 import type { SessaoEmitida } from './auth.service';
-import { gerarCodigosRecuperacao, gerarSegredoTotp, hashSegredo, totpConfere, uriTotp } from './segredos';
+import { gerarCodigosRecuperacao, gerarSegredoTotp, hashSegredo, totpPasso, uriTotp } from './segredos';
 
 export class MfaService {
   constructor(
@@ -22,14 +22,27 @@ export class MfaService {
     const usuario = await this.exigir(usuarioId);
     this.exigirChave();
     const segredo = gerarSegredoTotp();
-    await this.repo.atualizarUsuario(usuarioId, { mfaSecretCifrado: cifrar(segredo, this.config.encryptionKey), mfaAtivo: false });
+    await this.repo.atualizarUsuario(usuarioId, {
+      mfaSecretCifrado: cifrar(segredo, this.config.encryptionKey),
+      mfaAtivo: false,
+      mfaUltimoPasso: null,
+    });
     return { otpauthUrl: uriTotp(segredo, usuario.email) };
   }
 
-  async confirmar(usuarioId: string, codigo: string): Promise<{ codigosRecuperacao: string[] }> {
+  /**
+   * Confirma o autenticador. O código acabou de provar a posse do segredo, então a resposta já traz a sessão
+   * com MFA verificado (o app segue direto para a área, sem pedir um segundo código — o TOTP não pode ser reusado).
+   */
+  async confirmar(
+    usuarioId: string,
+    codigo: string,
+    visaoAtual: 'CANDIDATO' | 'EMPRESA' | 'ADMIN',
+    empresaId: string | null,
+  ): Promise<{ codigosRecuperacao: string[] } & SessaoEmitida> {
     const usuario = await this.exigir(usuarioId);
     const segredo = this.segredoDe(usuario.mfaSecretCifrado);
-    if (!totpConfere(segredo, codigo, this.relogio.agora().getTime())) {
+    if (!(await this.consumirTotp(usuarioId, segredo, codigo))) {
       throw new ErroAplicacao('MFA_INVALIDO', 401, 'código MFA inválido');
     }
     await this.repo.atualizarUsuario(usuarioId, { mfaAtivo: true });
@@ -43,13 +56,15 @@ export class MfaService {
         usadoEm: null,
       })),
     );
-    return { codigosRecuperacao: codigos };
+    await this.repo.revogarRefreshDoUsuario(usuarioId, this.relogio.agora());
+    const sessao = await this.auth.emitirSessao({ ...usuario, mfaAtivo: true }, true, visaoAtual, empresaId);
+    return { codigosRecuperacao: codigos, ...sessao };
   }
 
   async verificar(usuarioId: string, codigo: string, visaoAtual: 'CANDIDATO' | 'EMPRESA' | 'ADMIN', empresaId: string | null): Promise<SessaoEmitida> {
     const usuario = await this.exigir(usuarioId);
     if (!usuario.mfaAtivo) throw new ErroAplicacao('MFA_NAO_CONFIGURADO', 400, 'MFA ainda não foi confirmado');
-    const okTotp = totpConfere(this.segredoDe(usuario.mfaSecretCifrado), codigo, this.relogio.agora().getTime());
+    const okTotp = await this.consumirTotp(usuarioId, this.segredoDe(usuario.mfaSecretCifrado), codigo);
     const okRecuperacao = okTotp
       ? false
       : await this.repo.consumirCodigoMfa(usuarioId, hashSegredo(codigo.trim()), this.relogio.agora());
@@ -64,10 +79,17 @@ export class MfaService {
     if (entrada.senha) await this.auth.conferirSenha(usuarioId, entrada.senha);
     if (entrada.codigo) {
       const usuario = await this.exigir(usuarioId);
-      const ok = usuario.mfaAtivo && totpConfere(this.segredoDe(usuario.mfaSecretCifrado), entrada.codigo, this.relogio.agora().getTime());
+      const ok = usuario.mfaAtivo && (await this.consumirTotp(usuarioId, this.segredoDe(usuario.mfaSecretCifrado), entrada.codigo));
       if (!ok) throw new ErroAplicacao('MFA_INVALIDO', 401, 'código MFA inválido');
     }
     return { reauthToken: this.auth.emitirReauth(usuarioId) };
+  }
+
+  /** Aceita o código só se o passo for novo: o mesmo TOTP não vale duas vezes (RFC 6238 §5.2). */
+  private async consumirTotp(usuarioId: string, segredo: string, codigo: string): Promise<boolean> {
+    const passo = totpPasso(segredo, codigo, this.relogio.agora().getTime());
+    if (passo === null) return false;
+    return this.repo.consumirPassoMfa(usuarioId, passo);
   }
 
   private exigirChave(): void {

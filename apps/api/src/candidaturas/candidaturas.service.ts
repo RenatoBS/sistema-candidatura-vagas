@@ -8,10 +8,11 @@ import {
 } from '@scv/domain';
 
 import type { Relogio } from '../auth/auth.service';
+import { primeiroNome } from '../candidatos/identificacao';
 import { ErroAplicacao } from '../erros';
 import type { NotificacoesService } from '../notificacoes/notificacoes.service';
 import type { Repositorio } from '../repositorio/tipos';
-import { ctxDe, type SessaoRequest } from '../sessao';
+import { ctxDe, exigirMesmaEmpresa, type SessaoRequest } from '../sessao';
 import { CandidaturaStateMachine } from './candidatura-state-machine';
 
 export interface ConsentimentoEntrada {
@@ -65,9 +66,12 @@ export class CandidaturasService {
   async minhas(sessao: SessaoRequest) {
     const candidato = await this.repo.buscarCandidatoPorUsuario(sessao.usuario.id);
     if (!candidato) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'candidato não encontrado');
-    return (await this.repo.listarCandidaturasCandidato(candidato.id, { sistema: true })).map(
-      (item) => this.dto(item),
-    );
+    const itens = await this.repo.listarCandidaturasCandidato(candidato.id, { sistema: true });
+    const titulos = new Map<string, string | null>();
+    for (const vagaId of new Set(itens.map((item) => item.vagaId))) {
+      titulos.set(vagaId, (await this.repo.buscarVaga(vagaId, { sistema: true }))?.titulo ?? null);
+    }
+    return itens.map((item) => ({ ...this.dto(item), vagaTitulo: titulos.get(item.vagaId) ?? null }));
   }
 
   async minha(sessao: SessaoRequest, id: string) {
@@ -79,6 +83,7 @@ export class CandidaturasService {
   async convidar(sessao: SessaoRequest, vagaId: string, sugestaoId: string) {
     const vaga = await this.repo.buscarVaga(vagaId, ctxDe(sessao));
     if (!vaga) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'vaga não encontrada');
+    exigirMesmaEmpresa(sessao, vaga.empresaId, 'vaga');
     if (!aceitaInscricoes(vaga, this.relogio.agora()))
       throw new ErroAplicacao('INSCRICOES_INDISPONIVEIS', 409, 'inscrições não disponíveis');
     const sugestao = await this.repo.buscarSugestao(sugestaoId, ctxDe(sessao, vaga.empresaId));
@@ -206,11 +211,13 @@ export class CandidaturasService {
   async daVaga(sessao: SessaoRequest, vagaId: string) {
     const vaga = await this.repo.buscarVaga(vagaId, ctxDe(sessao));
     if (!vaga) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'vaga não encontrada');
+    exigirMesmaEmpresa(sessao, vaga.empresaId, 'vaga');
     const itens = await this.repo.listarCandidaturasVaga(vagaId, ctxDe(sessao, vaga.empresaId));
     return Promise.all(
       itens.map(async (item) => ({
         ...this.dto(item),
-        candidato: (await this.repo.buscarCandidatoPorId(item.candidatoId))?.nome ?? 'Candidato',
+        // Privacidade: a empresa identifica o candidato só pelo primeiro nome.
+        candidato: { primeiroNome: primeiroNome((await this.repo.buscarCandidatoPorId(item.candidatoId))?.nome) },
       })),
     );
   }

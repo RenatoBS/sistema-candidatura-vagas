@@ -37,6 +37,11 @@ export interface PerfilMe {
   visoesDisponiveis: Visao[];
 }
 
+function escolherEmpresaAtiva(preferida: string | null, ativas: VinculoUsuario[]): string | null {
+  if (preferida && ativas.some((item) => item.empresaId === preferida)) return preferida;
+  return ativas[0]?.empresaId ?? null;
+}
+
 export class AuthService {
   constructor(
     private readonly repo: Repositorio,
@@ -72,7 +77,8 @@ export class AuthService {
     if (!usuario || !ok) {
       throw new ErroAplicacao('CREDENCIAIS_INVALIDAS', 401, 'credenciais inválidas');
     }
-    const sessao = await this.emitirSessao(usuario, false, usuario.visaoPreferida, null);
+    const empresaId = await this.empresaAtivaDe(usuario, usuario.visaoPreferida);
+    const sessao = await this.emitirSessao(usuario, false, usuario.visaoPreferida, empresaId);
     return { ...sessao, mfaObrigatorio: this.ehAdmin(usuario) };
   }
 
@@ -89,7 +95,8 @@ export class AuthService {
     const usuario = await this.repo.buscarUsuarioPorId(atual.usuarioId);
     if (!usuario) throw new ErroAplicacao('REFRESH_INVALIDO', 401, 'sessão inválida');
     await this.repo.marcarRefreshSubstituido(atual.id, agora);
-    return this.emitirSessao(usuario, atual.mfaVerificado, usuario.visaoPreferida, null, atual.familiaId);
+    const empresaId = await this.empresaAtivaDe(usuario, usuario.visaoPreferida);
+    return this.emitirSessao(usuario, atual.mfaVerificado, usuario.visaoPreferida, empresaId, atual.familiaId);
   }
 
   async logout(refreshToken: string): Promise<void> {
@@ -180,8 +187,9 @@ export class AuthService {
     }
     let empresaAtiva: string | null = null;
     if (visao === 'EMPRESA') {
-      const escolhida = empresaId ?? empresas[0]?.empresaId;
-      if (!escolhida || !empresas.some((item) => item.empresaId === escolhida)) {
+      const ativas = empresas.filter((item) => item.status === 'ATIVO');
+      const escolhida = empresaId ?? escolherEmpresaAtiva(usuario.empresaAtivaId ?? null, ativas);
+      if (!escolhida || !ativas.some((item) => item.empresaId === escolhida)) {
         throw new ErroAplicacao('EMPRESA_INVALIDA', 400, 'empresa ativa inválida');
       }
       empresaAtiva = escolhida;
@@ -189,7 +197,10 @@ export class AuthService {
     if (visao === 'ADMIN' && (!usuario.mfaAtivo || !mfaVerificado)) {
       throw new ErroAplicacao('MFA_OBRIGATORIO', 403, 'admin precisa concluir o MFA');
     }
-    await this.repo.atualizarUsuario(usuarioId, { visaoPreferida: visao });
+    await this.repo.atualizarUsuario(usuarioId, {
+      visaoPreferida: visao,
+      ...(empresaAtiva ? { empresaAtivaId: empresaAtiva } : {}),
+    });
     const sessao = await this.emitirSessao(
       { ...usuario, visaoPreferida: visao },
       mfaVerificado,
@@ -311,6 +322,16 @@ export class AuthService {
     }
     await this.repo.marcarTokenUsado(registro.id, agora);
     return registro;
+  }
+
+  /** Empresa da sessão: a última escolhida (se ainda ativa) ou a primeira vinculada; null fora da visão EMPRESA. */
+  private async empresaAtivaDe(usuario: UsuarioRegistro, visao: Visao): Promise<string | null> {
+    if (visao !== 'EMPRESA') return null;
+    const vinculos = await this.repo.vinculosDoUsuario(usuario.id);
+    return escolherEmpresaAtiva(
+      usuario.empresaAtivaId ?? null,
+      vinculos.filter((item) => item.status === 'ATIVO'),
+    );
   }
 
   private async exigirUsuario(id: string): Promise<UsuarioRegistro> {

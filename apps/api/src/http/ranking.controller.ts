@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Headers, HttpCode, Inject, Param, Post, Put, Query, Req } from '@nestjs/common';
+import { consultaRankingSchema } from '@scv/contracts';
 import type { PesosScore } from '@scv/domain';
 
 import type { ConfiguracaoApp } from '../configuracao';
@@ -7,6 +8,7 @@ import { RankingService } from '../ranking/ranking.service';
 import type { SessaoRequest } from '../sessao';
 import { CONFIG } from '../tokens';
 import { Publico } from './decoradores';
+import { validar } from './validar';
 
 interface RequisicaoComSessao {
   sessao: SessaoRequest;
@@ -36,11 +38,10 @@ export class RankingController {
     @Req() req: RequisicaoComSessao,
     @Param('empresaId') empresaId: string,
     @Param('vagaId') vagaId: string,
-    @Query('completudeMin') completudeMin?: string,
+    @Query() query: unknown,
   ) {
-    return this.ranking.listar(req.sessao, empresaId, vagaId, {
-      completudeMin: completudeMin ? Number(completudeMin) : 0,
-    });
+    const { completudeMin } = validar(consultaRankingSchema, query ?? {});
+    return this.ranking.listar(req.sessao, empresaId, vagaId, { completudeMin: completudeMin ?? 0 });
   }
 
   @Get('empresas/:empresaId/vagas/:vagaId/ranking/vies')

@@ -22,6 +22,15 @@ export function processarRetryTriagem(
   return postInterno(`/interno/triagem/entrevistas/${entrevistaId}/retry`, fetchImpl, env, { numero });
 }
 
+export function processarReenvioConviteTriagem(
+  entrevistaId: string,
+  tentativa: number,
+  fetchImpl: typeof fetch = fetch,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<unknown> {
+  return postInterno(`/interno/triagem/entrevistas/${entrevistaId}/reenviar-convite`, fetchImpl, env, { tentativa });
+}
+
 export function processarEsgotarTriagem(
   entrevistaId: string,
   fetchImpl: typeof fetch = fetch,

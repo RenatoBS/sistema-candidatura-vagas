@@ -33,6 +33,7 @@ import type {
   RespostaSensivel,
   SolicitacaoLgpdRegistro,
   TokenRegistro,
+  RelatorioExpurgo,
   UsuarioRegistro,
   VerificacaoRegistro,
   VinculoUsuario,
@@ -171,6 +172,14 @@ export class RepositorioMemoria implements Repositorio {
 
   async buscarUsuarioPorEmail(email: string): Promise<UsuarioRegistro | null> {
     return [...this.usuarios.values()].find((usuario) => usuario.email === email) ?? null;
+  }
+
+  async consumirPassoMfa(usuarioId: string, passo: number): Promise<boolean> {
+    const usuario = this.usuarios.get(usuarioId);
+    if (!usuario) return false;
+    if (usuario.mfaUltimoPasso != null && usuario.mfaUltimoPasso >= passo) return false;
+    this.usuarios.set(usuarioId, { ...usuario, mfaUltimoPasso: passo });
+    return true;
   }
 
   async buscarUsuarioPorId(id: string): Promise<UsuarioRegistro | null> {
@@ -499,17 +508,85 @@ export class RepositorioMemoria implements Repositorio {
     this.solicitacoesLgpd.push({ ...registro });
   }
 
+  async buscarSolicitacaoLgpd(id: string): Promise<SolicitacaoLgpdRegistro | null> {
+    const atual = this.solicitacoesLgpd.find((item) => item.id === id);
+    return atual ? { ...atual, arquivosPendentes: [...(atual.arquivosPendentes ?? [])], relatorio: { ...(atual.relatorio ?? {}) } } : null;
+  }
+
+  async atualizarSolicitacaoLgpd(id: string, patch: Partial<SolicitacaoLgpdRegistro>): Promise<void> {
+    this.solicitacoesLgpd = this.solicitacoesLgpd.map((item) => (item.id === id ? { ...item, ...patch } : item));
+  }
+
   async expurgarDadosCandidato(
     usuarioId: string,
     anon: { email: string; senhaHash: string; nome: string },
-  ): Promise<{ arquivoKeys: string[] }> {
+    solicitacaoId: string,
+  ): Promise<RelatorioExpurgo> {
     const perfil = this.candidatos.get(usuarioId);
     if (!perfil) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'candidato não encontrado');
     const usuario = this.usuarios.get(usuarioId);
     if (!usuario) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'usuário não encontrado');
-    const arquivoKeys = [...this.curriculos.values()]
-      .filter((item) => item.candidatoId === perfil.id)
-      .map((item) => item.arquivoKey);
+
+    const candidaturas = new Set(
+      [...this.candidaturasStore.candidaturas.values()].filter((item) => item.candidatoId === perfil.id).map((item) => item.id),
+    );
+    const entrevistas = new Set(
+      [...this.entrevistasStore.entrevistas.values()].filter((item) => candidaturas.has(item.candidaturaId)).map((item) => item.id),
+    );
+    const chaves = new Set<string>();
+    for (const item of this.curriculos.values()) if (item.candidatoId === perfil.id) chaves.add(item.arquivoKey);
+
+    let respostasLimpas = 0;
+    const respostasIds = new Set<string>();
+    for (const [id, resposta] of this.respostas) {
+      if (!resposta.entrevistaId || !entrevistas.has(resposta.entrevistaId)) continue;
+      if (resposta.audioUrl) chaves.add(resposta.audioUrl);
+      respostasIds.add(id);
+      this.respostas.set(id, { ...resposta, transcricao: null, textoOriginal: null, audioUrl: null });
+      respostasLimpas += 1;
+    }
+    let avaliacoesLimpas = 0;
+    for (const [id, avaliacao] of this.avaliacoes) {
+      if (!respostasIds.has(avaliacao.respostaId)) continue;
+      this.avaliacoes.set(id, { ...avaliacao, justificativa: null });
+      avaliacoesLimpas += 1;
+    }
+    let gravacoesRemovidas = 0;
+    for (const [id, sessao] of this.entrevistasStore.sessoes) {
+      if (!entrevistas.has(sessao.entrevistaId)) continue;
+      if (sessao.gravacaoKey) chaves.add(sessao.gravacaoKey);
+      this.entrevistasStore.sessoes.set(id, { ...sessao, gravacaoKey: null });
+      gravacoesRemovidas += 1;
+    }
+    const numeros = new Set([perfil.whatsapp, perfil.whatsapp?.replace(/\D/g, '')].filter((n): n is string => Boolean(n)));
+    let eventosWhatsappLimpos = 0;
+    for (const [id, evento] of this.eventosWhatsappEntrada) {
+      if (!numeros.has(String(evento.payloadNormalizado.numeroRemetente ?? ''))) continue;
+      this.eventosWhatsappEntrada.set(id, { ...evento, payloadNormalizado: {} });
+      eventosWhatsappLimpos += 1;
+    }
+    const embeddingsRemovidos = this.matchStore.embeddingsCandidato.delete(perfil.id) ? 1 : 0;
+    let sugestoesRemovidas = 0;
+    for (const [id, sugestao] of this.matchStore.sugestoes) {
+      if (sugestao.candidatoId !== perfil.id) continue;
+      this.matchStore.sugestoes.delete(id);
+      sugestoesRemovidas += 1;
+    }
+    let notificacoesRemovidas = 0;
+    for (const [id, notificacao] of this.notificacoesStore.notificacoes) {
+      if (notificacao.usuarioId !== usuarioId) continue;
+      this.notificacoesStore.notificacoes.delete(id);
+      notificacoesRemovidas += 1;
+    }
+    this.notificacoesStore.preferencias = this.notificacoesStore.preferencias.filter((item) => item.usuarioId !== usuarioId);
+    let dispositivosRemovidos = 0;
+    for (const [token, dispositivo] of this.dispositivosPush) {
+      if (dispositivo.usuarioId !== usuarioId) continue;
+      this.dispositivosPush.delete(token);
+      dispositivosRemovidos += 1;
+    }
+
+    const curriculosRemovidos = [...this.curriculos.values()].filter((item) => item.candidatoId === perfil.id).length;
     for (const [id, item] of this.curriculos) {
       if (item.candidatoId === perfil.id) this.curriculos.delete(id);
     }
@@ -524,13 +601,30 @@ export class RepositorioMemoria implements Repositorio {
       perfil: {},
       visivelParaMatch: false,
     });
-    this.usuarios.set(usuarioId, { ...usuario, email: anon.email, senhaHash: anon.senhaHash });
+    this.usuarios.set(usuarioId, { ...usuario, email: anon.email, senhaHash: anon.senhaHash, mfaSecretCifrado: null, mfaAtivo: false });
     for (const [id, refresh] of this.refresh) {
       if (refresh.usuarioId === usuarioId && !refresh.revogadoEm) {
         this.refresh.set(id, { ...refresh, revogadoEm: new Date() });
       }
     }
-    return { arquivoKeys };
+    const relatorio: RelatorioExpurgo = {
+      respostasLimpas,
+      avaliacoesLimpas,
+      gravacoesRemovidas,
+      curriculosRemovidos,
+      embeddingsRemovidos,
+      sugestoesRemovidas,
+      eventosWhatsappLimpos,
+      notificacoesRemovidas,
+      dispositivosRemovidos,
+      arquivosParaApagar: chaves.size,
+    };
+    await this.atualizarSolicitacaoLgpd(solicitacaoId, {
+      status: chaves.size ? 'PENDENTE' : 'CONCLUIDA',
+      arquivosPendentes: [...chaves],
+      relatorio: { ...relatorio },
+    });
+    return relatorio;
   }
 
   async registrarAuditoria(

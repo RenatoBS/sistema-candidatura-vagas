@@ -65,7 +65,16 @@ export class MembrosService {
   async remover(sessao: SessaoRequest, empresaId: string, membroId: string) {
     const alinhada = await this.alinhar(sessao, empresaId);
     exigir(alinhada, 'gerenciar_membros');
-    return this.repo.atualizarMembro(membroId, { status: 'REMOVIDO' }, ctxDe(alinhada, empresaId));
+    const ctx = ctxDe(alinhada, empresaId);
+    const membros = await this.repo.listarMembros(empresaId, ctx);
+    const alvo = membros.find((membro) => membro.id === membroId);
+    if (!alvo) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'membro não encontrado');
+    const ehAdmin = (papeis: string[]) => papeis.includes('ADMIN_EMPRESA');
+    const outrosAdmins = membros.filter((membro) => membro.id !== alvo.id && membro.status === 'ATIVO' && ehAdmin(membro.papeis));
+    if (alvo.status === 'ATIVO' && ehAdmin(alvo.papeis) && outrosAdmins.length === 0) {
+      throw new ErroAplicacao('ULTIMO_ADMIN', 409, 'a empresa precisa de ao menos um administrador ativo');
+    }
+    return this.repo.atualizarMembro(membroId, { status: 'REMOVIDO' }, ctx);
   }
 
   async aceitar(sessao: SessaoRequest, token: string) {

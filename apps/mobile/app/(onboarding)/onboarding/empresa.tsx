@@ -2,9 +2,10 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { api } from '@/api/cliente';
+import { api, ErroApi } from '@/api/cliente';
 import type { SessaoApp } from '@/auth/acesso';
 import { useAuth } from '@/auth/AuthContext';
+import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
 import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
@@ -20,8 +21,18 @@ export default function CadastroEmpresaScreen() {
   const [dominio, setDominio] = useState('');
   const [responsavelNome, setResponsavel] = useState('');
   const [responsavelEmail, setEmail] = useState('');
+  const [erro, setErro] = useState('');
 
   async function enviar() {
+    setErro('');
+    try {
+      await cadastrar();
+    } catch (falha) {
+      setErro(falha instanceof ErroApi ? falha.message : t('comum.erro'));
+    }
+  }
+
+  async function cadastrar() {
     const resposta = await api<{
       empresa: { id: string };
       sessao: { accessToken: string; refreshToken: string; perfil: SessaoApp };
@@ -43,6 +54,7 @@ export default function CadastroEmpresaScreen() {
   return (
     <Tela teclado>
       <Cabecalho titulo={t('onboarding.empresa')} voltar />
+      {erro ? <Banner tipo="erro" texto={erro} /> : null}
       <Campo label={t('empresa.razao')} value={razaoSocial} onChangeText={setRazao} />
       <Campo label={t('empresa.fantasia')} value={nomeFantasia} onChangeText={setFantasia} />
       <Campo label={t('empresa.cnpj')} value={cnpj} onChangeText={setCnpj} autoCapitalize="none" />

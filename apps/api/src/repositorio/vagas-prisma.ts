@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { EFEITOS_EVENTO_VAGA, POLITICA_RETRY_PADRAO, type PoliticaRetry } from '@scv/domain';
 
+import { escopoTenant } from './escopo';
 import type { ContextoTenant } from './tipos';
 import type {
   EtapaPerguntaRegistro,
@@ -97,7 +98,7 @@ export class VagasPrisma {
 
   atualizarVaga(id: string, patch: Partial<VagaRegistro>, ctx: ContextoTenant): Promise<VagaRegistro | null> {
     return this.com(ctx, async (tx) => {
-      const atual = await tx.vaga.findUnique({ where: { id } });
+      const atual = await tx.vaga.findFirst({ where: { id, ...escopoTenant(ctx) } });
       if (!atual) return null;
       const data = definido({
         titulo: patch.titulo,
@@ -120,14 +121,14 @@ export class VagasPrisma {
         alertaPausaEm: patch.alertaPausaEm,
         pesosRanking: patch.pesosRanking as Prisma.InputJsonValue | undefined,
       });
-      const salva = await tx.vaga.update({ where: { id }, data });
+      const salva = await tx.vaga.update({ where: { id, ...escopoTenant(ctx) }, data });
       return vagaDe(salva);
     });
   }
 
   buscarVaga(id: string, ctx: ContextoTenant): Promise<VagaRegistro | null> {
     return this.com(ctx, async (tx) => {
-      const vaga = await tx.vaga.findUnique({ where: { id } });
+      const vaga = await tx.vaga.findFirst({ where: { id, ...escopoTenant(ctx) } });
       return vaga ? vagaDe(vaga) : null;
     });
   }
@@ -205,14 +206,14 @@ export class VagasPrisma {
 
   buscarProcessoPorId(id: string, ctx: ContextoTenant): Promise<ProcessoRegistro | null> {
     return this.com(ctx, async (tx) => {
-      const processo = await tx.processoSeletivo.findUnique({ where: { id } });
+      const processo = await tx.processoSeletivo.findFirst({ where: { id, ...escopoTenant(ctx) } });
       return processo ? this.processoDe(processo) : null;
     });
   }
 
   buscarProcessoPorVaga(vagaId: string, ctx: ContextoTenant): Promise<ProcessoRegistro | null> {
     return this.com(ctx, async (tx) => {
-      const processo = await tx.processoSeletivo.findUnique({ where: { vagaId } });
+      const processo = await tx.processoSeletivo.findFirst({ where: { vagaId, ...escopoTenant(ctx) } });
       return processo ? this.processoDe(processo) : null;
     });
   }
@@ -252,7 +253,7 @@ export class VagasPrisma {
 
   atualizarPergunta(id: string, patch: Partial<PerguntaRegistro>, ctx: ContextoTenant): Promise<PerguntaRegistro | null> {
     return this.com(ctx, async (tx) => {
-      const atual = await tx.pergunta.findUnique({ where: { id } });
+      const atual = await tx.pergunta.findFirst({ where: { id, ...escopoTenant(ctx) } });
       if (!atual) return null;
       const data = definido({
         enunciado: patch.enunciado,
@@ -263,13 +264,13 @@ export class VagasPrisma {
         etapaAlvoId: patch.etapaAlvoId,
         tempoLimiteSegundos: patch.tempoLimiteSegundos,
       });
-      return this.perguntaDe(await tx.pergunta.update({ where: { id }, data }));
+      return this.perguntaDe(await tx.pergunta.update({ where: { id, ...escopoTenant(ctx) }, data }));
     });
   }
 
   buscarPergunta(id: string, ctx: ContextoTenant): Promise<PerguntaRegistro | null> {
     return this.com(ctx, async (tx) => {
-      const pergunta = await tx.pergunta.findUnique({ where: { id } });
+      const pergunta = await tx.pergunta.findFirst({ where: { id, ...escopoTenant(ctx) } });
       return pergunta ? this.perguntaDe(pergunta) : null;
     });
   }
@@ -313,13 +314,13 @@ export class VagasPrisma {
 
   buscarEventoVaga(id: string, ctx: ContextoTenant): Promise<EventoVagaRegistro | null> {
     return this.com(ctx, async (tx) => {
-      const evento = await tx.eventoVaga.findUnique({ where: { id } });
+      const evento = await tx.eventoVaga.findFirst({ where: { id, ...escopoTenant(ctx) } });
       return evento ? { ...evento, payload: rubrica(evento.payload) } : null;
     });
   }
 
   async marcarEventoConsumido(id: string, quando: Date, ctx: ContextoTenant): Promise<void> {
-    await this.com(ctx, (tx) => tx.eventoVaga.update({ where: { id }, data: { consumidoEm: quando } }).then(() => undefined));
+    await this.com(ctx, (tx) => tx.eventoVaga.update({ where: { id, ...escopoTenant(ctx) }, data: { consumidoEm: quando } }).then(() => undefined));
   }
 
   listarEventosVaga(vagaId: string, ctx: ContextoTenant): Promise<EventoVagaRegistro[]> {

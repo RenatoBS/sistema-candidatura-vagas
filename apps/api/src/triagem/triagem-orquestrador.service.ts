@@ -4,6 +4,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   consentimentosVigentes,
   decidirBorda,
+  atrasoReenvioConviteMs,
   dentroDaJanelaAgregacao,
   inatividadeDaPolitica,
   lerContexto,
@@ -19,16 +20,20 @@ import {
 import type { Relogio } from '../auth/auth.service';
 import { CandidaturaStateMachine } from '../candidaturas/candidatura-state-machine';
 import { ErroAplicacao } from '../erros';
-import type { FilaTriagem } from '../fila/fila-triagem';
+import { FILA_TRIAGEM_RETRY, type FilaTriagem } from '../fila/fila-triagem';
 import type { EntrevistaRegistro, StatusEntrevista } from '../repositorio/entrevistas-tipos';
 import type { PerfilCandidato, Repositorio, RespostaSensivel } from '../repositorio/tipos';
 import { FILA_TRIAGEM, RELOGIO, REPOSITORIO, TRAVA_ENTREVISTA } from '../tokens';
-import { EnviadorWhatsapp } from './enviador-whatsapp';
+import { EnviadorWhatsapp, type ResultadoEnvio } from './enviador-whatsapp';
 import { AvaliacaoTriagemService } from './triagem-avaliacao.service';
 import { TriagemRetryService } from './triagem-retry.service';
 
 const SISTEMA = { sistema: true as const };
 const FILA_STT = 'stt-transcricao';
+
+function suspensa(status: string): boolean {
+  return status === 'SUSPENSA_PAUSA' || status === 'SUSPENSA_INSTANCIA';
+}
 
 export interface TravaEntrevista {
   executar<T>(chave: string, fn: () => Promise<T>): Promise<T>;
@@ -120,11 +125,49 @@ export class TriagemOrquestradorService {
     );
     if (ocupada) return { iniciada: false, motivo: 'FILA_DA_EMPRESA', entrevistaId: entrevista.id };
     if (!perfil.whatsappVerificado) {
-      await this.enviar(entrevista, perfil, 'confirmacao_numero');
+      const envio = await this.tentarEnviar(entrevista, perfil, 'confirmacao_numero');
+      if (!envio.ok && envio.transitoria) {
+        const reenvioEm = await this.agendarReenvio(entrevista, perfil, 'confirmacao_numero', 1);
+        return { iniciada: false, motivo: 'ENVIO_FALHOU', entrevistaId: entrevista.id, reenvioEm };
+      }
       return { iniciada: true, confirmacao: true, entrevistaId: entrevista.id };
     }
-    await this.abrirConvite(entrevista, perfil);
+    const convite = await this.abrirConvite(entrevista, perfil);
+    if (!convite.ok) {
+      return { iniciada: false, motivo: 'ENVIO_FALHOU', entrevistaId: entrevista.id, reenvioEm: convite.reenvioEm };
+    }
     return { iniciada: true, entrevistaId: entrevista.id };
+  }
+
+  /**
+   * Reenvio do convite (ou da confirmação de número) depois de falha do provedor.
+   * Não consome a tentativa do candidato: a tentativa só conta a partir da primeira resposta.
+   */
+  async reenviarConvite(entrevistaId: string, tentativa: number): Promise<Record<string, unknown>> {
+    return this.trava.executar(entrevistaId, async () => {
+      const entrevista = await this.repo.buscarEntrevista(entrevistaId, SISTEMA);
+      if (!entrevista) return { reenviado: false, motivo: 'ausente' };
+      if (entrevista.iniciadaEm || triagemTerminal(entrevista.status)) return { reenviado: false, motivo: 'encerrada' };
+      if (suspensa(entrevista.status)) return { reenviado: false, motivo: 'suspensa' };
+      const contexto = lerContexto(entrevista.contexto);
+      const tipo = contexto.reenvioPendente;
+      if (!tipo) return { reenviado: false, motivo: 'sem_pendencia' };
+      const perfil = await this.perfilDaEntrevista(entrevista);
+      if (!perfil) return { reenviado: false, motivo: 'sem_perfil' };
+      if (tipo === 'confirmacao_numero') {
+        const envio = await this.tentarEnviar(entrevista, perfil, 'confirmacao_numero');
+        if (!envio.ok && envio.transitoria) {
+          const reenvioEm = await this.agendarReenvio(entrevista, perfil, tipo, tentativa + 1);
+          return { reenviado: false, motivo: 'ENVIO_FALHOU', reenvioEm };
+        }
+        await this.repo.atualizarEntrevista(entrevista.id, { contexto: { ...contexto, reenvioPendente: null } }, SISTEMA);
+        return { reenviado: envio.ok, motivo: envio.ok ? 'enviado' : 'recusado' };
+      }
+      const convite = await this.abrirConvite(entrevista, perfil, tentativa);
+      return convite.ok
+        ? { reenviado: true, motivo: 'enviado' }
+        : { reenviado: false, motivo: 'ENVIO_FALHOU', reenvioEm: convite.reenvioEm };
+    });
   }
 
   async processarEvento(eventoId: string): Promise<Record<string, unknown>> {
@@ -217,6 +260,12 @@ export class TriagemOrquestradorService {
       await this.optOut(perfil, entrevista.empresaId);
       await this.repo.atualizarEventoWhatsappEntrada(eventoId, 'PROCESSADO', SISTEMA);
       return { status: 'PROCESSADO', decisao: decisao.tipo };
+    }
+    if (suspensa(entrevista.status)) {
+      // Pausa da vaga/instância congela a triagem: nenhuma resposta muda o estado nem consome tentativa.
+      await this.enviar(entrevista, perfil, 'adiar');
+      await this.repo.atualizarEventoWhatsappEntrada(eventoId, 'PROCESSADO', SISTEMA);
+      return { status: 'PROCESSADO', decisao: 'ADIAR', motivo: 'suspensa' };
     }
     if (decisao.tipo === 'CONFIRMAR_NUMERO') {
       await this.confirmarNumero(entrevista, perfil, decisao.aceito);
@@ -345,6 +394,7 @@ export class TriagemOrquestradorService {
   private async aceitarInicio(entrevista: EntrevistaRegistro, perfil: PerfilCandidato): Promise<void> {
     const agora = this.relogio.agora();
     if (entrevista.iniciadaEm) throw new ErroAplicacao('TENTATIVA_CONSUMIDA', 409, 'tentativa já consumida');
+    if (suspensa(entrevista.status)) throw new ErroAplicacao('ENTREVISTA_SUSPENSA', 409, 'entrevista suspensa');
     await this.repo.atualizarEntrevista(
       entrevista.id,
       { aceiteTentativaEm: entrevista.aceiteTentativaEm ?? agora, status: 'ACEITE_REGISTRADO', perguntaAtual: 0 },
@@ -378,7 +428,11 @@ export class TriagemOrquestradorService {
     if (atual) await this.abrirConvite(atual, { ...perfil, whatsappVerificado: true });
   }
 
-  private async abrirConvite(entrevista: EntrevistaRegistro, perfil: PerfilCandidato): Promise<void> {
+  private async abrirConvite(
+    entrevista: EntrevistaRegistro,
+    perfil: PerfilCandidato,
+    tentativaAtual = 0,
+  ): Promise<{ ok: true } | { ok: false; reenvioEm: string | null }> {
     const candidatura = await this.repo.buscarCandidatura(entrevista.candidaturaId, SISTEMA);
     if (candidatura?.status === 'INSCRITA') {
       await this.candidaturas.aplicar(
@@ -388,8 +442,68 @@ export class TriagemOrquestradorService {
         { empresaId: entrevista.empresaId },
       );
     }
-    await this.enviar(entrevista, perfil, 'convite');
-    await this.retries.agendarProximo(entrevista);
+    const envio = await this.tentarEnviar(entrevista, perfil, 'convite');
+    if (!envio.ok && envio.transitoria) {
+      return { ok: false, reenvioEm: await this.agendarReenvio(entrevista, perfil, 'convite', tentativaAtual + 1) };
+    }
+    const atual = (await this.repo.buscarEntrevista(entrevista.id, SISTEMA)) ?? entrevista;
+    if (envio.ok) {
+      const contexto = lerContexto(atual.contexto);
+      const gravada = await this.repo.atualizarEntrevista(
+        atual.id,
+        { contexto: { ...contexto, conviteEnviadoEm: this.relogio.agora().toISOString(), reenvioPendente: null } },
+        SISTEMA,
+      );
+      await this.retries.agendarProximo(gravada ?? atual);
+    } else {
+      await this.retries.agendarProximo(atual);
+    }
+    return { ok: true };
+  }
+
+  /** Envia sem propagar falha do provedor: erro ou rate limit são transitórios e pedem reenvio. */
+  private async tentarEnviar(
+    entrevista: EntrevistaRegistro,
+    perfil: PerfilCandidato,
+    tipo: 'convite' | 'confirmacao_numero',
+  ): Promise<{ ok: true } | { ok: false; transitoria: boolean }> {
+    try {
+      const resultado = await this.enviar(entrevista, perfil, tipo);
+      if (!resultado || resultado.ok) return { ok: true };
+      return { ok: false, transitoria: resultado.motivo === 'RATE_LIMIT' };
+    } catch {
+      return { ok: false, transitoria: true };
+    }
+  }
+
+  /**
+   * Agenda o reenvio `tentativa` (1-based) com backoff. Esgotadas as tentativas, alerta a empresa e volta ao
+   * ciclo normal de lembretes/esgotamento da triagem. Devolve o instante agendado (ISO) ou null.
+   */
+  private async agendarReenvio(
+    entrevista: EntrevistaRegistro,
+    _perfil: PerfilCandidato,
+    tipo: 'convite' | 'confirmacao_numero',
+    tentativa: number,
+  ): Promise<string | null> {
+    const atual = (await this.repo.buscarEntrevista(entrevista.id, SISTEMA)) ?? entrevista;
+    const contexto = lerContexto(atual.contexto);
+    const atraso = atrasoReenvioConviteMs(tentativa);
+    if (atraso === null) {
+      const gravada = await this.repo.atualizarEntrevista(atual.id, { contexto: { ...contexto, reenvioPendente: null } }, SISTEMA);
+      await this.alertar(atual.empresaId, atual.candidaturaId, 'TRIAGEM_ENVIO_FALHOU');
+      await this.retries.agendarProximo(gravada ?? atual);
+      return null;
+    }
+    await this.repo.atualizarEntrevista(atual.id, { contexto: { ...contexto, reenvioPendente: tipo } }, SISTEMA);
+    await this.fila.agendar({
+      fila: FILA_TRIAGEM_RETRY,
+      nome: 'reenviar-convite',
+      jobId: `reenvio:${atual.id}:${tentativa}`,
+      delayMs: atraso,
+      data: { entrevistaId: atual.id, tentativa },
+    });
+    return new Date(this.relogio.agora().getTime() + atraso).toISOString();
   }
 
   private async optOut(perfil: PerfilCandidato, empresaId: string): Promise<void> {
@@ -452,22 +566,21 @@ export class TriagemOrquestradorService {
     entrevista: EntrevistaRegistro,
     perfil: PerfilCandidato,
     tipo: 'convite' | 'confirmacao_numero' | 'pedir_audio' | 'audio_curto' | 'midia_invalida' | 'nao_conta' | 'adiar',
-  ): Promise<void> {
+  ): Promise<ResultadoEnvio | null> {
     const dados = await this.nomes(entrevista.empresaId, entrevista.candidaturaId);
-    if (!dados) return;
+    if (!dados) return null;
     if (tipo === 'convite') {
       const menu = mensagemTriagem('convite_triagem', dados);
-      await this.enviador.enviar({
+      return this.enviador.enviar({
         empresaId: entrevista.empresaId,
         candidatoId: perfil.id,
         numero: perfil.whatsapp,
         texto: menu.texto,
         opcoes: menu.opcoes,
       });
-      return;
     }
     const fluxo = mensagemFluxoTriagem(tipo, { ...dados, nomeCandidato: perfil.nome });
-    await this.enviador.enviar({
+    return this.enviador.enviar({
       empresaId: entrevista.empresaId,
       candidatoId: perfil.id,
       numero: perfil.whatsapp,
@@ -609,7 +722,7 @@ export class TriagemOrquestradorService {
           empresaId,
           tipo: 'OPERACIONAL',
           chaveDedup: `${codigo}:${candidaturaId}:${membro.usuarioId}`,
-          dados: { candidaturaId, empresaId, codigo },
+          dados: { candidaturaId, empresaId, codigo, central: true },
           criadoEm: agora,
         },
         { empresaId },

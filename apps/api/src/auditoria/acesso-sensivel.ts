@@ -1,12 +1,18 @@
+import type { Armazenamento } from '@scv/providers';
+
 import { ErroAplicacao } from '../erros';
 import type { Repositorio } from '../repositorio/tipos';
 import { ctxDe, exigir, papelAuditoria, type SessaoRequest } from '../sessao';
 import { AuditoriaService } from './auditoria.service';
 
+/** Vida da URL assinada do áudio: curta, para o acesso auditado não virar link compartilhável. */
+export const EXPIRA_AUDIO_SEGUNDOS = 60;
+
 export class AcessoSensivelService {
   constructor(
     private readonly repo: Repositorio,
     private readonly auditoria: AuditoriaService,
+    private readonly armazenamento: Armazenamento,
   ) {}
 
   async ler(sessao: SessaoRequest, id: string, tipo: 'AUDIO' | 'TRANSCRICAO', motivo?: string) {
@@ -32,7 +38,14 @@ export class AcessoSensivelService {
       },
       { ...ctx, isAdmin: sessao.visao === 'ADMIN' || ctx.isAdmin, empresaId: resposta.empresaId },
     );
-    if (tipo === 'AUDIO') return { id: resposta.id, audioUrl: resposta.audioUrl };
+    if (tipo === 'AUDIO') {
+      if (!resposta.audioUrl) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'áudio não encontrado');
+      return {
+        id: resposta.id,
+        url: await this.armazenamento.criarUrlDownload(resposta.audioUrl, EXPIRA_AUDIO_SEGUNDOS),
+        expiraEmSegundos: EXPIRA_AUDIO_SEGUNDOS,
+      };
+    }
     return { id: resposta.id, transcricao: resposta.transcricao };
   }
 }

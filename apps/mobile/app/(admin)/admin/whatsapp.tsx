@@ -10,6 +10,7 @@ import { Chip } from '@/design-system/Chip';
 import { EstadoVazio } from '@/design-system/EstadoVazio';
 import { estilos } from '@/design-system/estilos';
 import { Tela } from '@/design-system/Tela';
+import { formatarDataHora } from '@/formatacao/data';
 import { useConsulta } from '@/hooks/useConsulta';
 
 interface Instancia {
@@ -30,7 +31,8 @@ export default function WhatsappAdminScreen() {
     <Tela>
       <Cabecalho titulo={t('admin.whatsapp')} voltar />
       {consulta.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
-      {!consulta.isLoading && instancias.length === 0 ? <EstadoVazio titulo={t('admin.vazia')} /> : null}
+      {consulta.isError ? <EstadoVazio titulo={t('comum.erroCarregar')} /> : null}
+      {!consulta.isLoading && !consulta.isError && instancias.length === 0 ? <EstadoVazio titulo={t('admin.vazia')} /> : null}
       {instancias.map((instancia) => (
         <Cartao key={instancia.id}>
           <Text style={estilos.tituloItem}>{instancia.nomeFantasia ?? '—'}</Text>
@@ -39,7 +41,7 @@ export default function WhatsappAdminScreen() {
             {t('whatsapp.numero')}: {instancia.numero ?? t('whatsapp.semNumero')}
           </Text>
           <Text style={estilos.mudo}>
-            {t('whatsapp.ultima')}: {instancia.ultimaConexaoEm ?? t('whatsapp.semConexao')}
+            {t('whatsapp.ultima')}: {formatarDataHora(instancia.ultimaConexaoEm) ?? t('whatsapp.semConexao')}
           </Text>
           {instancia.status !== 'CONECTADA' ? <Banner tipo="aviso" texto={t('whatsapp.banner')} /> : null}
         </Cartao>

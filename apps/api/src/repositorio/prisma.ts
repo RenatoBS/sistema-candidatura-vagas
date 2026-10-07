@@ -4,6 +4,7 @@ import { ErroAplicacao } from '../erros';
 import { CandidaturasPrisma } from './candidaturas-prisma';
 import { EntrevistasPrisma } from './entrevistas-prisma';
 import type { EntrevistaRegistro, SessaoVozRegistro } from './entrevistas-tipos';
+import { escopoTenant } from './escopo';
 import { MatchPrisma } from './match-prisma';
 import { NotificacoesPrisma } from './notificacoes-prisma';
 import type {
@@ -33,6 +34,7 @@ import type {
   SolicitacaoLgpdRegistro,
   ScoreRegistro,
   TokenRegistro,
+  RelatorioExpurgo,
   UsuarioRegistro,
   VerificacaoRegistro,
   VinculoUsuario,
@@ -73,6 +75,14 @@ export class RepositorioPrisma implements Repositorio {
     this.matchStore = new MatchPrisma(this.prisma, (ctx, fn) => this.comTenant(ctx, fn));
     this.notificacoesStore = new NotificacoesPrisma((ctx, fn) => this.comTenant(ctx, fn));
     this.entrevistasStore = new EntrevistasPrisma((ctx, fn) => this.comTenant(ctx, fn));
+  }
+
+  /** Papel com o qual esta conexão fala com o Postgres (usado na checagem de boot do RLS). */
+  async papelDaConexao(): Promise<{ usuario: string; rolsuper: boolean; rolbypassrls: boolean }> {
+    const [papel] = await this.prisma.$queryRaw<Array<{ usuario: string; rolsuper: boolean; rolbypassrls: boolean }>>`
+      SELECT current_user::text AS usuario, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user`;
+    if (!papel) throw new Error('papel da conexão não encontrado');
+    return papel;
   }
 
   private async comTenant<T>(
@@ -154,6 +164,14 @@ export class RepositorioPrisma implements Repositorio {
     const data = semId(patch);
     const usuario = await this.prisma.usuario.update({ where: { id }, data });
     return this.usuario(usuario);
+  }
+
+  async consumirPassoMfa(usuarioId: string, passo: number): Promise<boolean> {
+    const { count } = await this.prisma.usuario.updateMany({
+      where: { id: usuarioId, OR: [{ mfaUltimoPasso: null }, { mfaUltimoPasso: { lt: passo } }] },
+      data: { mfaUltimoPasso: passo },
+    });
+    return count === 1;
   }
 
   async salvarRefresh(registro: RefreshRegistro): Promise<void> {
@@ -320,7 +338,11 @@ export class RepositorioPrisma implements Repositorio {
     ctx: ContextoTenant,
   ): Promise<MembroRegistro> {
     const data = semId(patch);
-    return this.comTenant(ctx, (tx) => tx.membroEmpresa.update({ where: { id }, data }));
+    return this.comTenant(ctx, async (tx) => {
+      const atual = await tx.membroEmpresa.findFirst({ where: { id, ...escopoTenant(ctx) } });
+      if (!atual) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'membro não encontrado');
+      return tx.membroEmpresa.update({ where: { id }, data });
+    });
   }
 
   async vinculosDoUsuario(usuarioId: string): Promise<VinculoUsuario[]> {
@@ -352,7 +374,11 @@ export class RepositorioPrisma implements Repositorio {
     ctx: ContextoTenant,
   ): Promise<ConviteRegistro> {
     const data = semId(patch);
-    return this.comTenant(ctx, (tx) => tx.conviteMembro.update({ where: { id }, data }));
+    return this.comTenant(ctx, async (tx) => {
+      const atual = await tx.conviteMembro.findFirst({ where: { id, ...escopoTenant(ctx) } });
+      if (!atual) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'convite não encontrado');
+      return tx.conviteMembro.update({ where: { id }, data });
+    });
   }
 
   async criarCandidato(candidato: CandidatoRegistro): Promise<CandidatoRegistro> {
@@ -541,22 +567,111 @@ export class RepositorioPrisma implements Repositorio {
   }
 
   async registrarSolicitacaoLgpd(registro: SolicitacaoLgpdRegistro): Promise<void> {
-    await this.prisma.solicitacaoLgpd.create({ data: registro });
+    await this.prisma.solicitacaoLgpd.create({
+      data: {
+        id: registro.id,
+        usuarioId: registro.usuarioId,
+        candidatoId: registro.candidatoId,
+        tipo: registro.tipo,
+        status: registro.status ?? 'CONCLUIDA',
+        arquivosPendentes: registro.arquivosPendentes ?? [],
+        relatorio: registro.relatorio ?? {},
+        concluidaEm: registro.concluidaEm ?? null,
+        criadoEm: registro.criadoEm,
+      },
+    });
+  }
+
+  async buscarSolicitacaoLgpd(id: string): Promise<SolicitacaoLgpdRegistro | null> {
+    const linha = await this.prisma.solicitacaoLgpd.findUnique({ where: { id } });
+    if (!linha) return null;
+    return {
+      id: linha.id,
+      usuarioId: linha.usuarioId,
+      candidatoId: linha.candidatoId,
+      tipo: linha.tipo,
+      status: linha.status === 'PENDENTE' ? 'PENDENTE' : 'CONCLUIDA',
+      arquivosPendentes: (linha.arquivosPendentes as string[] | null) ?? [],
+      relatorio: (linha.relatorio as Record<string, number> | null) ?? {},
+      concluidaEm: linha.concluidaEm,
+      criadoEm: linha.criadoEm,
+    };
+  }
+
+  async atualizarSolicitacaoLgpd(id: string, patch: Partial<SolicitacaoLgpdRegistro>): Promise<void> {
+    await this.prisma.solicitacaoLgpd.update({ where: { id }, data: this.dadosSolicitacao(patch) });
+  }
+
+  private dadosSolicitacao(registro: Partial<SolicitacaoLgpdRegistro>) {
+    const { arquivosPendentes, relatorio, ...resto } = registro;
+    return {
+      ...resto,
+      ...(arquivosPendentes === undefined ? {} : { arquivosPendentes }),
+      ...(relatorio === undefined ? {} : { relatorio }),
+    };
   }
 
   async expurgarDadosCandidato(
     usuarioId: string,
     anon: { email: string; senhaHash: string; nome: string },
-  ): Promise<{ arquivoKeys: string[] }> {
-    return this.prisma.$transaction(async (tx) => {
+    solicitacaoId: string,
+  ): Promise<RelatorioExpurgo> {
+    return this.comTenant({ sistema: true }, async (tx) => {
       const candidato = await tx.candidato.findUnique({ where: { usuarioId } });
       if (!candidato) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'candidato não encontrado');
-      const curriculos = await tx.curriculo.findMany({ where: { candidatoId: candidato.id } });
-      await tx.candidatoHabilidade.deleteMany({ where: { candidatoId: candidato.id } });
-      await tx.consentimento.deleteMany({ where: { candidatoId: candidato.id } });
-      await tx.curriculo.deleteMany({ where: { candidatoId: candidato.id } });
+      const candidatoId = candidato.id;
+      const daCandidatura = { entrevista: { candidatura: { candidatoId } } };
+
+      // Chaves de storage (CVs, áudios de resposta, gravações de voz) a apagar pelo job.
+      const curriculos = await tx.curriculo.findMany({ where: { candidatoId }, select: { arquivoKey: true } });
+      const audios = await tx.resposta.findMany({ where: { ...daCandidatura, audioUrl: { not: null } }, select: { audioUrl: true } });
+      const gravacoes = await tx.sessaoVoz.findMany({
+        where: { entrevista: { candidatura: { candidatoId } }, gravacaoKey: { not: null } },
+        select: { gravacaoKey: true },
+      });
+      const arquivoKeys = [
+        ...new Set([
+          ...curriculos.map((item) => item.arquivoKey),
+          ...audios.flatMap((item) => (item.audioUrl ? [item.audioUrl] : [])),
+          ...gravacoes.flatMap((item) => (item.gravacaoKey ? [item.gravacaoKey] : [])),
+        ]),
+      ];
+
+      const respostas = await tx.resposta.updateMany({
+        where: daCandidatura,
+        data: { transcricao: null, textoOriginal: null, audioUrl: null },
+      });
+      const avaliacoes = await tx.avaliacao.updateMany({
+        where: { resposta: daCandidatura },
+        data: { justificativa: null },
+      });
+      const sessoes = await tx.sessaoVoz.updateMany({
+        where: { entrevista: { candidatura: { candidatoId } } },
+        data: { gravacaoKey: null },
+      });
+      const mensagens = await tx.mensagemWhatsapp.updateMany({
+        where: { entrevista: { candidatura: { candidatoId } } },
+        data: { payload: {} },
+      });
+      const numeros = [...new Set([candidato.whatsapp, candidato.whatsapp?.replace(/\D/g, '')].filter((n): n is string => Boolean(n)))];
+      const eventos = numeros.length
+        ? await tx.$executeRaw`
+            UPDATE "eventos_whatsapp_entrada" SET "payloadNormalizado" = '{}'::jsonb
+            WHERE "payloadNormalizado"->>'numeroRemetente' = ANY(${numeros}::text[])
+              AND "payloadNormalizado" <> '{}'::jsonb`
+        : 0;
+      const embeddings = await tx.$executeRaw`
+        UPDATE "candidatos" SET "embedding" = NULL WHERE "id" = CAST(${candidatoId} AS uuid) AND "embedding" IS NOT NULL`;
+      const sugestoes = await tx.sugestaoMatch.deleteMany({ where: { candidatoId } });
+      const notificacoes = await tx.notificacao.deleteMany({ where: { usuarioId } });
+      await tx.preferenciaNotificacao.deleteMany({ where: { usuarioId } });
+      const dispositivos = await tx.dispositivoPush.deleteMany({ where: { usuarioId } });
+
+      await tx.candidatoHabilidade.deleteMany({ where: { candidatoId } });
+      await tx.consentimento.deleteMany({ where: { candidatoId } });
+      await tx.curriculo.deleteMany({ where: { candidatoId } });
       await tx.candidato.update({
-        where: { id: candidato.id },
+        where: { id: candidatoId },
         data: {
           nome: anon.nome,
           whatsapp: null,
@@ -568,13 +683,30 @@ export class RepositorioPrisma implements Repositorio {
       });
       await tx.usuario.update({
         where: { id: usuarioId },
-        data: { email: anon.email, senhaHash: anon.senhaHash },
+        data: { email: anon.email, senhaHash: anon.senhaHash, mfaSecretCifrado: null, mfaAtivo: false },
       });
       await tx.refreshToken.updateMany({
         where: { usuarioId, revogadoEm: null },
         data: { revogadoEm: new Date() },
       });
-      return { arquivoKeys: curriculos.map((item) => item.arquivoKey) };
+
+      const relatorio: RelatorioExpurgo = {
+        respostasLimpas: respostas.count,
+        avaliacoesLimpas: avaliacoes.count,
+        gravacoesRemovidas: sessoes.count,
+        curriculosRemovidos: curriculos.length,
+        embeddingsRemovidos: Number(embeddings),
+        sugestoesRemovidas: sugestoes.count,
+        eventosWhatsappLimpos: Number(eventos) + mensagens.count,
+        notificacoesRemovidas: notificacoes.count,
+        dispositivosRemovidos: dispositivos.count,
+        arquivosParaApagar: arquivoKeys.length,
+      };
+      await tx.solicitacaoLgpd.update({
+        where: { id: solicitacaoId },
+        data: { status: arquivoKeys.length ? 'PENDENTE' : 'CONCLUIDA', arquivosPendentes: arquivoKeys, relatorio: { ...relatorio } },
+      });
+      return relatorio;
     });
   }
 
@@ -1177,7 +1309,9 @@ export class RepositorioPrisma implements Repositorio {
     papeisGlobais: UsuarioRegistro['papeisGlobais'];
     mfaAtivo: boolean;
     mfaSecretCifrado: string | null;
+    mfaUltimoPasso: number | null;
     visaoPreferida: UsuarioRegistro['visaoPreferida'];
+    empresaAtivaId: string | null;
     emailConfirmadoEm: Date | null;
   }): UsuarioRegistro {
     return {
@@ -1187,7 +1321,9 @@ export class RepositorioPrisma implements Repositorio {
       papeisGlobais: usuario.papeisGlobais,
       mfaAtivo: usuario.mfaAtivo,
       mfaSecretCifrado: usuario.mfaSecretCifrado,
+      mfaUltimoPasso: usuario.mfaUltimoPasso,
       visaoPreferida: usuario.visaoPreferida,
+      empresaAtivaId: usuario.empresaAtivaId,
       emailConfirmadoEm: usuario.emailConfirmadoEm,
     };
   }

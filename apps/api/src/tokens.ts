@@ -9,6 +9,7 @@ export const RELOGIO = Symbol('RELOGIO');
 export const ARMAZENAMENTO = Symbol('ARMAZENAMENTO');
 export const ANTIVIRUS = Symbol('ANTIVIRUS');
 export const FILA_CURRICULO = Symbol('FILA_CURRICULO');
+export const FILA_LGPD = Symbol('FILA_LGPD');
 export const FILA_VAGAS = Symbol('FILA_VAGAS');
 export const LLM = Symbol('LLM');
 export const FILA_MATCH = Symbol('FILA_MATCH');

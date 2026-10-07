@@ -97,7 +97,12 @@ export class AuthController {
 
   @Post('auth/mfa/confirmar')
   confirmarMfa(@Req() req: RequisicaoComSessao, @Body() body: unknown) {
-    return this.mfa.confirmar(req.sessao.usuario.id, validar(mfaCodigoSchema, body).codigo);
+    return this.mfa.confirmar(
+      req.sessao.usuario.id,
+      validar(mfaCodigoSchema, body).codigo,
+      req.sessao.visao,
+      req.sessao.empresaId,
+    );
   }
 
   @Post('auth/mfa/verificar')

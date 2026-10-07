@@ -1,3 +1,4 @@
+import { envNumero, envOu } from '@scv/env';
 import nodemailer from 'nodemailer';
 
 export interface MensagemEmail {
@@ -65,8 +66,8 @@ export function criarEmailProvider(env: NodeJS.ProcessEnv = process.env): EmailP
   if (env.SMTP_HOST) {
     return new EmailSmtpProvider(
       env.SMTP_HOST,
-      Number(env.SMTP_PORT ?? 1025),
-      env.SMTP_FROM ?? 'nao-responda@localhost',
+      envNumero(env, 'SMTP_PORT', 1025),
+      envOu(env, 'SMTP_FROM', 'nao-responda@localhost'),
     );
   }
   return new EmailLogProvider(env.NODE_ENV !== 'test');

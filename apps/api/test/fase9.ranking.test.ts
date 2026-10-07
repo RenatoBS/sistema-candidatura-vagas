@@ -315,6 +315,17 @@ describe('F9 ranqueamento', () => {
     const ranking = await api(`/empresas/${dona.empresaId}/vagas/${completo.vagaId}/ranking`, {}, dona.token);
     assert.equal(ranking.status, 200);
     assert.ok(String((ranking.json.itens as { explicacao: { texto: string } }[])[0]?.explicacao.texto).includes('/100'));
+    // FC-18/U4: a empresa identifica o candidato pelo primeiro nome (nunca o nome completo) e vê a completude.
+    const primeiroItem = (ranking.json.itens as { candidatoNome?: string; completude: number | null }[])[0];
+    assert.equal(primeiroItem?.candidatoNome, 'Candidato');
+    assert.equal(JSON.stringify(ranking.json).includes('Candidato Alfa'), false);
+    const candidaturas = await api(`/vagas/${completo.vagaId}/candidaturas`, { headers: { 'x-empresa-id': dona.empresaId } }, dona.token);
+    assert.equal(candidaturas.status, 200, JSON.stringify(candidaturas.json));
+    assert.deepEqual(
+      (candidaturas.json as unknown as Array<{ candidato: { primeiroNome: string } }>).map((item) => item.candidato),
+      [{ primeiroNome: 'Candidato' }],
+    );
+    assert.equal(JSON.stringify(candidaturas.json).includes('Candidato Alfa'), false);
     const vies = await api(`/empresas/${dona.empresaId}/vagas/${completo.vagaId}/ranking/vies`, {}, dona.token);
     assert.equal(vies.status, 200, JSON.stringify(vies.json));
     assert.ok(Array.isArray(vies.json.distribuicao));

@@ -7,6 +7,7 @@ import type { Relogio } from '../auth/auth.service';
 import type { ConfiguracaoApp } from '../configuracao';
 import type { InstanciaRegistro, Repositorio } from '../repositorio/tipos';
 import { CLIENTE_WHATSAPP, CONFIG, RELOGIO, REPOSITORIO } from '../tokens';
+import { urlWebhookUazapi } from '../whatsapp/webhook-url';
 import { TriagemRetryService } from './triagem-retry.service';
 
 const SISTEMA = { sistema: true as const };
@@ -42,7 +43,7 @@ export class TriagemMonitorService {
       const token = decifrar(instancia.tokenCifrado, this.config.encryptionKey);
       await this.cliente.configurarWebhook(
         token,
-        `${this.config.apiPublicUrl}/api/v1/webhooks/whatsapp/uazapi/${instancia.id}`,
+        urlWebhookUazapi(this.config.apiPublicUrl, instancia.id, this.config.uazapiWebhookSecret),
       );
       const agora = this.relogio.agora();
       const atualizada = await this.repo.salvarInstancia(
@@ -102,7 +103,7 @@ export class TriagemMonitorService {
           empresaId: instancia.empresaId,
           tipo: 'WHATSAPP_DESCONECTADO',
           chaveDedup: `WHATSAPP_DESCONECTADO:${instancia.id}:${agora.toISOString()}:${usuarioId}`,
-          dados: { instanciaId: instancia.id, empresaId: instancia.empresaId },
+          dados: { instanciaId: instancia.id, empresaId: instancia.empresaId, central: true },
           criadoEm: agora,
         },
         { empresaId: instancia.empresaId, sistema: true },

@@ -88,3 +88,35 @@ export type AtualizarVagaInput = z.infer<typeof atualizarVagaSchema>;
 export type SalvarProcessoInput = z.infer<typeof salvarProcessoSchema>;
 export type CriarPerguntaInput = z.infer<typeof criarPerguntaSchema>;
 export type VincularPerguntaInput = z.infer<typeof vincularPerguntaSchema>;
+
+/** Corpo do 409 `PERGUNTAS_INCOMPLETAS` ao publicar: lista as etapas que impedem a publicação. */
+export const erroPerguntasIncompletasSchema = z.object({
+  codigo: z.literal('PERGUNTAS_INCOMPLETAS'),
+  mensagem: z.string(),
+  detalhes: z.object({
+    etapas: z.array(
+      z.object({
+        ordem: z.number().int(),
+        tipo: tipoEtapaSchema,
+        numeroPerguntas: z.number().int(),
+        aprovadas: z.number().int(),
+        pendentes: z.number().int(),
+        faltam: z.number().int(),
+      }),
+    ),
+  }),
+});
+export type ErroPerguntasIncompletas = z.infer<typeof erroPerguntasIncompletasSchema>;
+
+/** Filtros de `GET /vagas-publicas`: enum inválido é 400, nunca 500. */
+export const consultaVagasPublicasSchema = z.object({
+  habilidade: z.string().trim().min(1).max(80).optional(),
+  senioridade: senioridadeSchema.optional(),
+  modelo: modeloTrabalhoSchema.optional(),
+  localidade: z.string().trim().min(1).max(120).optional(),
+});
+
+/** `completudeMin` do ranking: fração entre 0 e 1. */
+export const consultaRankingSchema = z.object({
+  completudeMin: z.coerce.number().min(0).max(1).optional(),
+});

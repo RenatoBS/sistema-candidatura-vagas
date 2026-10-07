@@ -1,12 +1,19 @@
 import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
+import { envNumero, envOu } from '@scv/env';
 import { Queue, Worker } from 'bullmq';
 import express from 'express';
 import pino from 'pino';
 
+import { FILA_LGPD, processarExclusaoLgpd } from './lgpd-jobs';
 import { FILA_EMBEDDINGS, FILA_MATCH, processarEmbedding, processarMatch } from './match-jobs';
-import { FILA_NOTIFICACOES, processarNotificacao } from './notificacoes-jobs';
+import {
+  EVENTO_LIMPAR_DISPOSITIVOS,
+  FILA_NOTIFICACOES,
+  INTERVALO_LIMPEZA_PUSH_MS,
+  processarNotificacao,
+} from './notificacoes-jobs';
 import { FILA_CV, processarJobCurriculo } from './processar-cv';
 import { FILA_STT_TRANSCRICAO } from './triagem-audio';
 import {
@@ -18,6 +25,7 @@ import {
   processarEntradaWhatsapp,
   processarEsgotarTriagem,
   processarMonitoramentoWhatsapp,
+  processarReenvioConviteTriagem,
   processarRetryTriagem,
 } from './triagem-fila';
 import { FILA_TRIAGEM_INATIVIDADE, processarJobInatividade } from './triagem-inatividade';
@@ -30,11 +38,22 @@ import {
 } from './vagas-jobs';
 import { executarVerificacaoCnpj } from './verificar-cnpj';
 
-const logger = pino({ level: process.env.LOG_LEVEL ?? 'info' });
+const logger = pino({
+  level: envOu(process.env, 'LOG_LEVEL', 'info'),
+  redact: [
+    '*.headers.authorization',
+    '*.headers.cookie',
+    '*.headers["x-internal-token"]',
+    '*.headers["x-reauth-token"]',
+    '*.headers["x-webhook-secret"]',
+    '*.headers.token',
+    '*.headers.admintoken',
+  ],
+});
 
 const redisConnection = {
-  host: process.env.REDIS_HOST ?? 'localhost',
-  port: Number(process.env.REDIS_PORT ?? 6379),
+  host: envOu(process.env, 'REDIS_HOST', 'localhost'),
+  port: envNumero(process.env, 'REDIS_PORT', 6379),
 };
 
 const exampleQueue = new Queue('exemplo', { connection: redisConnection });
@@ -46,6 +65,13 @@ const filaEfeitos = new Queue('vagas-efeitos', { connection: redisConnection });
 const filaEmbeddings = new Queue(FILA_EMBEDDINGS, { connection: redisConnection });
 const filaMatch = new Queue(FILA_MATCH, { connection: redisConnection });
 const filaNotificacoes = new Queue(FILA_NOTIFICACOES, { connection: redisConnection });
+const filaLgpd = new Queue(FILA_LGPD, { connection: redisConnection });
+
+void filaNotificacoes.add(
+  EVENTO_LIMPAR_DISPOSITIVOS,
+  {},
+  { repeat: { every: INTERVALO_LIMPEZA_PUSH_MS }, jobId: 'limpar-dispositivos-push' },
+);
 const filaStt = new Queue(FILA_STT_TRANSCRICAO, { connection: redisConnection });
 const filaTriagemInatividade = new Queue(FILA_TRIAGEM_INATIVIDADE, { connection: redisConnection });
 const filaWhatsappEntrada = new Queue(FILA_WHATSAPP_ENTRADA, { connection: redisConnection });
@@ -57,7 +83,7 @@ void filaWhatsappMonitoramento.add(
   'varrer',
   {},
   {
-    repeat: { every: Number(process.env.WHATSAPP_MONITOR_INTERVALO_MS ?? 300_000) },
+    repeat: { every: envNumero(process.env, 'WHATSAPP_MONITOR_INTERVALO_MS', 300_000) },
     jobId: 'monitor-whatsapp',
   },
 );
@@ -184,8 +210,11 @@ const workerWhatsappEntrada = new Worker(
 
 const workerTriagemRetry = new Worker(
   FILA_TRIAGEM_RETRY,
-  async (job: { name: string; data: { entrevistaId: string; numero?: number } }) => {
+  async (job: { name: string; data: { entrevistaId: string; numero?: number; tentativa?: number } }) => {
     if (job.name === 'esgotar') return processarEsgotarTriagem(job.data.entrevistaId);
+    if (job.name === 'reenviar-convite') {
+      return processarReenvioConviteTriagem(job.data.entrevistaId, Number(job.data.tentativa ?? 1));
+    }
     return processarRetryTriagem(job.data.entrevistaId, Number(job.data.numero ?? 1));
   },
   { connection: redisConnection },
@@ -202,6 +231,16 @@ const workerWhatsappMonitoramento = new Worker(
   async () => processarMonitoramentoWhatsapp(),
   { connection: redisConnection },
 );
+
+const workerLgpd = new Worker(
+  FILA_LGPD,
+  async (job: { data: { solicitacaoId: string } }) => processarExclusaoLgpd(job.data.solicitacaoId),
+  { connection: redisConnection },
+);
+
+workerLgpd.on('failed', (job, err) => {
+  logger.error({ jobId: job?.id, err: err.message }, 'Exclusão LGPD incompleta');
+});
 
 workerNotificacoes.on('failed', (job, err) => {
   logger.error({ jobId: job?.id, name: job?.name, err: err.message }, 'Job de notificação falhou');
@@ -221,6 +260,7 @@ createBullBoard({
     new BullMQAdapter(filaEmbeddings),
     new BullMQAdapter(filaMatch),
     new BullMQAdapter(filaNotificacoes),
+    new BullMQAdapter(filaLgpd),
     new BullMQAdapter(filaStt),
     new BullMQAdapter(filaTriagemInatividade),
     new BullMQAdapter(filaWhatsappEntrada),
@@ -238,7 +278,7 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'workers', timestamp: new Date().toISOString() });
 });
 
-const port = Number(process.env.WORKERS_PORT ?? 3001);
+const port = envNumero(process.env, 'WORKERS_PORT', 3001);
 
 app.listen(port, () => {
   logger.info({ port }, 'Workers e Bull Board escutando');
@@ -255,6 +295,7 @@ process.on('SIGTERM', async () => {
   await workerEmbeddings.close();
   await workerMatch.close();
   await workerNotificacoes.close();
+  await workerLgpd.close();
   await workerStt.close();
   await workerTriagemInatividade.close();
   await workerWhatsappEntrada.close();
@@ -270,6 +311,7 @@ process.on('SIGTERM', async () => {
   await filaEmbeddings.close();
   await filaMatch.close();
   await filaNotificacoes.close();
+  await filaLgpd.close();
   await filaStt.close();
   await filaTriagemInatividade.close();
   await filaWhatsappEntrada.close();

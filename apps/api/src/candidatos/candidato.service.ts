@@ -25,6 +25,7 @@ import type { Armazenamento, Antivirus } from '@scv/providers';
 import type { Relogio } from '../auth/auth.service';
 import { ErroAplicacao } from '../erros';
 import type { FilaCurriculo } from '../fila/fila-curriculo';
+import type { FilaLgpd } from '../fila/fila-lgpd';
 import type { FilaMatch } from '../fila/fila-match';
 import type {
   CurriculoRegistro,
@@ -384,6 +385,7 @@ export class LgpdService {
     private readonly repo: Repositorio,
     private readonly armazenamento: Armazenamento,
     private readonly relogio: Relogio,
+    private readonly fila: FilaLgpd,
   ) {}
 
   async exportar(usuarioId: string) {
@@ -428,26 +430,64 @@ export class LgpdService {
     return pacote;
   }
 
+  /**
+   * Expurgo no banco na hora (transcrições, textos, embeddings, gravações, CVs...) e arquivos do storage
+   * apagados por job assíncrono, idempotente e reexecutável (`processarExclusao`).
+   */
   async excluir(usuarioId: string) {
     const perfil = await this.repo.obterPerfil(usuarioId);
     if (!perfil) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'perfil não encontrado');
-    await this.registrar(usuarioId, perfil.id, 'EXCLUSAO');
-    const { arquivoKeys } = await this.repo.expurgarDadosCandidato(usuarioId, {
-      email: emailAnonimizado(usuarioId),
-      senhaHash: 'expurgado',
-      nome: NOME_TITULAR_EXCLUIDO,
-    });
-    for (const key of arquivoKeys) await this.armazenamento.apagar(key);
-    return { ok: true };
+    const solicitacaoId = await this.registrar(usuarioId, perfil.id, 'EXCLUSAO', 'PENDENTE');
+    const relatorio = await this.repo.expurgarDadosCandidato(
+      usuarioId,
+      { email: emailAnonimizado(usuarioId), senhaHash: 'expurgado', nome: NOME_TITULAR_EXCLUIDO },
+      solicitacaoId,
+    );
+    await this.fila.enfileirarExclusao(solicitacaoId);
+    return { ok: true, solicitacaoId, status: 'PENDENTE' as const, relatorio };
   }
 
-  private async registrar(usuarioId: string, candidatoId: string, tipo: SolicitacaoLgpdRegistro['tipo']) {
-    await this.repo.registrarSolicitacaoLgpd({
-      id: randomUUID(),
-      usuarioId,
-      candidatoId,
-      tipo,
-      criadoEm: this.relogio.agora(),
+  /** Apaga do storage o que ainda falta; só conclui quando tudo saiu. Seguro para reexecutar. */
+  async processarExclusao(solicitacaoId: string) {
+    const solicitacao = await this.repo.buscarSolicitacaoLgpd(solicitacaoId);
+    if (!solicitacao || solicitacao.tipo !== 'EXCLUSAO') {
+      throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'solicitação não encontrada');
+    }
+    if (solicitacao.status === 'CONCLUIDA') {
+      return { concluida: true as const, relatorio: solicitacao.relatorio ?? {} };
+    }
+    const faltantes: string[] = [];
+    let removidos = 0;
+    for (const key of solicitacao.arquivosPendentes ?? []) {
+      try {
+        await this.armazenamento.apagar(key);
+        removidos += 1;
+      } catch {
+        faltantes.push(key);
+      }
+    }
+    const relatorio = { ...(solicitacao.relatorio ?? {}), arquivosRemovidos: (solicitacao.relatorio?.arquivosRemovidos ?? 0) + removidos };
+    if (faltantes.length > 0) {
+      await this.repo.atualizarSolicitacaoLgpd(solicitacaoId, { arquivosPendentes: faltantes, relatorio });
+      return { concluida: false as const, pendentes: faltantes.length, relatorio };
+    }
+    await this.repo.atualizarSolicitacaoLgpd(solicitacaoId, {
+      status: 'CONCLUIDA',
+      arquivosPendentes: [],
+      relatorio,
+      concluidaEm: this.relogio.agora(),
     });
+    return { concluida: true as const, relatorio };
+  }
+
+  private async registrar(
+    usuarioId: string,
+    candidatoId: string,
+    tipo: SolicitacaoLgpdRegistro['tipo'],
+    status: NonNullable<SolicitacaoLgpdRegistro['status']> = 'CONCLUIDA',
+  ): Promise<string> {
+    const id = randomUUID();
+    await this.repo.registrarSolicitacaoLgpd({ id, usuarioId, candidatoId, tipo, status, criadoEm: this.relogio.agora() });
+    return id;
   }
 }

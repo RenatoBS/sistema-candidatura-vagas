@@ -17,6 +17,7 @@
     "@aws-sdk/client-s3": "^3.787.0",
     "@aws-sdk/s3-request-presigner": "^3.787.0",
     "@scv/domain": "workspace:*",
+    "@scv/env": "workspace:*",
     "@scv/llm": "workspace:*",
     "mammoth": "^1.9.0",
     "nodemailer": "^6.10.0",

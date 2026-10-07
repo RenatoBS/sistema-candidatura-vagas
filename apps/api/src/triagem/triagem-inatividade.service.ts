@@ -67,6 +67,9 @@ export class TriagemInatividadeService {
     if (entrevista.iniciadaEm) {
       throw new ErroAplicacao('TENTATIVA_CONSUMIDA', 409, 'tentativa já consumida');
     }
+    if (entrevista.status === 'SUSPENSA_PAUSA' || entrevista.status === 'SUSPENSA_INSTANCIA') {
+      throw new ErroAplicacao('ENTREVISTA_SUSPENSA', 409, 'entrevista suspensa: o aceite aguarda a retomada');
+    }
     return this.repo.atualizarEntrevista(
       entrevistaId,
       {

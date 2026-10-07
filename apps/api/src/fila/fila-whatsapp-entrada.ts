@@ -1,3 +1,4 @@
+import { envNumero, envOu } from '@scv/env';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 export const FILA_WHATSAPP_ENTRADA = 'whatsapp-entrada';
@@ -18,8 +19,8 @@ export class DeduplicadorWebhookMemoria implements DeduplicadorWebhook {
 export class DeduplicadorWebhookRedis implements DeduplicadorWebhook {
   private readonly redis: Redis;
   constructor(
-    host = process.env.REDIS_HOST ?? 'localhost',
-    port = Number(process.env.REDIS_PORT ?? 6379),
+    host = envOu(process.env, 'REDIS_HOST', 'localhost'),
+    port = envNumero(process.env, 'REDIS_PORT', 6379),
   ) {
     this.redis = new Redis({ host, port, lazyConnect: true });
   }
@@ -52,8 +53,8 @@ export class FilaWhatsappEntradaMemoria implements FilaWhatsappEntrada {
 export class FilaWhatsappEntradaBull implements FilaWhatsappEntrada {
   private readonly fila: Queue;
   constructor(
-    host = process.env.REDIS_HOST ?? 'localhost',
-    port = Number(process.env.REDIS_PORT ?? 6379),
+    host = envOu(process.env, 'REDIS_HOST', 'localhost'),
+    port = envNumero(process.env, 'REDIS_PORT', 6379),
   ) {
     this.fila = new Queue(FILA_WHATSAPP_ENTRADA, { connection: { host, port } });
   }

@@ -28,8 +28,9 @@ import {
   whatsappMensagensTeste,
   whatsappTeste,
 } from '../src/ambiente-teste';
-import { codigoTotp, extrairCodigo } from '../src/auth/segredos';
+import { extrairCodigo } from '../src/auth/segredos';
 import { medirPipelineFake } from '../src/voz/pipeline-fake';
+import { codigosTotp } from './totp';
 
 const SISTEMA = { sistema: true as const };
 const AGORA = new Date('2026-10-07T15:00:00.000Z');
@@ -146,7 +147,7 @@ async function tokenAdmin() {
   const inicio = await api('/auth/mfa/iniciar', { method: 'POST' }, access || semMfa);
   const segredo = new URL(String(inicio.json.otpauthUrl)).searchParams.get('secret');
   assert.ok(segredo);
-  const codigo = () => codigoTotp(segredo, relogioTeste.agora().getTime());
+  const codigo = codigosTotp(segredo);
   assert.equal(
     (await api('/auth/mfa/confirmar', { method: 'POST', body: JSON.stringify({ codigo: codigo() }) }, access)).status,
     201,

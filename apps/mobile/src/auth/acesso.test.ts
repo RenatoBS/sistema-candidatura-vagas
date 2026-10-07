@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { chaveConsulta, rotaInicial, podeAcessarGrupo, podeAcao, type SessaoApp } from './acesso';
+import { chaveConsulta, empresaAtivaDaSessao, rotaInicial, podeAcessarGrupo, podeAcao, type SessaoApp } from './acesso';
 
 function sessao(parcial: Partial<SessaoApp>): SessaoApp {
   return {
@@ -51,6 +51,35 @@ describe('navegação por papel', () => {
     assert.notDeepEqual(chaveConsulta('ADMIN', 'e1', ['whatsapp']), chaveConsulta('EMPRESA', 'e1', ['whatsapp']));
   });
 });
+describe('empresa ativa', () => {
+  const empresa = (empresaId: string) => ({
+    empresaId,
+    nomeFantasia: 'Acme',
+    papeis: ['ADMIN_EMPRESA' as const],
+    status: 'ATIVO' as const,
+    statusVerificacao: 'VERIFICADA' as const,
+  });
+
+  it('usa a empresa ativa da sessão', () => {
+    assert.equal(empresaAtivaDaSessao(sessao({ empresaAtivaId: 'e2', empresas: [empresa('e1'), empresa('e2')] })), 'e2');
+  });
+
+  it('cai na primeira empresa quando a sessão não tem empresa ativa', () => {
+    assert.equal(empresaAtivaDaSessao(sessao({ empresaAtivaId: null, empresas: [empresa('e1')] })), 'e1');
+  });
+
+  it('devolve vazio sem sessão ou sem empresas', () => {
+    assert.equal(empresaAtivaDaSessao(null), '');
+    assert.equal(empresaAtivaDaSessao(sessao({ empresaAtivaId: null, empresas: [] })), '');
+  });
+
+  it('a permissão usa a mesma empresa de fallback', () => {
+    const dono = sessao({ visao: 'EMPRESA', empresaAtivaId: null, empresas: [empresa('e1')] });
+    assert.equal(podeAcao(dono, 'gerenciar_membros'), true);
+    assert.equal(podeAcao(dono, 'gerenciar_membros', ''), true);
+  });
+});
+
 describe('rotaInicial', () => {
   it('candidato puro vai direto para /candidato', () => {
     assert.equal(rotaInicial(sessao({ ehCandidato: true, visao: 'CANDIDATO', empresas: [] })), '/candidato');

@@ -1,5 +1,16 @@
 import type { LlmProvider, PedidoLlm, RespostaLlm } from './tipos';
 
+const ABERTURAS = [
+  'Conte uma situação real em que você resolveu um problema complexo como',
+  'Descreva como você prioriza entregas e prazos atuando como',
+  'Explique uma falha em produção que você investigou e corrigiu em',
+  'Fale sobre uma decisão difícil de qualidade que você defendeu na posição de',
+  'Relate um conflito técnico com colegas e como o resolveu trabalhando como',
+  'Mostre como você mede o resultado do seu trabalho em',
+  'Diga o que aprendeu com um projeto que não saiu como esperado em',
+  'Compartilhe uma melhoria de processo que você liderou durante a atuação em',
+];
+
 /** Resposta estável a partir do pedido. Não usa rede. */
 export class LlmMock implements LlmProvider {
   async complete(pedido: PedidoLlm): Promise<RespostaLlm> {
@@ -20,7 +31,7 @@ export class LlmMock implements LlmProvider {
     const titulo = /titulo:\s*(.+)/.exec(usuario)?.[1]?.trim() || 'a vaga';
     const tema = /arquitet/i.test(titulo) ? 'decisão de arquitetura e trade-off' : 'desafio técnico da função';
     const perguntas = Array.from({ length: faltantes }, (_, indice) => ({
-      enunciado: `Pergunta ${indice + 1} sobre ${titulo}: conte uma ${tema} que você conduziu.`,
+      enunciado: `${ABERTURAS[indice % ABERTURAS.length]} ${titulo} (${tema}).`,
       rubrica: { criterios: ['clareza', 'profundidade', 'resultado'] },
       tempoLimiteSegundos: 180,
     }));

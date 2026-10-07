@@ -1,3 +1,4 @@
+import { envNumero, envOu } from '@scv/env';
 import { Queue } from 'bullmq';
 
 export const FILA_PRAZOS = 'vagas-prazos';
@@ -40,28 +41,52 @@ export class FilaVagasMemoria implements FilaVagas {
   }
 }
 
+/** Parte de `Queue` usada para os prazos (permite fila falsa nos testes). */
+export type FilaPrazos = Pick<Queue, 'getJob' | 'add'>;
+
 export class FilaVagasBull implements FilaVagas {
-  private prazos: Queue | null = null;
+  private prazos: FilaPrazos | null = null;
   private sugestoes: Queue | null = null;
   private efeitos: Queue | null = null;
 
   constructor(
-    private readonly host = process.env.REDIS_HOST ?? 'localhost',
-    private readonly port = Number(process.env.REDIS_PORT ?? 6379),
-  ) {}
+    private readonly host = envOu(process.env, 'REDIS_HOST', 'localhost'),
+    private readonly port = envNumero(process.env, 'REDIS_PORT', 6379),
+    prazos?: FilaPrazos,
+  ) {
+    this.prazos = prazos ?? null;
+  }
 
+  /**
+   * O job em execução nunca é removido (o BullMQ recusa remover job travado e o próprio encerramento
+   * falhava ao cancelar o agendamento). Se já há um job ativo para a vaga, o novo prazo entra no
+   * slot `proximo`, que o `cancelar` também limpa.
+   */
   async agendarEncerramento(vagaId: string, quando: Date): Promise<void> {
     const fila = this.filaPrazos();
-    const jobId = `encerrar-${vagaId}`;
-    const existente = await fila.getJob(jobId);
-    if (existente) await existente.remove();
+    const principal = `encerrar-${vagaId}`;
     const atraso = Math.max(0, quando.getTime() - Date.now());
+    await this.removerSeNaoAtivo(principal);
+    const ativo = await fila.getJob(principal);
+    const jobId = ativo ? `${principal}-proximo` : principal;
+    if (ativo) await this.removerSeNaoAtivo(jobId);
     await fila.add('encerrar', { vagaId }, { jobId, delay: atraso, removeOnComplete: 100 });
   }
 
   async cancelarEncerramento(vagaId: string): Promise<void> {
-    const existente = await this.filaPrazos().getJob(`encerrar-${vagaId}`);
-    if (existente) await existente.remove();
+    await this.removerSeNaoAtivo(`encerrar-${vagaId}`);
+    await this.removerSeNaoAtivo(`encerrar-${vagaId}-proximo`);
+  }
+
+  private async removerSeNaoAtivo(jobId: string): Promise<void> {
+    const job = await this.filaPrazos().getJob(jobId);
+    if (!job) return;
+    if (await job.isActive()) return;
+    try {
+      await job.remove();
+    } catch {
+      // Travou entre a checagem e a remoção: está em execução, então não há o que cancelar.
+    }
   }
 
   async enfileirarSugestao(etapaId: string): Promise<void> {
@@ -72,7 +97,7 @@ export class FilaVagasBull implements FilaVagas {
     await this.filaEfeitos().add('aplicar', { eventoId }, { attempts: 5, removeOnComplete: 100 });
   }
 
-  private filaPrazos(): Queue {
+  private filaPrazos(): FilaPrazos {
     this.prazos ??= new Queue(FILA_PRAZOS, { connection: { host: this.host, port: this.port } });
     return this.prazos;
   }

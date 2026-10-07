@@ -1,3 +1,4 @@
+import { envNumero, envOu } from '@scv/env';
 import { Queue } from 'bullmq';
 
 export const FILA_EMBEDDINGS = 'embeddings';
@@ -68,8 +69,8 @@ export class FilaMatchBull implements FilaMatch {
   private notificacoes: Queue | null = null;
 
   constructor(
-    private readonly host = process.env.REDIS_HOST ?? 'localhost',
-    private readonly port = Number(process.env.REDIS_PORT ?? 6379),
+    private readonly host = envOu(process.env, 'REDIS_HOST', 'localhost'),
+    private readonly port = envNumero(process.env, 'REDIS_PORT', 6379),
   ) {}
 
   async enfileirarEmbeddingVaga(vagaId: string): Promise<void> {

@@ -43,8 +43,10 @@ describe('Uazapi instâncias', () => {
     assert.equal(status.conectada, true);
     assert.equal(status.numero, '5511988887777');
 
-    await cliente.configurarWebhook('segredo', 'https://api.test/webhooks/whatsapp/uazapi/1');
+    const urlComSegredo = 'https://api.test/api/v1/webhooks/whatsapp/uazapi/1?segredo=s3gredo';
+    await cliente.configurarWebhook('segredo', urlComSegredo);
     assert.match(chamadas[3].body ?? '', /messages/);
+    assert.equal((JSON.parse(chamadas[3].body ?? '{}') as { url: string }).url, urlComSegredo);
     await cliente.disconnect('segredo');
     assert.equal(chamadas[4].url.endsWith('/instance/disconnect'), true);
   });

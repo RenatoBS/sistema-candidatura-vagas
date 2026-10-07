@@ -72,3 +72,31 @@ function entrada(faltantes: number, titulo: string) {
     tipoEtapa: 'ENTREVISTA_VOZ',
   };
 }
+
+describe('variáveis de ambiente vazias (FC-00/F11)', () => {
+  async function modeloUsado(env: Parameters<typeof criarLlmProvider>[0]): Promise<string> {
+    const original = globalThis.fetch;
+    let corpo = '';
+    globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
+      corpo = String(init?.body);
+      return Response.json({ choices: [{ message: { content: '{}' } }] });
+    }) as typeof fetch;
+    try {
+      await criarLlmProvider(env).complete({ mensagens: [{ role: 'user', content: 'oi' }] });
+    } finally {
+      globalThis.fetch = original;
+    }
+    return (JSON.parse(corpo) as { model: string }).model;
+  }
+
+  it('LLM_MODELO vazio usa o modelo padrão da OpenAI', async () => {
+    assert.equal(await modeloUsado({ LLM_PROVIDER: 'openai', OPENAI_API_KEY: 'chave', LLM_MODELO: '' }), 'gpt-4o-mini');
+    assert.equal(await modeloUsado({ LLM_PROVIDER: 'openai', OPENAI_API_KEY: 'chave', LLM_MODELO: '   ' }), 'gpt-4o-mini');
+    assert.equal(await modeloUsado({ LLM_PROVIDER: 'openai', OPENAI_API_KEY: 'chave', LLM_MODELO: 'gpt-x' }), 'gpt-x');
+  });
+
+  it('LLM_PROVIDER vazio cai no mock', () => {
+    assert.ok(criarLlmProvider({ LLM_PROVIDER: '' }) instanceof LlmMock);
+  });
+});
+

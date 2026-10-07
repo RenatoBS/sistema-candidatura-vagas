@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import { useEffect, type PropsWithChildren } from 'react';
+import { Redirect } from 'expo-router';
+import type { PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -9,13 +9,12 @@ import { colors, tipo } from '@/design-system/tokens';
 
 export function GuardGrupo({ grupo, children }: PropsWithChildren<{ grupo: GrupoRota }>) {
   const { sessao, pronto } = useAuth();
-  const router = useRouter();
   const { t } = useTranslation();
   const decisao = podeAcessarGrupo(sessao, grupo);
 
-  useEffect(() => {
-    if (pronto && !decisao.ok) router.replace(decisao.redirecionar);
-  }, [decisao.ok, decisao.redirecionar, pronto, router]);
+  // <Redirect> espera a navegação estar pronta; router.replace num useEffect disparava
+  // "Attempted to navigate before mounting the Root Layout" no primeiro render sem sessão.
+  if (pronto && !decisao.ok) return <Redirect href={decisao.redirecionar} />;
 
   if (!pronto || !decisao.ok) {
     return (

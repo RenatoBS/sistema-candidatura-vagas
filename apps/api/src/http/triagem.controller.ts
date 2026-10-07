@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, HttpCode, Inject, Param, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Inject, Param, Post, Query, Req, Res } from '@nestjs/common';
 import { revisaoTriagemSchema } from '@scv/contracts';
 
 import type { ConfiguracaoApp } from '../configuracao';
@@ -134,12 +134,28 @@ export class TriagemController {
   @Publico()
   @HttpCode(200)
   @Post('interno/triagem/candidaturas/:candidaturaId/iniciar')
-  iniciar(
+  async iniciar(
     @Param('candidaturaId') candidaturaId: string,
     @Headers('x-internal-token') token: string | undefined,
+    @Res({ passthrough: true }) resposta: { status(codigo: number): unknown },
   ) {
     this.validar(token);
-    return this.orquestrador.iniciar(candidaturaId);
+    const resultado = await this.orquestrador.iniciar(candidaturaId);
+    // Falha de envio: aceito, mas o convite sai no reenvio agendado (não é erro do cliente nem do servidor).
+    if (resultado.motivo === 'ENVIO_FALHOU') resposta.status(202);
+    return resultado;
+  }
+
+  @Publico()
+  @HttpCode(200)
+  @Post('interno/triagem/entrevistas/:entrevistaId/reenviar-convite')
+  reenviarConvite(
+    @Param('entrevistaId') entrevistaId: string,
+    @Headers('x-internal-token') token: string | undefined,
+    @Body() body?: { tentativa?: number },
+  ) {
+    this.validar(token);
+    return this.orquestrador.reenviarConvite(entrevistaId, Number(body?.tentativa ?? 1));
   }
 
   @Publico()

@@ -127,6 +127,7 @@ async function cenario(opcoes?: {
   tempo?: number;
   consentimento?: boolean;
   vagaStatus?: 'PUBLICADA' | 'PAUSADA' | 'FECHADA';
+  candidaturaStatus?: 'INSCRITA' | 'TRIAGEM_WHATSAPP' | 'TRIAGEM_CONCLUIDA';
 }): Promise<Cenario> {
   const empresaId = opcoes?.empresaId ?? randomUUID();
   const usuarioCandidatoId = randomUUID();
@@ -271,7 +272,7 @@ async function cenario(opcoes?: {
       vagaId,
       candidatoId,
       origem: 'DIRETA',
-      status: 'TRIAGEM_CONCLUIDA',
+      status: opcoes?.candidaturaStatus ?? 'TRIAGEM_CONCLUIDA',
       statusAntesDaEspera: null,
       etapaAtualId: etapaId,
       criadoEm: agora,
@@ -426,6 +427,17 @@ describe('F8 entrevista por voz', () => {
     const negado = await interno(`/interno/voz/candidaturas/${semConsentimento.candidaturaId}/preparar`);
     assert.equal(negado.status, 403);
     assert.equal(negado.json.codigo, 'SEM_CONSENTIMENTO');
+  });
+
+  it('FC-14/V8: entrevista por voz só abre com a triagem concluída', async () => {
+    for (const candidaturaStatus of ['INSCRITA', 'TRIAGEM_WHATSAPP'] as const) {
+      const semTriagem = await cenario({ candidaturaStatus });
+      const recusa = await interno(`/interno/voz/candidaturas/${semTriagem.candidaturaId}/preparar`);
+      assert.equal(recusa.status, 409, candidaturaStatus);
+      assert.equal(recusa.json.codigo, 'TRIAGEM_NAO_CONCLUIDA');
+    }
+    const concluida = await cenario();
+    assert.equal((await interno(`/interno/voz/candidaturas/${concluida.candidaturaId}/preparar`)).status, 200);
   });
 
   it('gravação e transcrição exigem auditoria e isolam a empresa', async () => {

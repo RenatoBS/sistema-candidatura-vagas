@@ -108,6 +108,11 @@ model SolicitacaoLgpd {
   usuarioId   String              @db.Uuid
   candidatoId String?             @db.Uuid
   tipo        TipoSolicitacaoLgpd
+  /// PENDENTE enquanto há arquivos a apagar no storage; CONCLUIDA quando o job termina.
+  status      String              @default("CONCLUIDA")
+  arquivosPendentes Json          @default("[]")
+  relatorio   Json                @default("{}")
+  concluidaEm DateTime?           @db.Timestamptz
   criadoEm    DateTime            @default(now()) @db.Timestamptz
 
   usuario   Usuario    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)

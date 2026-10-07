@@ -125,10 +125,54 @@ jobs:
       - name: Testes de migração e isolamento RLS
         run: pnpm --filter @scv/prisma test
 
+  api-postgres:
+    name: API em Postgres como scv_app (RLS e acesso cruzado)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: scv
+          POSTGRES_PASSWORD: scv_ci_password
+          POSTGRES_DB: scv_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scv -d scv_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Banco descartável (os testes recusam nomes que não terminam em _test). Os testes criam o papel
+      # scv_app, sobem a API conectada como ele e falham se o papel de runtime for superuser/BYPASSRLS
+      # ou se qualquer rota de tenant/admin deixar uma empresa tocar nos dados de outra.
+      SCV_TEST_DATABASE_URL: postgresql://scv:scv_ci_password@localhost:5432/scv_test?schema=public
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Gerar cliente Prisma
+        run: pnpm --filter @scv/prisma db:generate
+
+      - name: Compilar pacotes de que a API depende
+        run: pnpm turbo run build --filter=@scv/api^...
+
+      - name: Testes da API contra Postgres (papel scv_app)
+        run: pnpm --filter @scv/api test:prisma
+
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint-typecheck-test, migrations, prisma-rls]
+    needs: [lint-typecheck-test, migrations, prisma-rls, api-postgres]
     steps:
       - uses: actions/checkout@v7
 

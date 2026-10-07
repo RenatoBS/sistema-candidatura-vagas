@@ -4,6 +4,7 @@ import { Alert, Text } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
+import { CONSENTIMENTOS_CANDIDATURA } from '@/candidatura/regras';
 import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
 import { Cabecalho } from '@/design-system/Cabecalho';
@@ -21,8 +22,6 @@ type Convite = {
   expiraEm?: string;
 };
 
-const consentimentos = [{ tipo: 'TERMOS', concedido: true, versaoTermo: '2026-10-06' }];
-
 export default function Convites() {
   const { t } = useTranslation();
   const { accessToken } = useAuth();
@@ -37,7 +36,7 @@ export default function Convites() {
         `/candidatos/me/convites/${id}/${acao}`,
         {
           method: 'POST',
-          body: acao === 'aceitar' ? JSON.stringify({ consentimentos }) : undefined,
+          body: acao === 'aceitar' ? JSON.stringify({ consentimentos: CONSENTIMENTOS_CANDIDATURA }) : undefined,
         },
         accessToken,
       );

@@ -9,6 +9,7 @@ import {
   TipoVerificacaoEmpresa,
   VisaoPreferida,
 } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const VAGA_IDS = {
   'verificada-a': 'a0000001-0000-4000-8000-000000000001',
@@ -16,6 +17,15 @@ const VAGA_IDS = {
 } as const;
 
 const prisma = new PrismaClient();
+
+/** Senha de desenvolvimento de todos os usuários do seed (documentada em docs/runbooks/ambiente-local.md). */
+const SENHA_DEV = 'Senha123';
+
+/** Mesma lib e custo da API (bcryptjs): o login com SENHA_DEV funciona de verdade. */
+const CREDENCIAIS_DEV = {
+  senhaHash: bcrypt.hashSync(SENHA_DEV, 10),
+  emailConfirmadoEm: new Date(),
+};
 
 const HABILIDADES_SEED = [
   { nome: 'TypeScript', categoria: 'linguagem', sinonimos: ['TS'] },
@@ -43,10 +53,10 @@ async function seedHabilidades() {
 async function seedEmpresasEUsuarios() {
   const admin = await prisma.usuario.upsert({
     where: { email: 'admin@scv.dev' },
-    update: {},
+    update: CREDENCIAIS_DEV,
     create: {
       email: 'admin@scv.dev',
-      senhaHash: '$argon2id$placeholder_admin',
+      ...CREDENCIAIS_DEV,
       papeisGlobais: [PapelGlobal.ADMIN_PLATAFORMA],
       mfaAtivo: true,
       visaoPreferida: VisaoPreferida.ADMIN,
@@ -55,10 +65,10 @@ async function seedEmpresasEUsuarios() {
 
   const adminSemMfa = await prisma.usuario.upsert({
     where: { email: 'admin-sem-mfa@scv.dev' },
-    update: {},
+    update: CREDENCIAIS_DEV,
     create: {
       email: 'admin-sem-mfa@scv.dev',
-      senhaHash: '$argon2id$placeholder_admin_sem_mfa',
+      ...CREDENCIAIS_DEV,
       papeisGlobais: [PapelGlobal.ADMIN_PLATAFORMA],
       mfaAtivo: false,
       visaoPreferida: VisaoPreferida.ADMIN,
@@ -67,40 +77,40 @@ async function seedEmpresasEUsuarios() {
 
   const candidatoEmpresa = await prisma.usuario.upsert({
     where: { email: 'dual@scv.dev' },
-    update: {},
+    update: CREDENCIAIS_DEV,
     create: {
       email: 'dual@scv.dev',
-      senhaHash: '$argon2id$placeholder_dual',
+      ...CREDENCIAIS_DEV,
       visaoPreferida: VisaoPreferida.CANDIDATO,
     },
   });
 
   const candidatoPuro = await prisma.usuario.upsert({
     where: { email: 'candidato@scv.dev' },
-    update: {},
+    update: CREDENCIAIS_DEV,
     create: {
       email: 'candidato@scv.dev',
-      senhaHash: '$argon2id$placeholder_candidato',
+      ...CREDENCIAIS_DEV,
       visaoPreferida: VisaoPreferida.CANDIDATO,
     },
   });
 
   const recrutadorA = await prisma.usuario.upsert({
     where: { email: 'recrutador-a@empresa-a.dev' },
-    update: {},
+    update: CREDENCIAIS_DEV,
     create: {
       email: 'recrutador-a@empresa-a.dev',
-      senhaHash: '$argon2id$placeholder_recrutador_a',
+      ...CREDENCIAIS_DEV,
       visaoPreferida: VisaoPreferida.EMPRESA,
     },
   });
 
   const recrutadorB = await prisma.usuario.upsert({
     where: { email: 'recrutador-b@empresa-b.dev' },
-    update: {},
+    update: CREDENCIAIS_DEV,
     create: {
       email: 'recrutador-b@empresa-b.dev',
-      senhaHash: '$argon2id$placeholder_recrutador_b',
+      ...CREDENCIAIS_DEV,
       visaoPreferida: VisaoPreferida.EMPRESA,
     },
   });
@@ -158,10 +168,10 @@ async function seedEmpresasEUsuarios() {
   for (const spec of empresasSpec) {
     const adminEmpresa = await prisma.usuario.upsert({
       where: { email: spec.adminEmail },
-      update: {},
+      update: CREDENCIAIS_DEV,
       create: {
         email: spec.adminEmail,
-        senhaHash: `$argon2id$placeholder_${spec.key}`,
+        ...CREDENCIAIS_DEV,
         visaoPreferida: VisaoPreferida.EMPRESA,
       },
     });

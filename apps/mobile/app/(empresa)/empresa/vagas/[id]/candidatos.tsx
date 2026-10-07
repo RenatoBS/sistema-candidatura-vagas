@@ -10,6 +10,7 @@ import { EstadoVazio } from '@/design-system/EstadoVazio';
 import { estilos } from '@/design-system/estilos';
 import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
+import { useEmpresaAtiva } from '@/hooks/useEmpresaAtiva';
 
 interface CandidatoVaga {
   id: string;
@@ -21,8 +22,8 @@ interface CandidatoVaga {
 export default function CandidatosDaVaga() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { accessToken, sessao } = useAuth();
-  const empresaId = sessao?.empresaAtivaId ?? sessao?.empresas[0]?.empresaId ?? '';
+  const { accessToken } = useAuth();
+  const empresaId = useEmpresaAtiva();
   const consulta = useConsulta<CandidatoVaga[]>(['candidatos-vaga', id ?? ''], () =>
     api<CandidatoVaga[]>(`/vagas/${id}/candidaturas`, { headers: { 'x-empresa-id': empresaId } }, accessToken),
   );

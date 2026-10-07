@@ -13,6 +13,7 @@ import { Cartao } from '@/design-system/Cartao';
 import { estilos } from '@/design-system/estilos';
 import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
+import { useEmpresaAtiva } from '@/hooks/useEmpresaAtiva';
 
 interface RespostaTriagem {
   id: string;
@@ -33,8 +34,8 @@ interface DetalheTriagem {
 export default function DetalheTriagemScreen() {
   const { t } = useTranslation();
   const { entrevistaId } = useLocalSearchParams<{ entrevistaId: string }>();
-  const { sessao, accessToken } = useAuth();
-  const empresaId = sessao?.empresaAtivaId ?? sessao?.empresas[0]?.empresaId ?? '';
+  const { accessToken } = useAuth();
+  const empresaId = useEmpresaAtiva();
   const consulta = useConsulta(
     ['triagem', entrevistaId ?? ''],
     () => api<DetalheTriagem>(`/empresas/${empresaId}/triagens/${entrevistaId}`, {}, accessToken),
@@ -78,6 +79,8 @@ export default function DetalheTriagemScreen() {
     <Tela teclado>
       <Cabecalho titulo={t('triagem.detalhe')} voltar />
       {erro ? <Banner tipo="erro" texto={erro} /> : null}
+      {consulta.isLoading ? <Text style={estilos.mudo}>{t('comum.carregando')}</Text> : null}
+      {consulta.isError ? <Banner tipo="erro" texto={t('comum.erroCarregar')} /> : null}
       <Text style={estilos.corpo}>
         {t('triagem.status')}: {dados?.status ?? '—'}
       </Text>

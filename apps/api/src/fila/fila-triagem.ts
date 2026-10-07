@@ -1,3 +1,4 @@
+import { envNumero, envOu } from '@scv/env';
 import { Queue } from 'bullmq';
 
 export const FILA_TRIAGEM_RETRY = 'triagem-retry';
@@ -38,8 +39,8 @@ export class FilaTriagemBull implements FilaTriagem {
   private readonly filas = new Map<string, Queue>();
 
   constructor(
-    private readonly host = process.env.REDIS_HOST ?? 'localhost',
-    private readonly port = Number(process.env.REDIS_PORT ?? 6379),
+    private readonly host = envOu(process.env, 'REDIS_HOST', 'localhost'),
+    private readonly port = envNumero(process.env, 'REDIS_PORT', 6379),
   ) {}
 
   private fila(nome: string): Queue {

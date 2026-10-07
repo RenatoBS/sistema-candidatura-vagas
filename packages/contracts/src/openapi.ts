@@ -140,6 +140,8 @@ export const openApiFase7 = {
     '/interno/triagem/entrevistas/{entrevistaId}/aceitar': { post: { operationId: 'jobAceiteTriagem' } },
     '/interno/triagem/entrevistas/{entrevistaId}/retry': { post: { operationId: 'jobRetryTriagem' } },
     '/interno/triagem/entrevistas/{entrevistaId}/esgotar': { post: { operationId: 'jobEsgotarTriagem' } },
+    '/interno/triagem/entrevistas/{entrevistaId}/reenviar-convite': { post: { operationId: 'jobReenviarConviteTriagem' } },
+    '/interno/lgpd/exclusoes/{solicitacaoId}/processar': { post: { operationId: 'jobProcessarExclusaoLgpd' } },
     '/interno/triagem/eventos/{eventoId}/processar': { post: { operationId: 'jobProcessarWhatsapp' } },
     '/interno/triagem/candidaturas/{candidaturaId}/iniciar': { post: { operationId: 'jobIniciarTriagem' } },
     '/interno/triagem/monitorar': { post: { operationId: 'jobMonitorarWhatsapp' } },

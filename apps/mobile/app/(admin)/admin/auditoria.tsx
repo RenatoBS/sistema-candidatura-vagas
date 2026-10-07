@@ -8,6 +8,7 @@ import { Cartao } from '@/design-system/Cartao';
 import { EstadoVazio } from '@/design-system/EstadoVazio';
 import { estilos } from '@/design-system/estilos';
 import { Tela } from '@/design-system/Tela';
+import { formatarDataHora } from '@/formatacao/data';
 import { useConsulta } from '@/hooks/useConsulta';
 
 interface Evento {
@@ -28,13 +29,15 @@ export default function AuditoriaScreen() {
     <Tela>
       <Cabecalho titulo={t('admin.auditoria')} voltar />
       {consulta.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
-      {!consulta.isLoading && eventos.length === 0 ? <EstadoVazio titulo={t('admin.vazia')} /> : null}
+      {consulta.isError ? <EstadoVazio titulo={t('comum.erroCarregar')} /> : null}
+      {!consulta.isLoading && !consulta.isError && eventos.length === 0 ? <EstadoVazio titulo={t('admin.vazia')} /> : null}
       {eventos.map((evento) => (
         <Cartao key={evento.id}>
           <Text style={estilos.tituloItem}>{evento.acao}</Text>
           <Text style={estilos.mudo}>
             {evento.recursoTipo} · {evento.motivo ?? '—'}
           </Text>
+          <Text style={estilos.legenda}>{formatarDataHora(evento.criadoEm) ?? '—'}</Text>
         </Cartao>
       ))}
     </Tela>

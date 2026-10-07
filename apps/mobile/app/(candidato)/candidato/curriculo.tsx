@@ -3,22 +3,31 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text } from 'react-native';
 
-import { api } from '@/api/cliente';
+import { api, ErroApi } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
 import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
+import { Cartao } from '@/design-system/Cartao';
+import { Chip } from '@/design-system/Chip';
+import { EstadoVazio } from '@/design-system/EstadoVazio';
 import { estilos } from '@/design-system/estilos';
 import { Tela } from '@/design-system/Tela';
-import { estadoRevisao } from '@/perfil/regras';
+import { formatarDataHora } from '@/formatacao/data';
+import { useConsulta } from '@/hooks/useConsulta';
+import { estadoRevisao, situacaoCurriculo } from '@/perfil/regras';
 
-interface CurriculoResposta {
+interface CurriculoResumo {
   id: string;
   statusProcessamento: string;
   metodoExtracao: 'NATIVO' | 'OCR' | 'MISTO' | null;
   baixaConfianca: boolean;
   aplicadoAoPerfil: boolean;
+  criadoEm: string;
+}
+
+interface CurriculoResposta extends CurriculoResumo {
   textoExtraido: string | null;
   dadosExtraidos: {
     resumo?: string;
@@ -35,6 +44,8 @@ const MIME_DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingm
 export default function CurriculoCandidato() {
   const { t } = useTranslation();
   const { accessToken } = useAuth();
+  const lista = useConsulta(['curriculos'], () => api<CurriculoResumo[]>('/curriculos', {}, accessToken));
+  const { refetch: recarregarLista } = lista;
   const [curriculo, setCurriculo] = useState<CurriculoResposta | null>(null);
   const [resumo, setResumo] = useState('');
   const [erro, setErro] = useState('');
@@ -51,11 +62,23 @@ export default function CurriculoCandidato() {
         .then((detalhe) => {
           setCurriculo(detalhe);
           setResumo((atual) => atual || (detalhe.dadosExtraidos?.resumo ?? ''));
+          if (detalhe.statusProcessamento === 'CONCLUIDO' || detalhe.statusProcessamento === 'FALHA') void recarregarLista();
         })
         .catch(() => setErro(t('comum.erro')));
     }, 2000);
     return () => clearTimeout(timer);
-  }, [accessToken, curriculo, emProcessamento, t]);
+  }, [accessToken, curriculo, emProcessamento, recarregarLista, t]);
+
+  async function abrir(id: string) {
+    setErro('');
+    try {
+      const detalhe = await api<CurriculoResposta>(`/curriculos/${id}`, {}, accessToken);
+      setCurriculo(detalhe);
+      setResumo(detalhe.dadosExtraidos?.resumo ?? '');
+    } catch (falha) {
+      setErro(falha instanceof ErroApi ? falha.message : t('comum.erro'));
+    }
+  }
 
   async function enviar() {
     setErro('');
@@ -86,9 +109,8 @@ export default function CurriculoCandidato() {
       },
       accessToken,
     );
-    const detalhe = await api<CurriculoResposta>(`/curriculos/${criado.id}`, {}, accessToken);
-    setCurriculo(detalhe);
-    setResumo(detalhe.dadosExtraidos?.resumo ?? '');
+    await abrir(criado.id);
+    await lista.refetch();
   }
 
   async function confirmar() {
@@ -111,6 +133,7 @@ export default function CurriculoCandidato() {
       accessToken,
     );
     setCurriculo(confirmado);
+    await lista.refetch();
   }
 
   const aviso = curriculo
@@ -120,6 +143,7 @@ export default function CurriculoCandidato() {
         aplicadoAoPerfil: curriculo.aplicadoAoPerfil,
       })
     : null;
+  const curriculos = lista.data ?? [];
 
   return (
     <Tela teclado>
@@ -136,6 +160,22 @@ export default function CurriculoCandidato() {
           <Button label={t('candidato.confirmarDados')} onPress={() => void confirmar().catch(() => setErro(t('comum.erro')))} />
         </>
       ) : null}
+      <Text style={estilos.tituloItem}>{t('candidato.curriculosEnviados')}</Text>
+      {lista.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
+      {lista.isError ? <EstadoVazio titulo={t('candidato.curriculosErro')} /> : null}
+      {!lista.isLoading && !lista.isError && curriculos.length === 0 ? <EstadoVazio titulo={t('candidato.curriculosVazios')} /> : null}
+      {curriculos.map((item) => {
+        const situacao = situacaoCurriculo(item);
+        return (
+          <Cartao key={item.id} destaque={item.id === curriculo?.id}>
+            <Chip texto={t(`candidato.statusCurriculo.${situacao}`)} />
+            <Text style={estilos.legenda}>{t('candidato.enviadoEm', { data: formatarDataHora(item.criadoEm) ?? '—' })}</Text>
+            {situacao === 'AGUARDANDO' && item.id !== curriculo?.id ? (
+              <Button label={t('candidato.revisarCurriculo')} variante="secundario" onPress={() => void abrir(item.id)} />
+            ) : null}
+          </Cartao>
+        );
+      })}
     </Tela>
   );
 }

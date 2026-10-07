@@ -213,6 +213,14 @@ export class CandidatoController {
     return this.curriculos.marcarFalha(id);
   }
 
+  @Publico()
+  @HttpCode(200)
+  @Post('interno/lgpd/exclusoes/:solicitacaoId/processar')
+  processarExclusao(@Req() req: RequisicaoComSessao, @Param('solicitacaoId') solicitacaoId: string) {
+    this.exigirInterno(req);
+    return this.lgpd.processarExclusao(solicitacaoId);
+  }
+
   private exigirInterno(req: RequisicaoComSessao): void {
     if (!this.config.internalToken || cabecalho(req, 'x-internal-token') !== this.config.internalToken) {
       throw new ErroAplicacao('NAO_AUTENTICADO', 401, 'token interno inválido');

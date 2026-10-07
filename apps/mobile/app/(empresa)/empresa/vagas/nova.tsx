@@ -8,24 +8,34 @@ import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
 import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
+import { CampoPrazo } from '@/design-system/CampoPrazo';
+import { Seletor } from '@/design-system/Seletor';
 import { Tela } from '@/design-system/Tela';
+import { useEmpresaAtiva } from '@/hooks/useEmpresaAtiva';
+import { MODELOS_TRABALHO, SENIORIDADES, type ModeloTrabalho, type Senioridade } from '@/vaga/opcoes';
+import { normalizarPrazo, problemaDoPrazo } from '@/vaga/prazo';
 
 export default function NovaVagaScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { sessao, accessToken } = useAuth();
-  const empresaId = sessao?.empresaAtivaId ?? sessao?.empresas[0]?.empresaId ?? '';
+  const { accessToken } = useAuth();
+  const empresaId = useEmpresaAtiva();
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [senioridade, setSenioridade] = useState('PLENO');
-  const [modelo, setModelo] = useState('REMOTO');
+  const [senioridade, setSenioridade] = useState<Senioridade>('PLENO');
+  const [modelo, setModelo] = useState<ModeloTrabalho>('REMOTO');
   const [localidade, setLocalidade] = useState('');
   const [prazo, setPrazo] = useState('');
   const [habilidade, setHabilidade] = useState('');
   const [erro, setErro] = useState('');
+  const [tentou, setTentou] = useState(false);
+  const erroTitulo = titulo.trim().length < 3 ? t('vaga.tituloCurto') : undefined;
+  const erroDescricao = descricao.trim().length < 10 ? t('vaga.descricaoCurta') : undefined;
 
   async function salvar() {
     setErro('');
+    setTentou(true);
+    if (erroTitulo || erroDescricao || problemaDoPrazo(prazo)) return;
     try {
       const criada = await api<{ id: string }>(
         `/empresas/${empresaId}/vagas`,
@@ -53,23 +63,23 @@ export default function NovaVagaScreen() {
     <Tela teclado rodape={<Button label={t('vaga.salvar')} onPress={() => void salvar()} />}>
       <Cabecalho titulo={t('vaga.nova')} voltar />
       {erro ? <Banner tipo="erro" texto={erro} /> : null}
-      <Campo label={t('vaga.titulo')} value={titulo} onChangeText={setTitulo} />
-      <Campo label={t('vaga.descricao')} value={descricao} onChangeText={setDescricao} multiline />
-      <Campo label={t('vaga.senioridade')} value={senioridade} onChangeText={setSenioridade} autoCapitalize="none" />
-      <Campo label={t('vaga.modelo')} value={modelo} onChangeText={setModelo} autoCapitalize="none" />
+      <Campo label={t('vaga.titulo')} value={titulo} onChangeText={setTitulo} erro={tentou ? erroTitulo : undefined} />
+      <Campo label={t('vaga.descricao')} value={descricao} onChangeText={setDescricao} multiline erro={tentou ? erroDescricao : undefined} />
+      <Seletor
+        label={t('vaga.senioridade')}
+        valor={senioridade}
+        onChange={setSenioridade}
+        opcoes={SENIORIDADES.map((valor) => ({ valor, rotulo: t(`vaga.opcaoSenioridade.${valor}`) }))}
+      />
+      <Seletor
+        label={t('vaga.modelo')}
+        valor={modelo}
+        onChange={setModelo}
+        opcoes={MODELOS_TRABALHO.map((valor) => ({ valor, rotulo: t(`vaga.opcaoModelo.${valor}`) }))}
+      />
       <Campo label={t('vaga.localidade')} value={localidade} onChangeText={setLocalidade} />
-      <Campo label={t('vaga.prazo')} value={prazo} onChangeText={setPrazo} placeholder={t('vaga.prazoAjuda')} autoCapitalize="none" />
+      <CampoPrazo value={prazo} onChangeText={setPrazo} validar={tentou || prazo.length >= 10} />
       <Campo label={t('vaga.habilidade')} value={habilidade} onChangeText={setHabilidade} />
     </Tela>
   );
-}
-
-/** Aceita também o formato brasileiro (dd/mm/aaaa [hh:mm]) e converte para AAAA-MM-DDTHH:mm. */
-export function normalizarPrazo(valor: string): string | null {
-  const texto = valor.trim();
-  if (!texto) return null;
-  const br = /^(\d{2})\/(\d{2})\/(\d{4})(?:[ T](\d{2}):(\d{2}))?$/.exec(texto);
-  if (!br) return texto;
-  const [, dia, mes, ano, hora = '23', minuto = '59'] = br;
-  return `${ano}-${mes}-${dia}T${hora}:${minuto}`;
 }

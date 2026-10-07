@@ -45,6 +45,7 @@ import type {
 } from '../repositorio/tipos';
 import { ctxDe, deveAuditarBypass, exigir, montarAtor, papelAuditoria, type SessaoRequest } from '../sessao';
 import type { TriagemRetryService } from '../triagem/triagem-retry.service';
+import { selecionarSugestoes } from './sugestoes';
 
 const MENSAGENS: Record<ErroTransicaoVaga, string> = {
   PRAZO_OBRIGATORIO: 'prazo de inscrições obrigatório para publicar',
@@ -62,6 +63,33 @@ const MOTIVO_EVENTO: Record<TipoEventoVaga, string> = {
   VagaFechada: 'vaga fechada',
   AlertaPausaLonga: 'alerta de pausa longa',
 };
+
+const ROTULO_ETAPA: Record<string, string> = {
+  TRIAGEM_WHATSAPP: 'triagem por WhatsApp',
+  ENTREVISTA_VOZ: 'entrevista por voz',
+  REVISAO_HUMANA: 'revisão humana',
+};
+
+function plural(quantidade: number, singular: string, pluralForma: string): string {
+  return `${quantidade} ${quantidade === 1 ? singular : pluralForma}`;
+}
+
+/** 409 que diz qual etapa impede a publicação e quantas perguntas faltam (`detalhes.etapas`). */
+function erroPerguntasIncompletas(
+  etapas: Array<{ ordem: number; tipo: string; numeroPerguntas: number; aprovadas: number; pendentes: number }>,
+): ErroAplicacao {
+  const incompletas = etapas
+    .filter((etapa) => etapa.pendentes > 0 || etapa.aprovadas !== etapa.numeroPerguntas)
+    .map((etapa) => ({ ...etapa, faltam: Math.max(0, etapa.numeroPerguntas - etapa.aprovadas) }));
+  const frases = incompletas.map((etapa) => {
+    const partes = [];
+    if (etapa.faltam > 0) partes.push(`faltam ${plural(etapa.faltam, 'pergunta aprovada', 'perguntas aprovadas')}`);
+    if (etapa.pendentes > 0) partes.push(`${plural(etapa.pendentes, 'sugestão pendente', 'sugestões pendentes')} de revisão`);
+    if (partes.length === 0) partes.push('há mais perguntas aprovadas do que o previsto');
+    return `etapa ${etapa.ordem} (${ROTULO_ETAPA[etapa.tipo] ?? etapa.tipo}): ${partes.join(' e ')}`;
+  });
+  return new ErroAplicacao('PERGUNTAS_INCOMPLETAS', 409, `Não é possível publicar — ${frases.join('; ')}`, { etapas: incompletas });
+}
 
 export class VagasService {
   constructor(
@@ -148,6 +176,7 @@ export class VagasService {
       await this.auditar(alinhada, empresaId, vagaId, 'BYPASS_ADMIN', 'criar_vaga', ctx);
     }
     await this.encerrarEmpresa(empresaId, ctx);
+    await this.exigirVaga(vagaId, empresaId, ctx);
     return this.detalhe(vagaId, ctx);
   }
 
@@ -281,11 +310,26 @@ export class VagasService {
   async sugerir(sessao: SessaoRequest, empresaId: string, vagaId: string, etapaId: string) {
     const { ctx } = await this.alinhar(sessao, empresaId, 'criar_vaga');
     await this.exigirRascunho(vagaId, empresaId, ctx);
-    await this.fila.enfileirarSugestao(etapaId);
     return this.gerarSugestoes(empresaId, vagaId, etapaId, ctx);
   }
 
+  /** Uma geração por etapa por vez: chamadas concorrentes aguardam a primeira e recebem o mesmo lote. */
+  private readonly geracoesEmCurso = new Map<string, Promise<unknown>>();
+
   async gerarSugestoes(empresaId: string, vagaId: string, etapaId: string, ctx: ContextoTenant) {
+    for (let emCurso = this.geracoesEmCurso.get(etapaId); emCurso; emCurso = this.geracoesEmCurso.get(etapaId)) {
+      await emCurso.catch(() => undefined);
+    }
+    const execucao = this.gerarSugestoesExclusivo(empresaId, vagaId, etapaId, ctx);
+    this.geracoesEmCurso.set(etapaId, execucao);
+    try {
+      return await execucao;
+    } finally {
+      this.geracoesEmCurso.delete(etapaId);
+    }
+  }
+
+  private async gerarSugestoesExclusivo(empresaId: string, vagaId: string, etapaId: string, ctx: ContextoTenant) {
     const vaga = await this.exigirVaga(vagaId, empresaId, ctx);
     const etapa = await this.exigirEtapaDaVaga(etapaId, vagaId, ctx);
     const processo = await this.repo.buscarProcessoPorVaga(vagaId, ctx);
@@ -307,7 +351,9 @@ export class VagasService {
       tipoEtapa: etapa.tipo,
     });
     const criadas: PerguntaRegistro[] = [];
-    for (const sugestao of geradas.perguntas) {
+    const jaPendentes = pendentes.map((item) => item.enunciado);
+    const novas = selecionarSugestoes(geradas.perguntas, [...existentes.flatMap((item) => (item ? [item.enunciado] : [])), ...jaPendentes], faltantes);
+    for (const sugestao of novas) {
       criadas.push(
         await this.repo.criarPergunta(
           {
@@ -394,10 +440,12 @@ export class VagasService {
   async publicar(sessao: SessaoRequest, empresaId: string, vagaId: string) {
     const { ctx, alinhada } = await this.alinhar(sessao, empresaId, 'publicar_vaga');
     const vaga = await this.exigirVaga(vagaId, empresaId, ctx);
+    // O estado vem antes das outras pré-condições: vaga fechada não reabre, qualquer que seja o resto.
+    if (vaga.status === 'FECHADA') throw new ErroAplicacao('VAGA_FECHADA', 409, MENSAGENS.VAGA_FECHADA);
     if (!vaga.prazoInscricoes) throw new ErroAplicacao('PRAZO_OBRIGATORIO', 400, MENSAGENS.PRAZO_OBRIGATORIO);
     const etapas = await this.contagemEtapas(vagaId, ctx);
     if (etapas === null) throw new ErroAplicacao('PROCESSO_INCOMPLETO', 409, 'processo seletivo ausente');
-    if (!processoPublicavel(etapas)) throw new ErroAplicacao('PERGUNTAS_INCOMPLETAS', 409, 'aprove todas as perguntas da etapa');
+    if (!processoPublicavel(etapas)) throw erroPerguntasIncompletas(etapas);
     const agora = this.relogio.agora();
     const resultado = transicionarVaga(
       this.estado(vaga),
@@ -755,7 +803,7 @@ export class VagasService {
     for (const etapa of etapas) {
       const aprovadas = (await this.repo.listarVinculosEtapa(etapa.id, ctx)).length;
       const pendentes = (await this.repo.listarSugestoesEtapa(etapa.id, ctx)).length;
-      contagem.push({ numeroPerguntas: etapa.numeroPerguntas, aprovadas, pendentes });
+      contagem.push({ ordem: etapa.ordem, tipo: etapa.tipo, numeroPerguntas: etapa.numeroPerguntas, aprovadas, pendentes });
     }
     return contagem;
   }

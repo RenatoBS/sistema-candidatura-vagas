@@ -10,11 +10,11 @@
   },
   "scripts": {
     "db:generate": "prisma generate --schema=schema",
-    "db:migrate": "prisma migrate dev --schema=schema",
-    "db:migrate:deploy": "prisma migrate deploy --schema=schema",
-    "db:push": "prisma db push --schema=schema",
-    "db:seed": "prisma db seed --schema=schema",
-    "db:reset": "prisma migrate reset --schema=schema --force",
+    "db:migrate": "node scripts/prisma-migracao.mjs migrate dev --schema=schema",
+    "db:migrate:deploy": "node scripts/prisma-migracao.mjs migrate deploy --schema=schema",
+    "db:push": "node scripts/prisma-migracao.mjs db push --schema=schema",
+    "db:seed": "node scripts/prisma-migracao.mjs db seed --schema=schema",
+    "db:reset": "node scripts/prisma-migracao.mjs migrate reset --schema=schema --force",
     "build": "prisma generate --schema=schema",
     "lint": "eslint \"{src,test}/**/*.ts\" --max-warnings 0",
     "typecheck": "pnpm run db:generate && tsc -p tsconfig.json --noEmit",
@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@scv/config": "workspace:*",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.13.10",
     "eslint": "^9.22.0",
     "prisma": "^6.5.0",
@@ -33,6 +34,7 @@
     "typescript": "^5.8.2"
   },
   "dependencies": {
-    "@prisma/client": "^6.5.0"
+    "@prisma/client": "^6.5.0",
+    "bcryptjs": "^2.4.3"
   }
 }

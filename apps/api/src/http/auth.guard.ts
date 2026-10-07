@@ -1,17 +1,21 @@
 import { type CanActivate, type ExecutionContext, Inject, Injectable } from '@nestjs/common';
+import { PATH_METADATA } from '@nestjs/common/constants';
 import { Reflector } from '@nestjs/core';
 import { bypassAdmin, type Acao } from '@scv/domain';
 
+import { AuditoriaService } from '../auditoria/auditoria.service';
 import { AuthService } from '../auth/auth.service';
 import { ErroAplicacao } from '../erros';
 import type { Repositorio } from '../repositorio/tipos';
-import { exigir, montarAtor, type SessaoRequest } from '../sessao';
+import { exigir, exigirAdminPlataforma, montarAtor, type SessaoRequest } from '../sessao';
 import { REPOSITORIO } from '../tokens';
 import { ACAO, PUBLICO, SENSIVEL } from './decoradores';
 
 interface RequisicaoHttp {
+  method?: string;
   headers: Record<string, string | string[] | undefined>;
   params: Record<string, string | undefined>;
+  query?: Record<string, unknown>;
   sessao?: SessaoRequest;
 }
 
@@ -21,6 +25,7 @@ export class AuthGuard implements CanActivate {
     @Inject(Reflector) private readonly reflector: Reflector,
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(REPOSITORIO) private readonly repo: Repositorio,
+    @Inject(AuditoriaService) private readonly auditoria: AuditoriaService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -68,6 +73,8 @@ export class AuthGuard implements CanActivate {
     const sessao: SessaoRequest = { ...base, ator: montarAtor(base) };
     req.sessao = sessao;
 
+    if (this.rotaAdmin(context)) exigirAdminPlataforma(sessao);
+
     if (this.reflector.getAllAndOverride<boolean>(SENSIVEL, [context.getHandler(), context.getClass()])) {
       const reauth = req.headers['x-reauth-token'];
       this.auth.lerReauth(typeof reauth === 'string' ? reauth : undefined, usuario.id);
@@ -78,6 +85,43 @@ export class AuthGuard implements CanActivate {
       context.getClass(),
     ]);
     if (acao) exigir(sessao, acao);
+    await this.auditarLeituraAdmin(context, req, sessao);
     return true;
+  }
+
+  /**
+   * Toda leitura (GET) de dados de empresa ou da área admin feita com bypass de ADMIN_PLATAFORMA+MFA gera
+   * evento `LEITURA_ADMIN` (quem, o quê = rota, quando, motivo). Sem registro, a leitura não acontece.
+   */
+  private async auditarLeituraAdmin(context: ExecutionContext, req: RequisicaoHttp, sessao: SessaoRequest): Promise<void> {
+    if (req.method !== 'GET' || !bypassAdmin(sessao.ator) || sessao.visao !== 'ADMIN' || sessao.membro) return;
+    const caminho = this.caminhos(context)[0]?.replace(/^\/+/, '') ?? '';
+    const p = req.params;
+    const recursoId = p.empresaId ?? p.vagaId ?? p.candidaturaId ?? p.entrevistaId ?? p.respostaId ?? p.sugestaoId ?? p.id ?? null;
+    if (!recursoId && !caminho.startsWith('admin/')) return;
+    const informado = req.headers['x-motivo-acesso'] ?? req.query?.motivo;
+    const motivo = (typeof informado === 'string' ? informado.trim() : '').slice(0, 300) || 'consulta administrativa';
+    const empresaId = p.empresaId ?? null;
+    await this.auditoria.registrar(
+      {
+        usuarioId: sessao.usuario.id,
+        empresaId,
+        papel: 'ADMIN_PLATAFORMA',
+        acao: 'LEITURA_ADMIN',
+        recursoTipo: `GET ${caminho}`.slice(0, 200),
+        recursoId,
+        motivo,
+      },
+      { isAdmin: true, ...(empresaId ? { empresaId } : {}) },
+    );
+  }
+
+  private caminhos(context: ExecutionContext): string[] {
+    const caminho = this.reflector.get<string | string[] | undefined>(PATH_METADATA, context.getHandler());
+    return Array.isArray(caminho) ? caminho : [caminho ?? ''];
+  }
+
+  private rotaAdmin(context: ExecutionContext): boolean {
+    return this.caminhos(context).some((item) => item.replace(/^\/+/, '').startsWith('admin/'));
   }
 }

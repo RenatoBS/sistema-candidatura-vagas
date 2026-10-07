@@ -30,6 +30,7 @@ export function Campo({
     <View style={styles.grupo}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
+        accessibilityLabel={label}
         style={[styles.input, multiline ? styles.multilinha : null, erro ? styles.inputErro : null]}
         value={value}
         onChangeText={onChangeText}

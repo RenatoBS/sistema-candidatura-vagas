@@ -14,7 +14,8 @@ process.env.API_PUBLIC_URL = 'http://localhost:3000';
 process.env.LOG_LEVEL = 'silent';
 
 import { emailTeste, filaCnpjTeste, fonteCnpjTeste, limparAmbienteTeste, repositorioTeste, whatsappTeste } from '../src/ambiente-teste';
-import { codigoTotp, extrairCodigo, extrairToken } from '../src/auth/segredos';
+import { extrairCodigo, extrairToken } from '../src/auth/segredos';
+import { codigosTotp } from './totp';
 
 const CNPJ = '11222333000181';
 
@@ -205,7 +206,8 @@ describe('Fase 3 — auth, papéis, empresa e WhatsApp', () => {
     const inicio = await api('/auth/mfa/iniciar', { method: 'POST' }, semMfa);
     const segredo = new URL(String(inicio.json.otpauthUrl)).searchParams.get('secret');
     assert.ok(segredo);
-    const codigoMfa = codigoTotp(segredo);
+    const proximoCodigo = codigosTotp(segredo);
+    const codigoMfa = proximoCodigo();
     const confirmado = await api(
       '/auth/mfa/confirmar',
       { method: 'POST', body: JSON.stringify({ codigo: codigoMfa }) },
@@ -215,7 +217,7 @@ describe('Fase 3 — auth, papéis, empresa e WhatsApp', () => {
     assert.equal(Array.isArray(confirmado.json.codigosRecuperacao), true);
     const verificado = await api(
       '/auth/mfa/verificar',
-      { method: 'POST', body: JSON.stringify({ codigo: codigoTotp(segredo) }) },
+      { method: 'POST', body: JSON.stringify({ codigo: proximoCodigo() }) },
       semMfa,
     );
     const accessAdmin = String(verificado.json.accessToken);
@@ -231,7 +233,7 @@ describe('Fase 3 — auth, papéis, empresa e WhatsApp', () => {
 
     const reauth = await api(
       '/auth/reautenticar',
-      { method: 'POST', body: JSON.stringify({ codigo: codigoTotp(segredo) }) },
+      { method: 'POST', body: JSON.stringify({ codigo: proximoCodigo() }) },
       tokenAdmin,
     );
     const aprovada = await api(
@@ -363,10 +365,11 @@ describe('Fase 3 — auth, papéis, empresa e WhatsApp', () => {
     const semMfa = String(relogin.json.accessToken);
     const inicio = await api('/auth/mfa/iniciar', { method: 'POST' }, semMfa);
     const segredo = new URL(String(inicio.json.otpauthUrl)).searchParams.get('secret') ?? '';
-    await api('/auth/mfa/confirmar', { method: 'POST', body: JSON.stringify({ codigo: codigoTotp(segredo) }) }, semMfa);
+    const proximoCodigo = codigosTotp(segredo);
+    await api('/auth/mfa/confirmar', { method: 'POST', body: JSON.stringify({ codigo: proximoCodigo() }) }, semMfa);
     const verificado = await api(
       '/auth/mfa/verificar',
-      { method: 'POST', body: JSON.stringify({ codigo: codigoTotp(segredo) }) },
+      { method: 'POST', body: JSON.stringify({ codigo: proximoCodigo() }) },
       semMfa,
     );
     const visao = await api(
@@ -385,13 +388,18 @@ describe('Fase 3 — auth, papéis, empresa e WhatsApp', () => {
     });
     const reauth = await api(
       '/auth/reautenticar',
-      { method: 'POST', body: JSON.stringify({ codigo: codigoTotp(segredo) }) },
+      { method: 'POST', body: JSON.stringify({ codigo: proximoCodigo() }) },
       tokenAdmin,
     );
     const audio = await api(`/admin/audios/${respostaId}?motivo=suporte%20ao%20cliente`, {
       headers: { authorization: `Bearer ${tokenAdmin}`, 'x-reauth-token': String(reauth.json.reauthToken) },
     });
     assert.equal(audio.status, 200);
+    // FC-16/L2: URL assinada de curta duração; a chave do bucket nunca sai na resposta.
+    assert.match(String(audio.json.url), /^https?:\/\//);
+    assert.equal(audio.json.expiraEmSegundos, 60);
+    assert.equal(JSON.stringify(audio.json).includes('s3://audio'), false);
+    assert.equal('audioUrl' in audio.json, false);
     const trilha = await api('/admin/auditoria', {}, tokenAdmin);
     const eventos = trilha.json as unknown as Array<{ acao: string; recursoTipo: string; motivo: string }>;
     assert.equal(eventos.some((evento) => evento.acao === 'LER_AUDIO' && evento.motivo.includes('suporte')), true);
@@ -443,10 +451,11 @@ describe('Fase 3 — auth, papéis, empresa e WhatsApp', () => {
     const semMfa = String(relogin.json.accessToken);
     const inicio = await api('/auth/mfa/iniciar', { method: 'POST' }, semMfa);
     const segredo = new URL(String(inicio.json.otpauthUrl)).searchParams.get('secret') ?? '';
-    await api('/auth/mfa/confirmar', { method: 'POST', body: JSON.stringify({ codigo: codigoTotp(segredo) }) }, semMfa);
+    const proximoCodigo = codigosTotp(segredo);
+    await api('/auth/mfa/confirmar', { method: 'POST', body: JSON.stringify({ codigo: proximoCodigo() }) }, semMfa);
     const verificado = await api(
       '/auth/mfa/verificar',
-      { method: 'POST', body: JSON.stringify({ codigo: codigoTotp(segredo) }) },
+      { method: 'POST', body: JSON.stringify({ codigo: proximoCodigo() }) },
       semMfa,
     );
     const visao = await api(
