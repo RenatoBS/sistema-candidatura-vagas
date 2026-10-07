@@ -1,6 +1,11 @@
 import type { PapelEmpresa, PapelGlobal, StatusEmpresa, Visao } from '@scv/domain';
 
 import type {
+  CandidaturaRegistro,
+  HistoricoStatusRegistro,
+  TransicaoCandidaturaRegistro,
+} from './candidaturas-tipos';
+import type {
   EtapaPerguntaRegistro,
   EtapaRegistro,
   EventoVagaRegistro,
@@ -11,6 +16,12 @@ import type {
   VagaRegistro,
 } from './vagas-tipos';
 
+export type {
+  CandidaturaRegistro,
+  HistoricoStatusRegistro,
+  OrigemCandidatura,
+  TransicaoCandidaturaRegistro,
+} from './candidaturas-tipos';
 export type {
   EtapaPerguntaRegistro,
   EtapaRegistro,
@@ -362,4 +373,17 @@ export interface Repositorio {
   listarEventosVaga(vagaId: string, ctx: ContextoTenant): Promise<EventoVagaRegistro[]>;
   listarPublicadasVencidas(agora: Date, ctx: ContextoTenant): Promise<VagaRegistro[]>;
   listarPausasParaAlerta(limite: Date, ctx: ContextoTenant): Promise<VagaRegistro[]>;
+  criarCandidatura(
+    dados: CandidaturaRegistro,
+    historico: HistoricoStatusRegistro,
+    ctx: ContextoTenant,
+  ): Promise<CandidaturaRegistro>;
+  buscarCandidatura(id: string, ctx: ContextoTenant): Promise<CandidaturaRegistro | null>;
+  listarCandidaturasVaga(vagaId: string, ctx: ContextoTenant): Promise<CandidaturaRegistro[]>;
+  /** `null` quando o estado esperado mudou (conflito otimista) ou a candidatura não é visível. */
+  transicionarCandidatura(
+    transicao: TransicaoCandidaturaRegistro,
+    ctx: ContextoTenant,
+  ): Promise<CandidaturaRegistro | null>;
+  listarHistoricoStatus(candidaturaId: string, ctx: ContextoTenant): Promise<HistoricoStatusRegistro[]>;
 }

@@ -21,6 +21,7 @@ import { AuditoriaService } from './auditoria/auditoria.service';
 import { AuthService, relogioSistema, type Relogio } from './auth/auth.service';
 import { MfaService } from './auth/mfa.service';
 import { ConsentimentoService, CurriculoService, LgpdService, PerfilService } from './candidatos/candidato.service';
+import { CandidaturaStateMachine } from './candidaturas/candidatura-state-machine';
 import type { ConfiguracaoApp } from './configuracao';
 import { lerConfiguracao } from './configuracao';
 import { DnsNode } from './dns';
@@ -237,8 +238,13 @@ const whatsappClienteProvider: FactoryProvider = {
       useFactory: (repo: Repositorio, auditoria: AuditoriaService) => new AcessoSensivelService(repo, auditoria),
     },
     {
+      provide: CandidaturaStateMachine,
+      inject: [REPOSITORIO, RELOGIO],
+      useFactory: (repo: Repositorio, relogio: Relogio) => new CandidaturaStateMachine(repo, relogio),
+    },
+    {
       provide: VagasService,
-      inject: [REPOSITORIO, AuditoriaService, FILA_VAGAS, LLM, CONFIG, RELOGIO],
+      inject: [REPOSITORIO, AuditoriaService, FILA_VAGAS, LLM, CONFIG, RELOGIO, CandidaturaStateMachine],
       useFactory: (
         repo: Repositorio,
         auditoria: AuditoriaService,
@@ -246,7 +252,8 @@ const whatsappClienteProvider: FactoryProvider = {
         llm: ReturnType<typeof criarLlmProvider>,
         config: ConfiguracaoApp,
         relogio: Relogio,
-      ) => new VagasService(repo, auditoria, fila, llm, config, relogio),
+        candidaturas: CandidaturaStateMachine,
+      ) => new VagasService(repo, auditoria, fila, llm, config, relogio, candidaturas),
     },
     AuthGuard,
     { provide: APP_GUARD, useExisting: AuthGuard },

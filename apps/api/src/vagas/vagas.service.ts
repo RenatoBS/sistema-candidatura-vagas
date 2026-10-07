@@ -28,6 +28,7 @@ import { sugerirPerguntas, type LlmProvider } from '@scv/llm';
 
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import type { Relogio } from '../auth/auth.service';
+import type { CandidaturaStateMachine, ResumoEfeitoVaga } from '../candidaturas/candidatura-state-machine';
 import type { ConfiguracaoApp } from '../configuracao';
 import { ErroAplicacao } from '../erros';
 import type { FilaVagas } from '../fila/fila-vagas';
@@ -53,6 +54,13 @@ const MENSAGENS: Record<ErroTransicaoVaga, string> = {
   TRANSICAO_INVALIDA: 'transição inválida',
 };
 
+const MOTIVO_EVENTO: Record<TipoEventoVaga, string> = {
+  VagaPausada: 'vaga pausada',
+  VagaRetomada: 'vaga retomada',
+  VagaFechada: 'vaga fechada',
+  AlertaPausaLonga: 'alerta de pausa longa',
+};
+
 export class VagasService {
   constructor(
     private readonly repo: Repositorio,
@@ -61,6 +69,7 @@ export class VagasService {
     private readonly llm: LlmProvider,
     private readonly config: ConfiguracaoApp,
     private readonly relogio: Relogio,
+    private readonly candidaturas: CandidaturaStateMachine,
   ) {}
 
   listarCatalogo(): Promise<Array<{ id: string; nome: string; categoria: string }>> {
@@ -530,8 +539,29 @@ export class VagasService {
     const ctx: ContextoTenant = { sistema: true };
     const evento = await this.repo.buscarEventoVaga(eventoId, ctx);
     if (!evento) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'evento não encontrado');
-    if (!evento.consumidoEm) await this.repo.marcarEventoConsumido(eventoId, this.relogio.agora(), ctx);
-    return { id: evento.id, tipo: evento.tipo, payload: evento.payload, consumido: true };
+    let candidaturas: ResumoEfeitoVaga = { aplicadas: 0, ignoradas: 0 };
+    if (!evento.consumidoEm) {
+      // Reprocessar após falha parcial é seguro: candidaturas já movidas são ignoradas.
+      candidaturas = await this.aplicarEfeitosCandidatura(evento);
+      await this.repo.marcarEventoConsumido(eventoId, this.relogio.agora(), ctx);
+    }
+    return { id: evento.id, tipo: evento.tipo, payload: evento.payload, consumido: true, candidaturas };
+  }
+
+  /** Candidaturas não têm bypass de sistema no RLS: aplica no contexto da empresa dona da vaga. */
+  private async aplicarEfeitosCandidatura(evento: EventoVagaRegistro): Promise<ResumoEfeitoVaga> {
+    const resumo: ResumoEfeitoVaga = { aplicadas: 0, ignoradas: 0 };
+    if (!Object.hasOwn(EFEITOS_EVENTO_VAGA, evento.tipo)) return resumo;
+    const tipo = evento.tipo as TipoEventoVaga;
+    const detalhe = typeof evento.payload.motivo === 'string' && evento.payload.motivo ? `: ${evento.payload.motivo}` : '';
+    const autoria = { autorId: null, motivo: `${MOTIVO_EVENTO[tipo]}${detalhe}` };
+    const ctx: ContextoTenant = { empresaId: evento.empresaId };
+    for (const efeito of EFEITOS_EVENTO_VAGA[tipo]) {
+      const parcial = await this.candidaturas.aplicarEfeitoVaga(evento.vagaId, efeito, autoria, ctx);
+      resumo.aplicadas += parcial.aplicadas;
+      resumo.ignoradas += parcial.ignoradas;
+    }
+    return resumo;
   }
 
   private async alertar(vaga: VagaRegistro, ctx: ContextoTenant): Promise<void> {

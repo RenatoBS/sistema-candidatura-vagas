@@ -1,6 +1,7 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 
 import { ErroAplicacao } from '../erros';
+import { CandidaturasPrisma } from './candidaturas-prisma';
 import type {
   AuditoriaRegistro,
   CandidatoRegistro,
@@ -49,9 +50,11 @@ function objetoOuNulo(valor: Prisma.JsonValue | null): Record<string, unknown> |
 
 export class RepositorioPrisma implements Repositorio {
   private readonly vagasStore: VagasPrisma;
+  private readonly candidaturasStore: CandidaturasPrisma;
 
   constructor(private readonly prisma = new PrismaClient()) {
     this.vagasStore = new VagasPrisma(this.prisma, (ctx, fn) => this.comTenant(ctx, fn));
+    this.candidaturasStore = new CandidaturasPrisma((ctx, fn) => this.comTenant(ctx, fn));
   }
 
   private async comTenant<T>(ctx: ContextoTenant, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
@@ -607,6 +610,26 @@ export class RepositorioPrisma implements Repositorio {
 
   listarPausasParaAlerta(limite: Date, ctx: ContextoTenant) {
     return this.vagasStore.listarPausasParaAlerta(limite, ctx);
+  }
+
+  criarCandidatura(dados: Parameters<CandidaturasPrisma['criarCandidatura']>[0], historico: Parameters<CandidaturasPrisma['criarCandidatura']>[1], ctx: ContextoTenant) {
+    return this.candidaturasStore.criarCandidatura(dados, historico, ctx);
+  }
+
+  buscarCandidatura(id: string, ctx: ContextoTenant) {
+    return this.candidaturasStore.buscarCandidatura(id, ctx);
+  }
+
+  listarCandidaturasVaga(vagaId: string, ctx: ContextoTenant) {
+    return this.candidaturasStore.listarCandidaturasVaga(vagaId, ctx);
+  }
+
+  transicionarCandidatura(transicao: Parameters<CandidaturasPrisma['transicionarCandidatura']>[0], ctx: ContextoTenant) {
+    return this.candidaturasStore.transicionarCandidatura(transicao, ctx);
+  }
+
+  listarHistoricoStatus(candidaturaId: string, ctx: ContextoTenant) {
+    return this.candidaturasStore.listarHistoricoStatus(candidaturaId, ctx);
   }
 
   async buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null> {

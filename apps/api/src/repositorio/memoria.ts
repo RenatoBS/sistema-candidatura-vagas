@@ -1,6 +1,7 @@
 import { CATALOGO_BASE } from '@scv/domain';
 
 import { ErroAplicacao } from '../erros';
+import { CandidaturasMemoria } from './candidaturas-memoria';
 import type {
   AuditoriaRegistro,
   CandidatoRegistro,
@@ -69,6 +70,7 @@ export class RepositorioMemoria implements Repositorio {
   instancias = new Map<string, InstanciaRegistro>();
   respostas = new Map<string, RespostaSensivel>();
   readonly vagasStore = new VagasMemoria();
+  readonly candidaturasStore = new CandidaturasMemoria();
 
   limpar(): void {
     this.usuarios.clear();
@@ -88,6 +90,7 @@ export class RepositorioMemoria implements Repositorio {
     this.instancias.clear();
     this.respostas.clear();
     this.vagasStore.limpar();
+    this.candidaturasStore.limpar();
   }
 
   async criarUsuario(dados: UsuarioRegistro): Promise<UsuarioRegistro> {
@@ -584,6 +587,26 @@ export class RepositorioMemoria implements Repositorio {
 
   listarPausasParaAlerta(limite: Date, ctx: ContextoTenant) {
     return this.vagasStore.listarPausasParaAlerta(limite, ctx);
+  }
+
+  criarCandidatura(dados: Parameters<CandidaturasMemoria['criarCandidatura']>[0], historico: Parameters<CandidaturasMemoria['criarCandidatura']>[1], ctx: ContextoTenant) {
+    return this.candidaturasStore.criarCandidatura(dados, historico, ctx);
+  }
+
+  buscarCandidatura(id: string, ctx: ContextoTenant) {
+    return this.candidaturasStore.buscarCandidatura(id, ctx);
+  }
+
+  listarCandidaturasVaga(vagaId: string, ctx: ContextoTenant) {
+    return this.candidaturasStore.listarCandidaturasVaga(vagaId, ctx);
+  }
+
+  transicionarCandidatura(transicao: Parameters<CandidaturasMemoria['transicionarCandidatura']>[0], ctx: ContextoTenant) {
+    return this.candidaturasStore.transicionarCandidatura(transicao, ctx);
+  }
+
+  listarHistoricoStatus(candidaturaId: string, ctx: ContextoTenant) {
+    return this.candidaturasStore.listarHistoricoStatus(candidaturaId, ctx);
   }
 
   async buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null> {
