@@ -111,6 +111,10 @@ export const openApiFase6Match = {
   },
   paths: {
     '/vagas/{vagaId}/sugestoes-match': { get: { operationId: 'listarSugestoesMatch' } },
+    '/vagas/{vagaId}/sugestoes-match/{sugestaoId}/convidar': { post: { operationId: 'convidarParaVaga' } },
+    '/candidatos/me/convites': { get: { operationId: 'listarConvites' } },
+    '/candidatos/me/convites/{candidaturaId}/aceitar': { post: { operationId: 'aceitarConvite' } },
+    '/candidatos/me/convites/{candidaturaId}/recusar': { post: { operationId: 'recusarConvite' } },
     '/candidatos/me/vagas-recomendadas': { get: { operationId: 'listarVagasRecomendadas' } },
     '/interno/match/embeddings/vagas/{vagaId}': { post: { operationId: 'jobEmbeddingVaga' } },
     '/interno/match/embeddings/candidatos/{candidatoId}': { post: { operationId: 'jobEmbeddingCandidato' } },

@@ -684,6 +684,10 @@ export class RepositorioPrisma implements Repositorio {
     return this.notificacoesStore.buscarSugestao(id, ctx);
   }
 
+  atualizarStatusSugestao(id: string, status: Parameters<MatchPrisma['atualizarStatusSugestao']>[1], ctx: ContextoTenant) {
+    return this.matchStore.atualizarStatusSugestao(id, status, ctx);
+  }
+
   marcarSugestaoNotificada(id: string, quando: Date, ctx: ContextoTenant) {
     return this.notificacoesStore.marcarSugestaoNotificada(id, quando, ctx);
   }

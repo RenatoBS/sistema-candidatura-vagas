@@ -188,6 +188,13 @@ export class MatchPrisma {
     });
   }
 
+  async atualizarStatusSugestao(id: string, status: StatusSugestaoMatch, ctx: ContextoTenant): Promise<SugestaoMatchRegistro | null> {
+    return this.com(ctx, async (tx) => {
+      const item = await tx.sugestaoMatch.update({ where: { id }, data: { status } }).catch(() => null);
+      return item ? sugestaoDe(item) : null;
+    });
+  }
+
   private async habilidadesDe(tx: Tx, candidatoIds: string[]): Promise<Map<string, HabilidadeCandidatoMatch[]>> {
     const mapa = new Map<string, HabilidadeCandidatoMatch[]>();
     if (candidatoIds.length === 0) return mapa;

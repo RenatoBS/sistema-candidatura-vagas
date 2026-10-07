@@ -597,6 +597,10 @@ export class VagasService {
     const resultado = transicionarVaga(this.estado(vaga), { tipo: 'expirar' }, this.relogio.agora());
     if (!resultado.ok) return;
     await this.repo.atualizarVaga(vaga.id, { ...this.patchEstado(resultado.estado), atualizadoEm: this.relogio.agora() }, ctx);
+    await this.candidaturas.expirarConvites(vaga.id, { empresaId: vaga.empresaId });
+    for (const sugestao of await this.repo.listarSugestoesVaga(vaga.id, { empresaId: vaga.empresaId })) {
+      if (sugestao.status === 'CONVIDADA') await this.repo.atualizarStatusSugestao(sugestao.id, 'EXPIRADA', { empresaId: vaga.empresaId });
+    }
     await this.fila.cancelarEncerramento(vaga.id);
   }
 
@@ -607,7 +611,15 @@ export class VagasService {
     }
     const salva = await this.repo.atualizarVaga(vagaId, { ...this.patchEstado(resultado.estado), atualizadoEm: this.relogio.agora() }, ctx);
     if (!salva) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'vaga não encontrada');
+    if (resultado.estado.status === 'FECHADA') await this.expirarConvitesDaVaga(salva);
     return salva;
+  }
+
+  private async expirarConvitesDaVaga(vaga: VagaRegistro): Promise<void> {
+    await this.candidaturas.expirarConvites(vaga.id, { empresaId: vaga.empresaId });
+    for (const sugestao of await this.repo.listarSugestoesVaga(vaga.id, { empresaId: vaga.empresaId })) {
+      if (sugestao.status === 'CONVIDADA') await this.repo.atualizarStatusSugestao(sugestao.id, 'EXPIRADA', { empresaId: vaga.empresaId });
+    }
   }
 
   private async emitir(vaga: VagaRegistro, tipo: TipoEventoVaga, ctx: ContextoTenant, motivo?: string): Promise<EventoVagaRegistro> {

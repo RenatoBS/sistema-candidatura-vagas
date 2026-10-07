@@ -3,6 +3,7 @@ import type { IncomingMessage } from 'node:http';
 import { Body, Controller, Get, HttpCode, Inject, Param, Post, Put, Req } from '@nestjs/common';
 import {
   atualizarPerfilSchema,
+  candidaturaDiretaSchema,
   confirmarCurriculoSchema,
   consentimentoSchema,
   excluirDadosSchema,
@@ -103,6 +104,22 @@ export class CandidatoController {
   @Exige('editar_proprio_perfil')
   @Get('candidatos/me/candidaturas/:id')
   minhaCandidatura(@Req() req: RequisicaoComSessao, @Param('id') id: string) { return this.candidaturas.minha(req.sessao, id); }
+
+  @Exige('editar_proprio_perfil')
+  @Get('candidatos/me/convites')
+  convites(@Req() req: RequisicaoComSessao) { return this.candidaturas.convites(req.sessao); }
+
+  @Exige('editar_proprio_perfil')
+  @HttpCode(200)
+  @Post('candidatos/me/convites/:id/aceitar')
+  aceitarConvite(@Req() req: RequisicaoComSessao, @Param('id') id: string, @Body() body: unknown) {
+    return this.candidaturas.aceitarConvite(req.sessao, id, validar(candidaturaDiretaSchema, body).consentimentos);
+  }
+
+  @Exige('editar_proprio_perfil')
+  @HttpCode(200)
+  @Post('candidatos/me/convites/:id/recusar')
+  recusarConvite(@Req() req: RequisicaoComSessao, @Param('id') id: string) { return this.candidaturas.recusarConvite(req.sessao, id); }
 
   @Exige('editar_proprio_perfil')
   @Post('curriculos/upload-url')

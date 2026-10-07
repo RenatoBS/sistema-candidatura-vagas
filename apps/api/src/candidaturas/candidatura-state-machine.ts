@@ -135,6 +135,15 @@ export class CandidaturaStateMachine {
     return resumo;
   }
 
+  async expirarConvites(vagaId: string, ctx: ContextoTenant): Promise<number> {
+    let total = 0;
+    for (const item of await this.repo.listarCandidaturasVaga(vagaId, ctx)) {
+      if (item.status !== 'CONVIDADA') continue;
+      if (await this.aplicarSePossivel(item, { tipo: 'expirarConvite' }, { autorId: null, motivo: 'inscrições encerradas' }, ctx)) total += 1;
+    }
+    return total;
+  }
+
   private async aplicarSePossivel(
     candidatura: CandidaturaRegistro,
     comando: ComandoCandidatura,

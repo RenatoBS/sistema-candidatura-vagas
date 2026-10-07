@@ -12,6 +12,7 @@ import type {
   SugestaoMatchRegistro,
   VagaSimilar,
 } from './match-tipos';
+import type { StatusSugestaoMatch } from './match-tipos';
 import type {
   FiltroNotificacoes,
   NotificacaoNova,
@@ -427,6 +428,7 @@ export interface Repositorio {
   listarSugestoesVaga(vagaId: string, ctx: ContextoTenant): Promise<SugestaoMatchRegistro[]>;
   listarSugestoesCandidato(candidatoId: string, ctx: ContextoTenant): Promise<SugestaoMatchRegistro[]>;
   buscarSugestao(id: string, ctx: ContextoTenant): Promise<SugestaoMatchRegistro | null>;
+  atualizarStatusSugestao(id: string, status: StatusSugestaoMatch, ctx: ContextoTenant): Promise<SugestaoMatchRegistro | null>;
   /** Grava `notificadoEm` só se ainda estiver vazio. */
   marcarSugestaoNotificada(id: string, quando: Date, ctx: ContextoTenant): Promise<void>;
   /** `null` quando a `chaveDedup` já existe (dedup) ou o contexto não permite. */

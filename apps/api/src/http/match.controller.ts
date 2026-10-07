@@ -1,5 +1,6 @@
 import { Controller, Get, HttpCode, Inject, Param, Post, Req } from '@nestjs/common';
 
+import { CandidaturasService } from '../candidaturas/candidaturas.service';
 import type { ConfiguracaoApp } from '../configuracao';
 import { ErroAplicacao } from '../erros';
 import { MatchService } from '../match/match.service';
@@ -17,12 +18,19 @@ export class MatchController {
   constructor(
     @Inject(MatchService) private readonly match: MatchService,
     @Inject(CONFIG) private readonly config: ConfiguracaoApp,
+    @Inject(CandidaturasService) private readonly candidaturas: CandidaturasService,
   ) {}
 
   @Get('vagas/:vagaId/sugestoes-match')
   @Exige('criar_vaga')
   sugestoes(@Req() req: RequisicaoComSessao, @Param('vagaId') vagaId: string) {
     return this.match.sugestoesDaVaga(req.sessao, vagaId);
+  }
+
+  @Post('vagas/:vagaId/sugestoes-match/:sugestaoId/convidar')
+  @Exige('criar_vaga')
+  convidar(@Req() req: RequisicaoComSessao, @Param('vagaId') vagaId: string, @Param('sugestaoId') sugestaoId: string) {
+    return this.candidaturas.convidar(req.sessao, vagaId, sugestaoId);
   }
 
   @Get('candidatos/me/vagas-recomendadas')

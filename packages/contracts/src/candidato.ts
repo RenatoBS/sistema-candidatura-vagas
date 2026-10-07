@@ -107,6 +107,7 @@ export const consentimentoSchema = z.object({
 });
 
 export const candidaturaDiretaSchema = z.object({ consentimentos: z.array(consentimentoSchema).min(1) });
+export const conviteAceiteSchema = candidaturaDiretaSchema;
 
 export const excluirDadosSchema = z.object({
   confirmacao: z.literal('EXCLUIR'),

@@ -9,6 +9,7 @@ export {
   confirmarCurriculoSchema,
   consentimentoSchema,
   candidaturaDiretaSchema,
+  conviteAceiteSchema,
   dadosExtraidosSchema,
   excluirDadosSchema,
   habilidadesCandidatoSchema,

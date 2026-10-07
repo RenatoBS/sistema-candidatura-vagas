@@ -6,6 +6,7 @@ import type {
   CandidatoSimilar,
   EntradaSugestaoMatch,
   ResultadoSugestaoMatch,
+  StatusSugestaoMatch,
   SugestaoMatchRegistro,
   VagaSimilar,
 } from './match-tipos';
@@ -36,6 +37,16 @@ export class MatchMemoria {
     this.embeddingsVaga.clear();
     this.embeddingsCandidato.clear();
     this.sugestoes.clear();
+  }
+
+  async atualizarStatusSugestao(id: string, status: StatusSugestaoMatch, ctx: ContextoTenant): Promise<SugestaoMatchRegistro | null> {
+    const item = this.sugestoes.get(id);
+    if (!item) return null;
+    const vaga = [...this.fonte.vagas()].find((v) => v.id === item.vagaId);
+    if (!vaga || !permitido(ctx, vaga.empresaId)) return null;
+    item.status = status;
+    item.atualizadoEm = new Date(item.atualizadoEm.getTime() + 1);
+    return { ...item };
   }
 
   async salvarEmbeddingVaga(vagaId: string, vetor: number[], ctx: ContextoTenant): Promise<boolean> {
