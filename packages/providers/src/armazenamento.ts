@@ -23,6 +23,7 @@ export interface UrlUpload {
 export interface Armazenamento {
   salvar(key: string, corpo: Buffer, mimeType: string): Promise<void>;
   criarUrlUpload(pedido: PedidoUpload): Promise<UrlUpload>;
+  criarUrlDownload(key: string, segundos: number): Promise<string>;
   ler(key: string): Promise<Buffer | null>;
   apagar(key: string): Promise<void>;
 }
@@ -61,6 +62,10 @@ export class ArmazenamentoMemoria implements Armazenamento {
     this.objetos.set(reserva.key, Buffer.from(corpo));
     reserva.corpo = Buffer.from(corpo);
     return { ok: true, key: reserva.key };
+  }
+
+  async criarUrlDownload(key: string, segundos: number): Promise<string> {
+    return `http://localhost/audio/${encodeURIComponent(key)}?expira=${segundos}`;
   }
 
   async ler(key: string): Promise<Buffer | null> {
@@ -138,6 +143,11 @@ export class ArmazenamentoS3 implements Armazenamento {
         ContentLength: corpo.length,
       }),
     );
+  }
+
+  async criarUrlDownload(key: string, segundos: number): Promise<string> {
+    const comando = new GetObjectCommand({ Bucket: this.config.bucket, Key: key });
+    return getSignedUrl(this.cliente, comando, { expiresIn: segundos });
   }
 
   async ler(key: string): Promise<Buffer | null> {

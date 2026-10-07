@@ -3,7 +3,7 @@
  * Auth, papéis, verificação de empresa e CNPJ local entram na Fase 3.
  */
 
-export const DOMAIN_PACKAGE_VERSION = '0.6.0';
+export const DOMAIN_PACKAGE_VERSION = '0.7.0';
 
 export {
   candidaturaTerminal,
@@ -143,6 +143,42 @@ export {
 export { senhaAtendePolitica } from './senha';
 export { interpretarWhatsapp, type LeituraWhatsapp } from './whatsapp';
 export {
+  atrasoHumanoMs,
+  AUDIO_MINIMO_SEGUNDOS,
+  CADENCIA_MAX_SEGUNDOS,
+  CADENCIA_MIN_SEGUNDOS,
+  decidirBorda,
+  decidirRateLimit,
+  dentroDaJanelaAgregacao,
+  dentroDoHorarioComercial,
+  inatividadeDaPolitica,
+  instanteBrasilia,
+  interpretarAvaliacaoIa,
+  JANELA_AGREGACAO_SEGUNDOS,
+  lerContexto,
+  LIMITE_MENSAGENS_POR_HORA,
+  LIMITE_MENSAGENS_POR_MINUTO,
+  montarPromptAvaliacao,
+  notaContaNaMedia,
+  partesBrasilia,
+  planejarRetry,
+  podeEnviarWhatsapp,
+  politicaTriagemEfetiva,
+  POLITICA_TRIAGEM_ADR,
+  proximoHorarioComercial,
+  STATUS_TRIAGEM_TERMINAIS,
+  triagemTerminal,
+  VERSAO_PROMPT_TRIAGEM,
+  type ContextoEntrevista,
+  type DecisaoBorda,
+  type EstadoBorda,
+  type MensagemBorda,
+  type MotivoRecusaEnvio,
+  type PlanoRetry,
+  type PoliticaTriagem,
+  type SaidaAvaliacaoIa,
+} from './triagem';
+export {
   avaliarInatividade,
   momentoLembreteInatividade,
   podeReiniciar,
@@ -154,7 +190,7 @@ export {
   type PoliticaInatividade,
   type ResultadoInatividade,
 } from './triagem-inatividade';
-export { mensagemTriagem, type DadosMensagemTriagem } from './mensagens-triagem';
+export { mensagemFluxoTriagem, mensagemTriagem, type DadosMensagemTriagem } from './mensagens-triagem';
 export {
   decidirAposChecagens,
   podePublicarVaga,

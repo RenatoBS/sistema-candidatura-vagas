@@ -4,6 +4,18 @@ import type { LlmProvider, PedidoLlm, RespostaLlm } from './tipos';
 export class LlmMock implements LlmProvider {
   async complete(pedido: PedidoLlm): Promise<RespostaLlm> {
     const usuario = pedido.mensagens.find((mensagem) => mensagem.role === 'user')?.content ?? '';
+    if (/tarefa:\s*avaliar_triagem/.test(usuario)) {
+      return {
+        texto: JSON.stringify({
+          nota: 8,
+          criterios: { clareza: 8, profundidade: 7, resultado: 8 },
+          justificativa: 'A resposta aborda o tema com exemplo objetivo.',
+          confianca: 0.9,
+        }),
+        modelo: 'mock-deterministico',
+        provedor: 'mock',
+      };
+    }
     const faltantes = Math.max(0, Number(/faltantes:\s*(\d+)/.exec(usuario)?.[1] ?? 0));
     const titulo = /titulo:\s*(.+)/.exec(usuario)?.[1]?.trim() || 'a vaga';
     const tema = /arquitet/i.test(titulo) ? 'decisão de arquitetura e trade-off' : 'desafio técnico da função';

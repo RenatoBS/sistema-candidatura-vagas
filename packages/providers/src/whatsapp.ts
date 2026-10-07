@@ -56,6 +56,7 @@ export interface WhatsappProvider {
     texto: string;
     opcoes: EscolhaWhatsapp[];
     rodape?: string;
+    atrasoMs?: number;
   }): Promise<EnvioWhatsapp>;
   enviarMidia(entrada: {
     token: string;
@@ -124,6 +125,7 @@ export class UazapiProvider implements WhatsappProvider {
     texto: string;
     opcoes: EscolhaWhatsapp[];
     rodape?: string;
+    atrasoMs?: number;
   }): Promise<EnvioWhatsapp> {
     const fallback = e.opcoes.map((opcao, indice) => `${indice + 1} - ${opcao.titulo}`).join('\n');
     const corpo = {
@@ -132,6 +134,7 @@ export class UazapiProvider implements WhatsappProvider {
       text: `${e.texto}\n\n${fallback}`,
       choices: e.opcoes.map((opcao) => `${opcao.titulo}|${opcao.id}`),
       ...(e.rodape ? { footerText: e.rodape } : {}),
+      ...(e.atrasoMs === undefined ? {} : { delay: e.atrasoMs }),
     };
     return {
       mensagemIdProvedor: idDaResposta(await this.requisicao('/send/menu', e.token, corpo)),
@@ -198,6 +201,7 @@ export class FakeWhatsappProvider implements WhatsappProvider {
     texto: string;
     opcoes: EscolhaWhatsapp[];
     rodape?: string;
+    atrasoMs?: number;
   }): Promise<EnvioWhatsapp> {
     return this.registrar('menu', e);
   }

@@ -1,7 +1,11 @@
 import type { StatusVaga } from './vaga';
 
 /** Tipos que a empresa recebe na F6-06. */
-export type TipoNotificacaoEmpresa = 'CANDIDATO_NOVO' | 'MATCH_FORTE';
+export type TipoNotificacaoEmpresa =
+  | 'CANDIDATO_NOVO'
+  | 'MATCH_FORTE'
+  | 'WHATSAPP_DESCONECTADO'
+  | 'OPERACIONAL';
 
 /** Janela de agrupamento de CANDIDATO_NOVO por vaga. */
 export const JANELA_AGRUPAMENTO_MINUTOS_PADRAO = 60;

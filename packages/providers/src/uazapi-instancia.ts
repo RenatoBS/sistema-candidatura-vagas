@@ -140,6 +140,7 @@ export class FakeUazapiInstancia implements ClienteInstanciaWhatsapp {
   conectadas = new Set<string>();
   webhooks: Array<{ token: string; url: string }> = [];
   falharInit = false;
+  falharStatus = new Set<string>();
 
   async init(nome: string): Promise<InstanciaCriada> {
     if (this.falharInit) throw new Error('UAZAPI_INDISPONIVEL');
@@ -151,6 +152,7 @@ export class FakeUazapiInstancia implements ClienteInstanciaWhatsapp {
   }
 
   async status(tokenInstancia: string): Promise<StatusInstanciaProvedor> {
+    if (this.falharStatus.has(tokenInstancia)) throw new Error('UAZAPI_STATUS');
     const conectada = this.conectadas.has(tokenInstancia);
     return { conectada, numero: conectada ? '5511999990000' : null };
   }
@@ -168,5 +170,6 @@ export class FakeUazapiInstancia implements ClienteInstanciaWhatsapp {
     this.conectadas.clear();
     this.webhooks.length = 0;
     this.falharInit = false;
+    this.falharStatus.clear();
   }
 }

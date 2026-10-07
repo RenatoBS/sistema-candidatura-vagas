@@ -17,6 +17,7 @@ export {
   uploadCurriculoSchema,
 } from './candidato';
 export { openApiFase5 } from './openapi-fase5';
+export { revisaoTriagemSchema, saidaAvaliacaoIaSchema } from './triagem';
 
 export interface HealthResponse {
   status: 'ok';
