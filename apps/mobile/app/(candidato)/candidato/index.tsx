@@ -1,12 +1,20 @@
+import type { NotificacoesResponse } from '@scv/contracts';
 import { Link } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { api } from '@/api/cliente';
+import { useAuth } from '@/auth/AuthContext';
 import { TrocaVisao } from '@/componentes/TrocaVisao';
 import { colors, spacing } from '@/design-system/tokens';
+import { useConsulta } from '@/hooks/useConsulta';
 
 export default function CandidatoHome() {
   const { t } = useTranslation();
+  const { accessToken } = useAuth();
+  const notificacoes = useConsulta<NotificacoesResponse>(['notificacoes'], () =>
+    api('/notificacoes', {}, accessToken),
+  );
   return (
     <View style={styles.tela}>
       <Text style={styles.titulo}>{t('candidato.titulo')}</Text>
@@ -15,7 +23,9 @@ export default function CandidatoHome() {
       <Link href="/candidato/candidaturas">Minhas candidaturas</Link>
       <Link href="/candidato/convites">Convites</Link>
       <Link href="/candidato/recomendadas">Vagas recomendadas</Link>
-      <Link href="/candidato/notificacoes">Central de notificações</Link>
+      <Link href="/candidato/notificacoes">
+        Central de notificações ({notificacoes.data?.naoLidas ?? 0} não lidas)
+      </Link>
       <Link href="/candidato/perfil">{t('candidato.perfil')}</Link>
       <Link href="/candidato/curriculo">{t('candidato.curriculo')}</Link>
       <Link href="/candidato/habilidades">{t('candidato.habilidades')}</Link>
