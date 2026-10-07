@@ -15,6 +15,10 @@ export interface CandidaturaRegistro {
   atualizadoEm: Date;
 }
 
+export interface CandidaturaComCandidato extends CandidaturaRegistro {
+  candidatoNome: string;
+}
+
 export interface HistoricoStatusRegistro {
   id: string;
   candidaturaId: string;

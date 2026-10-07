@@ -323,6 +323,11 @@ export class RepositorioMemoria implements Repositorio {
     return candidato ? { id: candidato.id, usuarioId: candidato.usuarioId, nome: candidato.nome } : null;
   }
 
+  async buscarCandidatoPorId(id: string): Promise<CandidatoRegistro | null> {
+    const item = this.candidatos.get(id);
+    return item ? { id: item.id, usuarioId: item.usuarioId, nome: item.nome } : null;
+  }
+
   async obterPerfil(usuarioId: string): Promise<PerfilCandidato | null> {
     const perfil = this.candidatos.get(usuarioId);
     return perfil ? { ...perfil, perfil: { ...perfil.perfil } } : null;
@@ -599,6 +604,10 @@ export class RepositorioMemoria implements Repositorio {
 
   listarCandidaturasVaga(vagaId: string, ctx: ContextoTenant) {
     return this.candidaturasStore.listarCandidaturasVaga(vagaId, ctx);
+  }
+
+  listarCandidaturasCandidato(candidatoId: string, ctx: ContextoTenant) {
+    return this.candidaturasStore.listarCandidaturasCandidato(candidatoId, ctx);
   }
 
   transicionarCandidatura(transicao: Parameters<CandidaturasMemoria['transicionarCandidatura']>[0], ctx: ContextoTenant) {

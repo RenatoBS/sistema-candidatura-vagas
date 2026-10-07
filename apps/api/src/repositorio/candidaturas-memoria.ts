@@ -48,6 +48,10 @@ export class CandidaturasMemoria {
       .map((item) => ({ ...item }));
   }
 
+  async listarCandidaturasCandidato(candidatoId: string, ctx: ContextoTenant): Promise<CandidaturaRegistro[]> {
+    return [...this.candidaturas.values()].filter((item) => item.candidatoId === candidatoId && permitido(ctx, item.empresaId)).map((item) => ({ ...item }));
+  }
+
   async transicionarCandidatura(
     transicao: TransicaoCandidaturaRegistro,
     ctx: ContextoTenant,

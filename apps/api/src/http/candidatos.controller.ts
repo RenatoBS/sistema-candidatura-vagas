@@ -14,6 +14,7 @@ import type { DadosCurriculo } from '@scv/domain';
 import { ArmazenamentoMemoria, type Armazenamento } from '@scv/providers';
 
 import { ConsentimentoService, CurriculoService, LgpdService, PerfilService } from '../candidatos/candidato.service';
+import { CandidaturasService } from '../candidaturas/candidaturas.service';
 import type { ConfiguracaoApp } from '../configuracao';
 import { ErroAplicacao } from '../erros';
 import type { SessaoRequest } from '../sessao';
@@ -56,6 +57,7 @@ export class CandidatoController {
     @Inject(LgpdService) private readonly lgpd: LgpdService,
     @Inject(ARMAZENAMENTO) private readonly armazenamento: Armazenamento,
     @Inject(CONFIG) private readonly config: ConfiguracaoApp,
+    @Inject(CandidaturasService) private readonly candidaturas: CandidaturasService,
   ) {}
 
   @Exige('editar_proprio_perfil')
@@ -93,6 +95,14 @@ export class CandidatoController {
   consentir(@Req() req: RequisicaoComSessao, @Body() body: unknown) {
     return this.consentimentos.registrar(req.sessao.usuario.id, validar(consentimentoSchema, body));
   }
+
+  @Exige('editar_proprio_perfil')
+  @Get('candidatos/me/candidaturas')
+  minhasCandidaturas(@Req() req: RequisicaoComSessao) { return this.candidaturas.minhas(req.sessao); }
+
+  @Exige('editar_proprio_perfil')
+  @Get('candidatos/me/candidaturas/:id')
+  minhaCandidatura(@Req() req: RequisicaoComSessao, @Param('id') id: string) { return this.candidaturas.minha(req.sessao, id); }
 
   @Exige('editar_proprio_perfil')
   @Post('curriculos/upload-url')

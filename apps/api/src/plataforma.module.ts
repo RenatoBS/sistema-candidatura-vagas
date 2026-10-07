@@ -22,6 +22,7 @@ import { AuthService, relogioSistema, type Relogio } from './auth/auth.service';
 import { MfaService } from './auth/mfa.service';
 import { ConsentimentoService, CurriculoService, LgpdService, PerfilService } from './candidatos/candidato.service';
 import { CandidaturaStateMachine } from './candidaturas/candidatura-state-machine';
+import { CandidaturasService } from './candidaturas/candidaturas.service';
 import type { ConfiguracaoApp } from './configuracao';
 import { lerConfiguracao } from './configuracao';
 import { DnsNode } from './dns';
@@ -241,6 +242,11 @@ const whatsappClienteProvider: FactoryProvider = {
       provide: CandidaturaStateMachine,
       inject: [REPOSITORIO, RELOGIO],
       useFactory: (repo: Repositorio, relogio: Relogio) => new CandidaturaStateMachine(repo, relogio),
+    },
+    {
+      provide: CandidaturasService,
+      inject: [REPOSITORIO, CandidaturaStateMachine, RELOGIO],
+      useFactory: (repo: Repositorio, maquina: CandidaturaStateMachine, relogio: Relogio) => new CandidaturasService(repo, maquina, relogio),
     },
     {
       provide: VagasService,

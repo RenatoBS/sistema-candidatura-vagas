@@ -56,6 +56,10 @@ export class CandidaturasPrisma {
     return this.com(ctx, (tx) => tx.candidatura.findMany({ where: { vagaId }, orderBy: { criadoEm: 'asc' } }));
   }
 
+  listarCandidaturasCandidato(candidatoId: string, ctx: ContextoTenant): Promise<CandidaturaRegistro[]> {
+    return this.com(ctx, (tx) => tx.candidatura.findMany({ where: { candidatoId }, orderBy: { criadoEm: 'desc' } }));
+  }
+
   transicionarCandidatura(
     transicao: TransicaoCandidaturaRegistro,
     ctx: ContextoTenant,

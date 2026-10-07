@@ -211,6 +211,7 @@ export interface ConsentimentoRegistro {
   concedido: boolean;
   versaoTermo: string;
   criadoEm: Date;
+  candidaturaId?: string | null;
 }
 
 export interface SolicitacaoLgpdRegistro {
@@ -310,6 +311,7 @@ export interface Repositorio {
   ): Promise<ConviteRegistro>;
   criarCandidato(candidato: CandidatoRegistro): Promise<CandidatoRegistro>;
   buscarCandidatoPorUsuario(usuarioId: string): Promise<CandidatoRegistro | null>;
+  buscarCandidatoPorId(id: string): Promise<CandidatoRegistro | null>;
   obterPerfil(usuarioId: string): Promise<PerfilCandidato | null>;
   salvarPerfil(perfil: PerfilCandidato): Promise<PerfilCandidato>;
   listarCatalogoHabilidades(): Promise<HabilidadeCatalogo[]>;
@@ -380,6 +382,7 @@ export interface Repositorio {
   ): Promise<CandidaturaRegistro>;
   buscarCandidatura(id: string, ctx: ContextoTenant): Promise<CandidaturaRegistro | null>;
   listarCandidaturasVaga(vagaId: string, ctx: ContextoTenant): Promise<CandidaturaRegistro[]>;
+  listarCandidaturasCandidato(candidatoId: string, ctx: ContextoTenant): Promise<CandidaturaRegistro[]>;
   /** `null` quando o estado esperado mudou (conflito otimista) ou a candidatura não é visível. */
   transicionarCandidatura(
     transicao: TransicaoCandidaturaRegistro,

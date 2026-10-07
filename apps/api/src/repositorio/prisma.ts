@@ -268,6 +268,11 @@ export class RepositorioPrisma implements Repositorio {
     return candidato ? { id: candidato.id, usuarioId: candidato.usuarioId, nome: candidato.nome } : null;
   }
 
+  async buscarCandidatoPorId(id: string): Promise<CandidatoRegistro | null> {
+    const item = await this.prisma.candidato.findUnique({ where: { id } });
+    return item ? { id: item.id, usuarioId: item.usuarioId, nome: item.nome } : null;
+  }
+
   async obterPerfil(usuarioId: string): Promise<PerfilCandidato | null> {
     const candidato = await this.prisma.candidato.findUnique({ where: { usuarioId } });
     return candidato ? this.perfil(candidato) : null;
@@ -395,6 +400,7 @@ export class RepositorioPrisma implements Repositorio {
         concedido: registro.concedido,
         versaoTermo: registro.versaoTermo,
         criadoEm: registro.criadoEm,
+        candidaturaId: registro.candidaturaId ?? null,
       },
     });
     return {
@@ -404,6 +410,7 @@ export class RepositorioPrisma implements Repositorio {
       concedido: criado.concedido,
       versaoTermo: criado.versaoTermo,
       criadoEm: criado.criadoEm,
+      candidaturaId: criado.candidaturaId,
     };
   }
 
@@ -622,6 +629,10 @@ export class RepositorioPrisma implements Repositorio {
 
   listarCandidaturasVaga(vagaId: string, ctx: ContextoTenant) {
     return this.candidaturasStore.listarCandidaturasVaga(vagaId, ctx);
+  }
+
+  listarCandidaturasCandidato(candidatoId: string, ctx: ContextoTenant) {
+    return this.candidaturasStore.listarCandidaturasCandidato(candidatoId, ctx);
   }
 
   transicionarCandidatura(transicao: Parameters<CandidaturasPrisma['transicionarCandidatura']>[0], ctx: ContextoTenant) {

@@ -8,6 +8,7 @@ export {
   atualizarPerfilSchema,
   confirmarCurriculoSchema,
   consentimentoSchema,
+  candidaturaDiretaSchema,
   dadosExtraidosSchema,
   excluirDadosSchema,
   habilidadesCandidatoSchema,
