@@ -10,7 +10,7 @@ export const MIGRATION_DATABASE_URL =
 /** URL para testes de RLS (papel sem BYPASSRLS). */
 export const RLS_DATABASE_URL =
   process.env.RLS_DATABASE_URL ??
-  'postgresql://scv_rls:scv_rls_password@localhost:5433/scv?schema=public';
+  'postgresql://scv_rls:scv_rls_password@localhost:5432/scv_test?schema=public';
 
 const prismaDir = new URL('..', import.meta.url).pathname;
 
