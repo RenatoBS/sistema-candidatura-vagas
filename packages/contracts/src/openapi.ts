@@ -102,13 +102,30 @@ export const openApiFase4 = {
   },
 } as const;
 
+/** Contrato das rotas de embeddings e match (F6-04). */
+export const openApiFase6Match = {
+  openapi: '3.0.3',
+  info: {
+    title: 'Sistema de Candidatura a Vagas',
+    version: '0.6.0',
+  },
+  paths: {
+    '/vagas/{vagaId}/sugestoes-match': { get: { operationId: 'listarSugestoesMatch' } },
+    '/candidatos/me/vagas-recomendadas': { get: { operationId: 'listarVagasRecomendadas' } },
+    '/interno/match/embeddings/vagas/{vagaId}': { post: { operationId: 'jobEmbeddingVaga' } },
+    '/interno/match/embeddings/candidatos/{candidatoId}': { post: { operationId: 'jobEmbeddingCandidato' } },
+    '/interno/match/vagas/{vagaId}': { post: { operationId: 'jobMatchVaga' } },
+    '/interno/match/candidatos/{candidatoId}': { post: { operationId: 'jobMatchCandidato' } },
+  },
+} as const;
+
 export const openApi = {
   openapi: '3.0.3',
   info: {
     title: 'Sistema de Candidatura a Vagas',
-    version: '0.5.0',
+    version: '0.6.0',
   },
-  paths: { ...openApiFase3.paths, ...openApiFase4.paths, ...openApiFase5.paths },
+  paths: { ...openApiFase3.paths, ...openApiFase4.paths, ...openApiFase5.paths, ...openApiFase6Match.paths },
 } as const;
 
 export type CaminhoApi = keyof typeof openApi.paths;

@@ -1,12 +1,14 @@
-import { Controller, HttpCode, Inject, Param, Post, Req } from '@nestjs/common';
+import { Controller, Get, HttpCode, Inject, Param, Post, Req } from '@nestjs/common';
 
 import type { ConfiguracaoApp } from '../configuracao';
 import { ErroAplicacao } from '../erros';
 import { MatchService } from '../match/match.service';
+import type { SessaoRequest } from '../sessao';
 import { CONFIG } from '../tokens';
-import { Publico } from './decoradores';
+import { Exige, Publico } from './decoradores';
 
 interface RequisicaoComSessao {
+  sessao: SessaoRequest;
   headers: Record<string, string | string[] | undefined>;
 }
 
@@ -16,6 +18,18 @@ export class MatchController {
     @Inject(MatchService) private readonly match: MatchService,
     @Inject(CONFIG) private readonly config: ConfiguracaoApp,
   ) {}
+
+  @Get('vagas/:vagaId/sugestoes-match')
+  @Exige('criar_vaga')
+  sugestoes(@Req() req: RequisicaoComSessao, @Param('vagaId') vagaId: string) {
+    return this.match.sugestoesDaVaga(req.sessao, vagaId);
+  }
+
+  @Get('candidatos/me/vagas-recomendadas')
+  @Exige('editar_proprio_perfil')
+  recomendadas(@Req() req: RequisicaoComSessao) {
+    return this.match.vagasRecomendadas(req.sessao);
+  }
 
   @Publico()
   @HttpCode(200)

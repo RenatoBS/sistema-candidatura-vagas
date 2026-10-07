@@ -1,6 +1,7 @@
 import {
   atendeObrigatorias,
   calcularCompatibilidade,
+  formatarInstanteBrasilia,
   matchForte,
   textoEmbeddingCandidato,
   textoEmbeddingVaga,
@@ -12,10 +13,14 @@ import type { Relogio } from '../auth/auth.service';
 import type { ConfiguracaoApp } from '../configuracao';
 import { ErroAplicacao } from '../erros';
 import type { FilaMatch } from '../fila/fila-match';
-import type { ContextoTenant, PerfilCandidato, Repositorio } from '../repositorio/tipos';
+import type { ContextoTenant, PerfilCandidato, Repositorio, SugestaoMatchRegistro } from '../repositorio/tipos';
+import { ctxDe, type SessaoRequest } from '../sessao';
 
 /** Teto de resultados da busca vetorial por execução do job. */
 const LIMITE_BUSCA = 200;
+
+/** Sugestões já respondidas continuam visíveis à empresa mesmo se o candidato sair do match. */
+const STATUS_SO_COM_OPT_IN = new Set(['PENDENTE', 'NOTIFICADA']);
 
 export class MatchService {
   constructor(
@@ -104,6 +109,64 @@ export class MatchService {
     return { candidatoId, ignorado: false, avaliadas: vagas.length, sugestoes, fortes };
   }
 
+  /** GET /vagas/:vagaId/sugestoes-match — empresa vê só um resumo do candidato até o aceite do convite. */
+  async sugestoesDaVaga(sessao: SessaoRequest, vagaId: string) {
+    const ctx = ctxDe(sessao);
+    const vaga = await this.repo.buscarVaga(vagaId, ctx);
+    if (!vaga || (!ctx.isAdmin && vaga.empresaId !== ctx.empresaId)) {
+      throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'vaga não encontrada');
+    }
+    const tenant = ctxDe(sessao, vaga.empresaId);
+    const sugestoes = await this.repo.listarSugestoesVaga(vagaId, tenant);
+    const itens = [];
+    for (const sugestao of sugestoes) {
+      const perfil = await this.perfilPorId(sugestao.candidatoId);
+      if (!perfil) continue;
+      if (!perfil.visivelParaMatch && STATUS_SO_COM_OPT_IN.has(sugestao.status)) continue;
+      itens.push(await this.sugestaoEmpresaDto(sugestao, perfil));
+    }
+    return {
+      vagaId,
+      statusVaga: vaga.status,
+      aceitaInscricoes: vagaElegivelParaMatch(vaga, this.relogio.agora()),
+      limiarForte: this.config.matchLimiarForte,
+      sugestoes: itens,
+    };
+  }
+
+  /**
+   * GET /candidatos/me/vagas-recomendadas. Nunca expõe compatibilidade, score ou posição:
+   * a ordem vem do match, mas o DTO só leva dados públicos da vaga.
+   */
+  async vagasRecomendadas(sessao: SessaoRequest) {
+    const candidato = await this.repo.buscarCandidatoPorUsuario(sessao.usuario.id);
+    if (!candidato) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'candidato não encontrado');
+    const perfil = await this.repo.obterPerfil(sessao.usuario.id);
+    if (!perfil?.visivelParaMatch) return { visivelParaMatch: false, vagas: [] };
+    const agora = this.relogio.agora();
+    const inscritas = new Set(
+      (await this.repo.listarCandidaturasCandidato(candidato.id, { sistema: true })).map((item) => item.vagaId),
+    );
+    const sugestoes = await this.repo.listarSugestoesCandidato(candidato.id, { sistema: true });
+    const vagas = [];
+    for (const sugestao of sugestoes) {
+      if (inscritas.has(sugestao.vagaId)) continue;
+      const vaga = await this.repo.buscarVaga(sugestao.vagaId, { sistema: true });
+      if (!vaga || !vagaElegivelParaMatch(vaga, agora)) continue;
+      vagas.push({
+        id: vaga.id,
+        titulo: vaga.titulo,
+        senioridade: vaga.senioridade,
+        modelo: vaga.modelo,
+        localidade: vaga.localidade,
+        prazoInscricoes: vaga.prazoInscricoes?.toISOString() ?? null,
+        prazoInscricoesBrasilia: vaga.prazoInscricoes ? formatarInstanteBrasilia(vaga.prazoInscricoes) : null,
+        habilidadesEmComum: nomes(sugestao.explicacao.atendidas),
+      });
+    }
+    return { visivelParaMatch: true, vagas };
+  }
+
   private async registrar(
     empresaId: string,
     vagaId: string,
@@ -138,6 +201,24 @@ export class MatchService {
     return registrada;
   }
 
+  private async sugestaoEmpresaDto(sugestao: SugestaoMatchRegistro, perfil: PerfilCandidato) {
+    const habilidades = await this.repo.listarHabilidades(perfil.id);
+    return {
+      id: sugestao.id,
+      candidatoId: sugestao.candidatoId,
+      compatibilidade: sugestao.compatibilidade,
+      forte: matchForte(sugestao.compatibilidade, this.config.matchLimiarForte),
+      explicacao: sugestao.explicacao,
+      status: sugestao.status,
+      criadoEm: sugestao.criadoEm.toISOString(),
+      atualizadoEm: sugestao.atualizadoEm.toISOString(),
+      candidato: {
+        primeiroNome: perfil.nome.trim().split(/\s+/)[0] ?? '',
+        habilidades: habilidades.map((item) => ({ nome: item.nome, nivel: item.nivel })),
+      },
+    };
+  }
+
   private async perfilPorId(candidatoId: string): Promise<PerfilCandidato | null> {
     const candidato = await this.repo.buscarCandidatoPorId(candidatoId);
     return candidato ? this.repo.obterPerfil(candidato.usuarioId) : null;
@@ -150,3 +231,6 @@ export class MatchService {
   }
 }
 
+function nomes(valor: unknown): string[] {
+  return Array.isArray(valor) ? valor.filter((item): item is string => typeof item === 'string') : [];
+}

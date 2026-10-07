@@ -46,7 +46,15 @@ export {
   motivoOpcionalSchema,
   motivoSchema,
 } from './empresas';
-export { openApi, openApiFase3, openApiFase4, type CaminhoApi } from './openapi';
+export type {
+  ExplicacaoMatchDto,
+  StatusSugestaoMatch,
+  SugestaoMatchDto,
+  SugestoesMatchVagaResponse,
+  VagaRecomendadaDto,
+  VagasRecomendadasResponse,
+} from './match';
+export { openApi, openApiFase3, openApiFase4, openApiFase6Match, type CaminhoApi } from './openapi';
 export {
   atualizarVagaSchema,
   criarPerguntaSchema,
