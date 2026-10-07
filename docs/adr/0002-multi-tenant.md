@@ -71,7 +71,7 @@ A camada de aplicação (NestJS `TenantGuard`, workers com `empresaId` no payloa
 O teste local de 2026-10-07 (S7) mostrou que o usuário do banco `scv` era superuser/BYPASSRLS: localmente o RLS não protegia nada e nenhum teste HTTP rodava contra Postgres. O procedimento passa a ser:
 
 - **Dois papéis, duas URLs.** `DATABASE_URL` = `scv_app` (a API; sem superuser, sem BYPASSRLS — os workers falam com a API por HTTP e não abrem conexão com o banco). `MIGRATION_DATABASE_URL` = `scv` (dono do schema; migrações, seed e reset). Os scripts `db:*` de `@scv/prisma` usam a URL de migração (`prisma/scripts/prisma-migracao.mjs`).
-- **O papel nasce com o ambiente.** `infra/postgres/init/01-papel-scv-app.sql` (montado no compose) cria `scv_app` com `NOSUPERUSER NOBYPASSRLS` e privilégios padrão sobre o que o dono criar. Em produção, o IaC faz o equivalente.
+- **O papel nasce com o ambiente.** `infra/postgres/init/01-papel-scv-app.sh` (montado no compose) cria `scv_app` com `NOSUPERUSER NOBYPASSRLS` e privilégios padrão sobre o que o dono criar. Em produção, o IaC faz o equivalente.
 - **Checagem de boot.** A API consulta `pg_roles` ao subir: papel superuser/BYPASSRLS **impede o boot em produção** e emite aviso fora dela (`apps/api/src/repositorio/papel-runtime.ts`).
 - **Testes contra Postgres como `scv_app`** (`pnpm --filter @scv/api test:prisma`, job `api-postgres` da CI):
   1. o papel de runtime não é superuser nem tem BYPASSRLS e a API (não só o teste) conecta como ele;

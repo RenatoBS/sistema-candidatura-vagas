@@ -24,7 +24,7 @@ docker compose -f infra/docker-compose.yml up -d
 
 O `up -d` do zero já entrega tudo pronto, sem passo manual:
 
-- **Postgres** (`pgvector/pgvector:pg16`) exige `POSTGRES_PASSWORD` e `SCV_APP_DB_PASSWORD` e cria o papel de runtime **`scv_app`** (sem superuser, sem `BYPASSRLS`) pelo script `infra/postgres/init/01-papel-scv-app.sh`. Ele só roda na **primeira** inicialização do volume; em ambiente existente, rode `docker compose -f infra/docker-compose.yml down -v` (apaga os dados locais) ou execute o script à mão com `SCV_APP_DB_PASSWORD` definida: `docker compose -f infra/docker-compose.yml exec -e SCV_APP_DB_PASSWORD="$SCV_APP_DB_PASSWORD" postgres /docker-entrypoint-initdb.d/01-papel-scv-app.sh`.
+- **Postgres** (`pgvector/pgvector:pg16`) exige `POSTGRES_PASSWORD` e `SCV_APP_DB_PASSWORD` e cria o papel de runtime **`scv_app`** (sem superuser, sem `BYPASSRLS`) pelo script `infra/postgres/init/01-papel-scv-app.sh`. Ele só roda na **primeira** inicialização do volume; em ambiente existente, rode `docker compose -f infra/docker-compose.yml down -v` (apaga os dados locais) ou execute o script à mão como `postgres`, com as variáveis definidas: `docker compose -f infra/docker-compose.yml exec -u postgres -e POSTGRES_USER="$POSTGRES_USER" -e POSTGRES_DB="$POSTGRES_DB" -e SCV_APP_DB_PASSWORD="$SCV_APP_DB_PASSWORD" postgres /docker-entrypoint-initdb.d/01-papel-scv-app.sh`.
 - **MinIO** exige `MINIO_ROOT_USER` e `MINIO_ROOT_PASSWORD`; o worker também exige `S3_ACCESS_KEY` e `S3_SECRET_KEY` (normalmente os mesmos valores). Não há credenciais padrão no Compose.
 - **MinIO** usa imagem **fixada por versão** (`pgsty/minio`, fork mantido). As imagens oficiais `minio/minio` e `quay.io/minio/minio` deixaram de ser publicadas; nunca use `:latest`.
 - **`minio-init`** (`pgsty/mc`) cria o bucket `scv-dev` de forma idempotente e termina. Console do MinIO em `http://localhost:9001`.
@@ -58,7 +58,7 @@ A API confere o papel ao subir: superuser/BYPASSRLS **impede o boot em produçã
 ### Ambiente já existente (volume antigo)
 
 O init só roda em volume novo. Para quem já tem o Postgres local: defina `SCV_APP_DB_PASSWORD` e crie o papel uma vez com
-`docker compose -f infra/docker-compose.yml exec -e SCV_APP_DB_PASSWORD="$SCV_APP_DB_PASSWORD" postgres /docker-entrypoint-initdb.d/01-papel-scv-app.sh`, e no `.env` troque
+`docker compose -f infra/docker-compose.yml exec -u postgres -e POSTGRES_USER="$POSTGRES_USER" -e POSTGRES_DB="$POSTGRES_DB" -e SCV_APP_DB_PASSWORD="$SCV_APP_DB_PASSWORD" postgres /docker-entrypoint-initdb.d/01-papel-scv-app.sh`, e no `.env` troque
 `DATABASE_URL` para o usuário `scv_app` (ver `.env.example`) e adicione `MIGRATION_DATABASE_URL` com o usuário `scv`.
 
 ## 4. Testes que tocam o banco

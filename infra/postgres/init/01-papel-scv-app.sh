@@ -3,7 +3,7 @@ set -eu
 
 : "${SCV_APP_DB_PASSWORD:?SCV_APP_DB_PASSWORD deve ser definida e não pode estar vazia}"
 
-psql -v ON_ERROR_STOP=1 --set=app_password="$SCV_APP_DB_PASSWORD" <<'SQL'
+psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -v ON_ERROR_STOP=1 --set=app_password="$SCV_APP_DB_PASSWORD" <<'SQL'
 SELECT format(
   'CREATE ROLE scv_app LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS',
   :'app_password'

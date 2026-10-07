@@ -4,6 +4,8 @@
 **Branch ativa:** `feat/f10-multiprocesso`  
 **PR:** Fases 7, 8 e 9 na `main` (#12, #13, #14). Fase 10 em `feat/f10-multiprocesso`.
 
+Antes de usar as variáveis locais, carregue o `.env`: `set -a; . ./.env; set +a`.
+
 ## Status geral
 
 🟢 **Fase 1 concluída** na `main` — monorepo, CI, Docker e esqueletos.  
