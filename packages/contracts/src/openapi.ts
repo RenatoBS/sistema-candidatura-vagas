@@ -187,11 +187,27 @@ export const openApiFase8 = {
   },
 } as const;
 
+/** Rotas de ranqueamento (Fase 9). */
+export const openApiFase9 = {
+  openapi: '3.0.3',
+  info: {
+    title: 'Sistema de Candidatura a Vagas',
+    version: '0.9.0',
+  },
+  paths: {
+    '/interno/ranking/vagas/{vagaId}/recalcular': { post: { operationId: 'jobRecalcularRanking' } },
+    '/empresas/{empresaId}/vagas/{vagaId}/ranking': { get: { operationId: 'listarRanking' } },
+    '/empresas/{empresaId}/vagas/{vagaId}/ranking/vies': { get: { operationId: 'viesRanking' } },
+    '/empresas/{empresaId}/vagas/{vagaId}/ranking/pesos': { put: { operationId: 'definirPesosRanking' } },
+    '/empresas/{empresaId}/ranking/respostas/{respostaId}/revisao': { post: { operationId: 'revisarNotaRanking' } },
+  },
+} as const;
+
 export const openApi = {
   openapi: '3.0.3',
   info: {
     title: 'Sistema de Candidatura a Vagas',
-    version: '0.8.0',
+    version: '0.9.0',
   },
   paths: {
     ...openApiFase3.paths,
@@ -200,6 +216,7 @@ export const openApi = {
     ...openApiFase6Match.paths,
     ...openApiFase7.paths,
     ...openApiFase8.paths,
+    ...openApiFase9.paths,
   },
 } as const;
 

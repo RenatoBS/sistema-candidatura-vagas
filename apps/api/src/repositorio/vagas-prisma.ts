@@ -118,6 +118,7 @@ export class VagasPrisma {
         fechadaEm: patch.fechadaEm,
         motivoFechamento: patch.motivoFechamento,
         alertaPausaEm: patch.alertaPausaEm,
+        pesosRanking: patch.pesosRanking as Prisma.InputJsonValue | undefined,
       });
       const salva = await tx.vaga.update({ where: { id }, data });
       return vagaDe(salva);
@@ -398,6 +399,7 @@ export class VagasPrisma {
       fechadaEm: dados.fechadaEm,
       motivoFechamento: dados.motivoFechamento,
       alertaPausaEm: dados.alertaPausaEm,
+      pesosRanking: (dados.pesosRanking ?? {}) as Prisma.InputJsonValue,
       criadoEm: dados.criadoEm,
       atualizadoEm: dados.atualizadoEm,
     };

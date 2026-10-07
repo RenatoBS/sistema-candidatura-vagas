@@ -35,6 +35,7 @@ export interface VagaRegistro {
   fechadaEm: Date | null;
   motivoFechamento: string | null;
   alertaPausaEm: Date | null;
+  pesosRanking?: Record<string, number> | null;
   criadoEm: Date;
   atualizadoEm: Date;
 }
