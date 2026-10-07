@@ -12,6 +12,7 @@ process.env.LOG_LEVEL = 'silent';
 import { cifrar } from '@scv/providers';
 import {
   armazenamentoTeste,
+  deduplicadorWebhookTeste,
   filaWhatsappEntradaTeste,
   limparAmbienteTeste,
   repositorioTeste,
@@ -71,6 +72,7 @@ describe('F7-04 webhook Uazapi', () => {
       },
     };
     const primeiro = await api('/webhooks/whatsapp/uazapi/instancia-1', payload);
+    deduplicadorWebhookTeste.limpar();
     const segundo = await api('/webhooks/whatsapp/uazapi/instancia-1', payload);
     assert.equal(primeiro.status, 201);
     assert.equal(segundo.json.status, 'duplicado');
