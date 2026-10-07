@@ -43,7 +43,7 @@ import type {
   VagaHabilidadeRegistro,
   VagaRegistro,
 } from '../repositorio/tipos';
-import { ctxDe, exigir, montarAtor, papelAuditoria, type SessaoRequest } from '../sessao';
+import { ctxDe, deveAuditarBypass, exigir, montarAtor, papelAuditoria, type SessaoRequest } from '../sessao';
 import type { TriagemRetryService } from '../triagem/triagem-retry.service';
 
 const MENSAGENS: Record<ErroTransicaoVaga, string> = {
@@ -143,7 +143,10 @@ export class VagasService {
   }
 
   async obter(sessao: SessaoRequest, empresaId: string, vagaId: string) {
-    const { ctx } = await this.alinhar(sessao, empresaId, 'criar_vaga');
+    const { ctx, alinhada, decisao } = await this.alinhar(sessao, empresaId, 'criar_vaga');
+    if (deveAuditarBypass(alinhada, decisao.auditar)) {
+      await this.auditar(alinhada, empresaId, vagaId, 'BYPASS_ADMIN', 'criar_vaga', ctx);
+    }
     await this.encerrarEmpresa(empresaId, ctx);
     return this.detalhe(vagaId, ctx);
   }
@@ -832,8 +835,8 @@ export class VagasService {
     const membro = await this.repo.buscarMembro(sessao.usuario.id, empresaId, previa);
     const base = { ...sessao, empresaId, empresa, membro };
     const alinhada: SessaoRequest = { ...base, ator: montarAtor(base) };
-    exigir(alinhada, acao);
-    return { alinhada, ctx: ctxDe(alinhada, empresaId) };
+    const decisao = exigir(alinhada, acao);
+    return { alinhada, ctx: ctxDe(alinhada, empresaId), decisao };
   }
 
   private async exigirVaga(vagaId: string, empresaId: string, ctx: ContextoTenant): Promise<VagaRegistro> {

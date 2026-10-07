@@ -148,6 +148,26 @@ export class EntrevistasPrisma {
     );
   }
 
+  contarAtivasEmpresa(empresaId: string, ctx: ContextoTenant): Promise<number> {
+    return this.com(ctx, (tx) =>
+      tx.sessaoVoz.count({
+        where: { status: { in: ['ATIVA', 'RECONECTANDO'] }, entrevista: { empresaId } },
+      }),
+    );
+  }
+
+  async candidatoTemSessaoAtiva(candidatoId: string, ctx: ContextoTenant): Promise<boolean> {
+    const total = await this.com(ctx, (tx) =>
+      tx.sessaoVoz.count({
+        where: {
+          status: { in: ['ATIVA', 'RECONECTANDO'] },
+          entrevista: { candidatura: { candidatoId } },
+        },
+      }),
+    );
+    return total > 0;
+  }
+
   private sessao(row: SessaoVozRegistro): SessaoVozRegistro {
     return { ...row };
   }

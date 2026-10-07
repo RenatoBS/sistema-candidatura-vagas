@@ -144,4 +144,14 @@ export class EntrevistasMemoria {
     }
     return total;
   }
+
+  async contarAtivasEmpresa(empresaId: string, ctx: ContextoTenant): Promise<number> {
+    let total = 0;
+    for (const sessao of this.sessoes.values()) {
+      if (sessao.status !== 'ATIVA' && sessao.status !== 'RECONECTANDO') continue;
+      const entrevista = await this.buscar(sessao.entrevistaId, ctx);
+      if (entrevista?.empresaId === empresaId) total += 1;
+    }
+    return total;
+  }
 }

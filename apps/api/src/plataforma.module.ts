@@ -1,5 +1,5 @@
 import { type FactoryProvider, Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { criarLlmProvider } from '@scv/llm';
 import {
   BrasilApiFonteCnpj,
@@ -33,6 +33,7 @@ import {
   whatsappTeste,
   filaWhatsappEntradaTeste,
   filaTriagemTeste,
+  cotaTeste,
   limitadorEnvioTeste,
   deduplicadorWebhookTeste,
   whatsappMensagensTeste,
@@ -51,6 +52,8 @@ import {
 } from './candidatos/candidato.service';
 import { CandidaturaStateMachine } from './candidaturas/candidatura-state-machine';
 import { CandidaturasService } from './candidaturas/candidaturas.service';
+import { CapacidadeService } from './capacidade/capacidade.service';
+import { CotaService } from './capacidade/cota.service';
 import type { ConfiguracaoApp } from './configuracao';
 import { lerConfiguracao } from './configuracao';
 import { DnsNode } from './dns';
@@ -65,6 +68,8 @@ import { AuditoriaController } from './http/auditoria.controller';
 import { AuthController } from './http/auth.controller';
 import { AuthGuard } from './http/auth.guard';
 import { CandidatoController } from './http/candidatos.controller';
+import { CapacidadeController } from './http/capacidade.controller';
+import { CotaApiInterceptor } from './http/cota.interceptor';
 import { EmpresasController } from './http/empresas.controller';
 import { MatchController } from './http/match.controller';
 import { NotificacoesController } from './http/notificacoes.controller';
@@ -296,6 +301,7 @@ const whatsappClienteProvider: FactoryProvider = {
 @Module({
   controllers: [
     AuthController,
+    CapacidadeController,
     EmpresasController,
     WhatsappController,
     TriagemController,
@@ -337,6 +343,12 @@ const whatsappClienteProvider: FactoryProvider = {
     TriagemConsultaService,
     VozService,
     RankingService,
+    CapacidadeService,
+    {
+      provide: CotaService,
+      inject: [CONFIG],
+      useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? cotaTeste : new CotaService()),
+    },
     embeddingsProvider,
     canaisEntregaProvider,
     llmProvider,
@@ -504,6 +516,7 @@ const whatsappClienteProvider: FactoryProvider = {
     },
     AuthGuard,
     { provide: APP_GUARD, useExisting: AuthGuard },
+    { provide: APP_INTERCEPTOR, useClass: CotaApiInterceptor },
   ],
 })
 export class PlataformaModule {}

@@ -203,11 +203,23 @@ export const openApiFase9 = {
   },
 } as const;
 
+/** Capacidade e cotas (Fase 10). */
+export const openApiFase10 = {
+  openapi: '3.0.3',
+  info: {
+    title: 'Sistema de Candidatura a Vagas',
+    version: '0.10.0',
+  },
+  paths: {
+    '/interno/capacidade': { get: { operationId: 'painelCapacidade' } },
+  },
+} as const;
+
 export const openApi = {
   openapi: '3.0.3',
   info: {
     title: 'Sistema de Candidatura a Vagas',
-    version: '0.9.0',
+    version: '0.10.0',
   },
   paths: {
     ...openApiFase3.paths,
@@ -217,6 +229,7 @@ export const openApi = {
     ...openApiFase7.paths,
     ...openApiFase8.paths,
     ...openApiFase9.paths,
+    ...openApiFase10.paths,
   },
 } as const;
 

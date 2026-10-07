@@ -89,6 +89,7 @@
   "candidato": {
     "titulo": "Visão do candidato",
     "texto": "Seu perfil, currículo, vagas e privacidade ficam nesta visão. O score não aparece aqui.",
+    "variosProcessos": "Você está em mais de um processo. Cada empresa fala pelo próprio WhatsApp e a mensagem cita a vaga. A entrevista por voz acontece uma por vez.",
     "vagas": "Vagas abertas",
     "perfil": "Perfil",
     "curriculo": "Currículo",

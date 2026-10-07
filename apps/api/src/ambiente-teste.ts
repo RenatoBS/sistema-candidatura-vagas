@@ -12,6 +12,7 @@ import {
 } from '@scv/providers';
 
 import type { Relogio } from './auth/auth.service';
+import { cotaTeste } from './capacidade/cota.service';
 import { DnsControlavel } from './dns';
 import { FilaCnpjMemoria } from './fila/fila-cnpj';
 import { FilaCurriculoMemoria } from './fila/fila-curriculo';
@@ -41,6 +42,7 @@ export const filaMatchTeste = new FilaMatchMemoria();
 export const filaWhatsappEntradaTeste = new FilaWhatsappEntradaMemoria();
 export const filaTriagemTeste = new FilaTriagemMemoria();
 export const limitadorEnvioTeste = new LimitadorEnvioMemoria();
+export { cotaTeste };
 export const deduplicadorWebhookTeste = new DeduplicadorWebhookMemoria();
 export const embeddingsTeste = new FakeEmbeddingProvider();
 export const pushTeste = new CanalEntregaMemoria('push');
@@ -67,6 +69,7 @@ export function limparAmbienteTeste(): void {
   filaWhatsappEntradaTeste.limpar();
   filaTriagemTeste.limpar();
   limitadorEnvioTeste.limpar();
+  cotaTeste.limpar();
   deduplicadorWebhookTeste.limpar();
   embeddingsTeste.limpar();
   pushTeste.limpar();

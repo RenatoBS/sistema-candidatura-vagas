@@ -22,10 +22,11 @@ import type { Armazenamento } from '@scv/providers';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import type { Relogio } from '../auth/auth.service';
 import { CandidaturaStateMachine } from '../candidaturas/candidatura-state-machine';
+import { CotaService } from '../capacidade/cota.service';
 import { ErroAplicacao } from '../erros';
 import type { EntrevistaRegistro, SessaoVozRegistro } from '../repositorio/entrevistas-tipos';
 import type { Repositorio } from '../repositorio/tipos';
-import { ctxDe, exigir, montarAtor, papelAuditoria, type SessaoRequest } from '../sessao';
+import { ctxDe, deveAuditarBypass, exigir, montarAtor, papelAuditoria, type SessaoRequest } from '../sessao';
 import { ARMAZENAMENTO, RELOGIO, REPOSITORIO } from '../tokens';
 import { medirPipelineFake } from './pipeline-fake';
 
@@ -47,6 +48,7 @@ export class VozService {
     @Inject(CandidaturaStateMachine) private readonly candidaturas: CandidaturaStateMachine,
     @Inject(ARMAZENAMENTO) private readonly armazenamento: Armazenamento,
     @Inject(AuditoriaService) private readonly auditoria: AuditoriaService,
+    @Inject(CotaService) private readonly cotas: CotaService,
   ) {}
 
   async preparar(candidaturaId: string) {
@@ -96,12 +98,23 @@ export class VozService {
     if (entrevista.iniciadaEm || !['DISPONIVEL', 'ACEITE_REGISTRADO'].includes(entrevista.status)) {
       throw new ErroAplicacao('TENTATIVA_CONSUMIDA', 409, 'segunda tentativa rejeitada');
     }
+    const candidatura = await this.repo.buscarCandidatura(entrevista.candidaturaId, SISTEMA);
+    if (!candidatura) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'candidatura não encontrada');
+    const vaga = await this.repo.buscarVaga(candidatura.vagaId, SISTEMA);
+    if (!vaga || vaga.status === 'PAUSADA' || vaga.status === 'FECHADA') {
+      throw new ErroAplicacao('VAGA_INDISPONIVEL', 409, 'vaga pausada ou fechada');
+    }
+    if (await this.repo.candidatoTemSessaoVozAtiva(candidatura.candidatoId, SISTEMA)) {
+      throw new ErroAplicacao('SESSAO_VOZ_EM_ANDAMENTO', 409, 'já existe uma sessão de voz em andamento');
+    }
+    const daEmpresa = await this.repo.contarSessoesAtivasEmpresa(entrevista.empresaId, SISTEMA);
+    if (!this.cotas.admiteVoz(daEmpresa)) {
+      throw new ErroAplicacao('COTA_VOZ', 429, 'cota de sessões de voz da empresa');
+    }
     const ativas = await this.repo.contarSessoesAtivas(SISTEMA);
     if (decidirAdmissao(ativas, this.maxSessoes()) === 'fila') {
       throw new ErroAplicacao('FILA_ADMISSAO', 429, 'fila de admissão da voz');
     }
-    const candidatura = await this.repo.buscarCandidatura(entrevista.candidaturaId, SISTEMA);
-    if (!candidatura) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'candidatura não encontrada');
     if (candidatura.status === 'TRIAGEM_CONCLUIDA') {
       await this.candidaturas.aplicar(candidatura.id, { tipo: 'iniciarEntrevistaVoz' }, { autorId: null, motivo: 'aceite da voz' }, SISTEMA);
     }
@@ -160,6 +173,8 @@ export class VozService {
 
   async turno(sessaoId: string, texto: string) {
     const { sessao, entrevista } = await this.sessaoAtiva(sessaoId);
+    const encerrada = await this.encerrarSeVagaFechada(sessao, entrevista);
+    if (encerrada) return encerrada;
     const estado = this.estadoDe(entrevista);
     const roteiro = await this.roteiro(entrevista);
     const agora = this.relogio.agora();
@@ -315,8 +330,22 @@ export class VozService {
 
   async listar(sessaoReq: SessaoRequest, empresaId: string, vagaId: string) {
     const alinhada = await this.alinhar(sessaoReq, empresaId);
-    exigir(alinhada, 'ver_audio_transcricao');
+    const decisao = exigir(alinhada, 'ver_audio_transcricao');
     const ctx = ctxDe(alinhada, empresaId);
+    if (deveAuditarBypass(alinhada, decisao.auditar)) {
+      await this.auditoria.registrar(
+        {
+          usuarioId: alinhada.usuario.id,
+          empresaId,
+          papel: papelAuditoria(alinhada),
+          acao: 'BYPASS_ADMIN',
+          recursoTipo: 'VOZ',
+          recursoId: vagaId,
+          motivo: 'ver_audio_transcricao',
+        },
+        ctx,
+      );
+    }
     const vaga = await this.repo.buscarVaga(vagaId, ctx);
     if (!vaga || vaga.empresaId !== empresaId) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'vaga não encontrada');
     const candidaturas = await this.repo.listarCandidaturasVaga(vagaId, ctx);
@@ -530,6 +559,24 @@ export class VozService {
       etapas: pipeline.etapas,
       totalMs: pipeline.totalMs,
     };
+  }
+
+  private async encerrarSeVagaFechada(sessao: SessaoVozRegistro, entrevista: EntrevistaRegistro) {
+    const candidatura = await this.repo.buscarCandidatura(entrevista.candidaturaId, SISTEMA);
+    const vaga = candidatura ? await this.repo.buscarVaga(candidatura.vagaId, SISTEMA) : null;
+    if (vaga?.status !== 'FECHADA') return null;
+    const agora = this.relogio.agora();
+    await this.repo.atualizarSessaoVoz(
+      sessao.id,
+      { status: 'FINALIZADA', fimEm: agora, motivoFim: 'vaga fechada', atualizadoEm: agora },
+      SISTEMA,
+    );
+    await this.repo.atualizarEntrevista(
+      entrevista.id,
+      { status: 'CANCELADA', ultimaInteracaoEm: agora, atualizadoEm: agora },
+      SISTEMA,
+    );
+    return { acao: 'encerrada' as const, status: 'ENCERRADA_VAGA_FECHADA' as const };
   }
 
   private async abandonar(entrevista: EntrevistaRegistro, sessao: SessaoVozRegistro, agora: Date, motivo: string) {

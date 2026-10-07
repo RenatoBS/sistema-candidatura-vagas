@@ -12,10 +12,11 @@ import {
   type PesosScore,
 } from '@scv/domain';
 
+import { AuditoriaService } from '../auditoria/auditoria.service';
 import type { Relogio } from '../auth/auth.service';
 import { ErroAplicacao } from '../erros';
 import type { AvaliacaoRegistro, Repositorio, ScoreRegistro } from '../repositorio/tipos';
-import { ctxDe, exigir, montarAtor, type SessaoRequest } from '../sessao';
+import { ctxDe, deveAuditarBypass, exigir, montarAtor, papelAuditoria, type SessaoRequest } from '../sessao';
 import { RELOGIO, REPOSITORIO } from '../tokens';
 
 const SISTEMA = { sistema: true as const };
@@ -27,6 +28,7 @@ export class RankingService {
   constructor(
     @Inject(REPOSITORIO) private readonly repo: Repositorio,
     @Inject(RELOGIO) private readonly relogio: Relogio,
+    @Inject(AuditoriaService) private readonly auditoria: AuditoriaService,
   ) {}
 
   async recalcular(vagaId: string, forcar = false) {
@@ -59,8 +61,22 @@ export class RankingService {
 
   async listar(sessao: SessaoRequest, empresaId: string, vagaId: string, filtro?: { completudeMin?: number }) {
     const alinhada = await this.alinhar(sessao, empresaId);
-    exigir(alinhada, 'ver_score');
+    const decisao = exigir(alinhada, 'ver_score');
     const ctx = ctxDe(alinhada, empresaId);
+    if (deveAuditarBypass(alinhada, decisao.auditar)) {
+      await this.auditoria.registrar(
+        {
+          usuarioId: alinhada.usuario.id,
+          empresaId,
+          papel: papelAuditoria(alinhada),
+          acao: 'BYPASS_ADMIN',
+          recursoTipo: 'RANKING',
+          recursoId: vagaId,
+          motivo: 'ver_score',
+        },
+        ctx,
+      );
+    }
     const vaga = await this.repo.buscarVaga(vagaId, ctx);
     if (!vaga || vaga.empresaId !== empresaId) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'vaga não encontrada');
     const candidaturas = await this.repo.listarCandidaturasVaga(vagaId, ctx);
