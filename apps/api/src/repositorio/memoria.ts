@@ -2,10 +2,13 @@ import { CATALOGO_BASE } from '@scv/domain';
 
 import { ErroAplicacao } from '../erros';
 import { CandidaturasMemoria } from './candidaturas-memoria';
+import { EntrevistasMemoria } from './entrevistas-memoria';
+import type { EntrevistaRegistro } from './entrevistas-tipos';
 import { MatchMemoria } from './match-memoria';
 import { NotificacoesMemoria } from './notificacoes-memoria';
 import type {
   AuditoriaRegistro,
+  AvaliacaoRegistro,
   CandidatoRegistro,
   CodigoMfaRegistro,
   ConsentimentoRegistro,
@@ -17,10 +20,12 @@ import type {
   HabilidadeCatalogo,
   HabilidadeDoCandidato,
   InstanciaRegistro,
+  EventoWhatsappEntradaRegistro,
   LinhaHabilidade,
   MembroRegistro,
   NotificacaoNova,
   PerfilCandidato,
+  QuedaInstanciaRegistro,
   PreferenciaNotificacaoRegistro,
   RefreshRegistro,
   Repositorio,
@@ -45,6 +50,7 @@ function perfilInicial(candidato: CandidatoRegistro): PerfilCandidato {
     nome: candidato.nome,
     whatsapp: null,
     whatsappVerificado: false,
+    whatsappVerificadoEm: null,
     linkedinUrl: null,
     perfil: {},
     // Q17 (provisória): opt-in, igual ao padrão da coluna no banco.
@@ -59,7 +65,10 @@ function visivel(ctx: ContextoTenant | undefined, empresaId: string | null): boo
 }
 
 export class RepositorioMemoria implements Repositorio {
-  dispositivosPush = new Map<string, { usuarioId: string; token: string; plataforma: 'IOS' | 'ANDROID' | 'WEB'; ultimoUsoEm: Date }>();
+  dispositivosPush = new Map<
+    string,
+    { usuarioId: string; token: string; plataforma: 'IOS' | 'ANDROID' | 'WEB'; ultimoUsoEm: Date }
+  >();
   usuarios = new Map<string, UsuarioRegistro>();
   refresh = new Map<string, RefreshRegistro>();
   tokens = new Map<string, TokenRegistro>();
@@ -69,17 +78,32 @@ export class RepositorioMemoria implements Repositorio {
   membros = new Map<string, MembroRegistro>();
   convites = new Map<string, ConviteRegistro>();
   candidatos = new Map<string, PerfilCandidato>();
-  async registrarDispositivoPush(registro: { usuarioId: string; token: string; plataforma: 'IOS' | 'ANDROID' | 'WEB'; ultimoUsoEm: Date }): Promise<void> {
+  async registrarDispositivoPush(registro: {
+    usuarioId: string;
+    token: string;
+    plataforma: 'IOS' | 'ANDROID' | 'WEB';
+    ultimoUsoEm: Date;
+  }): Promise<void> {
     this.dispositivosPush.set(registro.token, registro);
   }
   async removerDispositivoPush(token: string, usuarioId: string): Promise<boolean> {
-    const atual = this.dispositivosPush.get(token); if (!atual || atual.usuarioId !== usuarioId) return false; return this.dispositivosPush.delete(token);
+    const atual = this.dispositivosPush.get(token);
+    if (!atual || atual.usuarioId !== usuarioId) return false;
+    return this.dispositivosPush.delete(token);
   }
-  async listarDispositivosPush(usuarioId: string) { return [...this.dispositivosPush.values()].filter((d) => d.usuarioId === usuarioId); }
-  async removerDispositivosPush(tokens: string[]): Promise<void> { for (const token of tokens) this.dispositivosPush.delete(token); }
+  async listarDispositivosPush(usuarioId: string) {
+    return [...this.dispositivosPush.values()].filter((d) => d.usuarioId === usuarioId);
+  }
+  async removerDispositivosPush(tokens: string[]): Promise<void> {
+    for (const token of tokens) this.dispositivosPush.delete(token);
+  }
   async removerDispositivosPushInativos(antesDe: Date): Promise<number> {
     let removidos = 0;
-    for (const [token, dispositivo] of this.dispositivosPush) if (dispositivo.ultimoUsoEm < antesDe) { this.dispositivosPush.delete(token); removidos += 1; }
+    for (const [token, dispositivo] of this.dispositivosPush)
+      if (dispositivo.ultimoUsoEm < antesDe) {
+        this.dispositivosPush.delete(token);
+        removidos += 1;
+      }
     return removidos;
   }
   linhasHabilidade: { candidatoId: string; linha: LinhaHabilidade }[] = [];
@@ -88,14 +112,19 @@ export class RepositorioMemoria implements Repositorio {
   solicitacoesLgpd: SolicitacaoLgpdRegistro[] = [];
   auditorias: AuditoriaRegistro[] = [];
   instancias = new Map<string, InstanciaRegistro>();
+  eventosWhatsappEntrada = new Map<string, EventoWhatsappEntradaRegistro>();
   respostas = new Map<string, RespostaSensivel>();
+  avaliacoes = new Map<string, AvaliacaoRegistro>();
+  quedas = new Map<string, QuedaInstanciaRegistro>();
+  readonly entrevistasStore = new EntrevistasMemoria();
   readonly vagasStore = new VagasMemoria();
   readonly candidaturasStore = new CandidaturasMemoria();
   readonly matchStore = new MatchMemoria({
     candidatos: () => this.candidatos.values(),
     habilidadesCandidato: (candidatoId) => this.listarHabilidades(candidatoId),
     vagas: () => this.vagasStore.vagas.values(),
-    habilidadesVaga: (vagaId) => this.vagasStore.habilidadesVaga.filter((item) => item.vagaId === vagaId),
+    habilidadesVaga: (vagaId) =>
+      this.vagasStore.habilidadesVaga.filter((item) => item.vagaId === vagaId),
   });
   readonly notificacoesStore = new NotificacoesMemoria({
     sugestoes: this.matchStore.sugestoes,
@@ -118,7 +147,11 @@ export class RepositorioMemoria implements Repositorio {
     this.solicitacoesLgpd = [];
     this.auditorias = [];
     this.instancias.clear();
+    this.eventosWhatsappEntrada.clear();
     this.respostas.clear();
+    this.avaliacoes.clear();
+    this.quedas.clear();
+    this.entrevistasStore.limpar();
     this.vagasStore.limpar();
     this.candidaturasStore.limpar();
     this.matchStore.limpar();
@@ -176,7 +209,8 @@ export class RepositorioMemoria implements Repositorio {
   }
 
   async salvarToken(registro: TokenRegistro, ctx?: ContextoTenant): Promise<void> {
-    if (!visivel(ctx, registro.empresaId)) throw new ErroAplicacao('SEM_PERMISSAO', 403, 'sem permissão');
+    if (!visivel(ctx, registro.empresaId))
+      throw new ErroAplicacao('SEM_PERMISSAO', 403, 'sem permissão');
     this.tokens.set(registro.id, { ...registro });
   }
 
@@ -212,7 +246,10 @@ export class RepositorioMemoria implements Repositorio {
     return [...this.empresas.values()].some((empresa) => empresa.cnpj === cnpj);
   }
 
-  async criarEmpresaComResponsavel(empresa: EmpresaRegistro, membro: MembroRegistro): Promise<void> {
+  async criarEmpresaComResponsavel(
+    empresa: EmpresaRegistro,
+    membro: MembroRegistro,
+  ): Promise<void> {
     if (await this.cnpjExiste(empresa.cnpj)) {
       throw new ErroAplicacao('CNPJ_EM_USO', 409, 'CNPJ já cadastrado');
     }
@@ -233,7 +270,12 @@ export class RepositorioMemoria implements Repositorio {
   ): Promise<EmpresaRegistro> {
     const atual = await this.buscarEmpresaPorId(id, ctx);
     if (!atual) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'empresa não encontrada');
-    const proximo = { ...atual, ...patch, id, configuracoes: patch.configuracoes ?? atual.configuracoes };
+    const proximo = {
+      ...atual,
+      ...patch,
+      id,
+      configuracoes: patch.configuracoes ?? atual.configuracoes,
+    };
     this.empresas.set(id, proximo);
     return { ...proximo, configuracoes: { ...proximo.configuracoes } };
   }
@@ -245,17 +287,21 @@ export class RepositorioMemoria implements Repositorio {
   }
 
   async registrarVerificacao(registro: VerificacaoRegistro, ctx: ContextoTenant): Promise<void> {
-    if (!visivel(ctx, registro.empresaId)) throw new ErroAplicacao('SEM_PERMISSAO', 403, 'sem permissão');
+    if (!visivel(ctx, registro.empresaId))
+      throw new ErroAplicacao('SEM_PERMISSAO', 403, 'sem permissão');
     this.verificacoes.push({ ...registro, detalhes: { ...registro.detalhes } });
   }
 
   async listarVerificacoes(empresaId: string, ctx: ContextoTenant): Promise<VerificacaoRegistro[]> {
     if (!visivel(ctx, empresaId)) return [];
-    return this.verificacoes.filter((item) => item.empresaId === empresaId).map((item) => ({ ...item }));
+    return this.verificacoes
+      .filter((item) => item.empresaId === empresaId)
+      .map((item) => ({ ...item }));
   }
 
   async criarMembro(membro: MembroRegistro, ctx: ContextoTenant): Promise<MembroRegistro> {
-    if (!visivel(ctx, membro.empresaId)) throw new ErroAplicacao('SEM_PERMISSAO', 403, 'sem permissão');
+    if (!visivel(ctx, membro.empresaId))
+      throw new ErroAplicacao('SEM_PERMISSAO', 403, 'sem permissão');
     this.membros.set(membro.id, { ...membro, papeis: [...membro.papeis] });
     return { ...membro, papeis: [...membro.papeis] };
   }
@@ -313,7 +359,8 @@ export class RepositorioMemoria implements Repositorio {
   }
 
   async criarConvite(convite: ConviteRegistro, ctx: ContextoTenant): Promise<ConviteRegistro> {
-    if (!visivel(ctx, convite.empresaId)) throw new ErroAplicacao('SEM_PERMISSAO', 403, 'sem permissão');
+    if (!visivel(ctx, convite.empresaId))
+      throw new ErroAplicacao('SEM_PERMISSAO', 403, 'sem permissão');
     this.convites.set(convite.id, { ...convite, papeis: [...convite.papeis] });
     return { ...convite, papeis: [...convite.papeis] };
   }
@@ -352,7 +399,9 @@ export class RepositorioMemoria implements Repositorio {
 
   async buscarCandidatoPorUsuario(usuarioId: string): Promise<CandidatoRegistro | null> {
     const candidato = this.candidatos.get(usuarioId);
-    return candidato ? { id: candidato.id, usuarioId: candidato.usuarioId, nome: candidato.nome } : null;
+    return candidato
+      ? { id: candidato.id, usuarioId: candidato.usuarioId, nome: candidato.nome }
+      : null;
   }
 
   async buscarCandidatoPorId(id: string): Promise<CandidatoRegistro | null> {
@@ -378,17 +427,24 @@ export class RepositorioMemoria implements Repositorio {
   }
 
   async listarLinhasHabilidade(candidatoId: string): Promise<LinhaHabilidade[]> {
-    return this.linhasHabilidade.filter((item) => item.candidatoId === candidatoId).map((item) => ({ ...item.linha }));
+    return this.linhasHabilidade
+      .filter((item) => item.candidatoId === candidatoId)
+      .map((item) => ({ ...item.linha }));
   }
 
   async listarHabilidades(candidatoId: string): Promise<HabilidadeDoCandidato[]> {
     const catalogo = new Map(CATALOGO_MEMORIA.map((item) => [item.id, item]));
     const linhas = await this.listarLinhasHabilidade(candidatoId);
-    return linhas.map((linha) => ({ ...linha, nome: catalogo.get(linha.habilidadeId)?.nome ?? '' }));
+    return linhas.map((linha) => ({
+      ...linha,
+      nome: catalogo.get(linha.habilidadeId)?.nome ?? '',
+    }));
   }
 
   async definirHabilidades(candidatoId: string, linhas: LinhaHabilidade[]): Promise<void> {
-    this.linhasHabilidade = this.linhasHabilidade.filter((item) => item.candidatoId !== candidatoId);
+    this.linhasHabilidade = this.linhasHabilidade.filter(
+      (item) => item.candidatoId !== candidatoId,
+    );
     for (const linha of linhas) this.linhasHabilidade.push({ candidatoId, linha: { ...linha } });
   }
 
@@ -414,7 +470,10 @@ export class RepositorioMemoria implements Repositorio {
       .sort((a, b) => b.criadoEm.getTime() - a.criadoEm.getTime());
   }
 
-  async atualizarCurriculo(id: string, patch: Partial<CurriculoRegistro>): Promise<CurriculoRegistro> {
+  async atualizarCurriculo(
+    id: string,
+    patch: Partial<CurriculoRegistro>,
+  ): Promise<CurriculoRegistro> {
     const atual = this.curriculos.get(id);
     if (!atual) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'currículo não encontrado');
     const proximo = { ...atual, ...patch, id };
@@ -428,7 +487,9 @@ export class RepositorioMemoria implements Repositorio {
   }
 
   async listarConsentimentos(candidatoId: string): Promise<ConsentimentoRegistro[]> {
-    return this.consentimentos.filter((item) => item.candidatoId === candidatoId).map((item) => ({ ...item }));
+    return this.consentimentos
+      .filter((item) => item.candidatoId === candidatoId)
+      .map((item) => ({ ...item }));
   }
 
   async registrarSolicitacaoLgpd(registro: SolicitacaoLgpdRegistro): Promise<void> {
@@ -469,8 +530,12 @@ export class RepositorioMemoria implements Repositorio {
     return { arquivoKeys };
   }
 
-  async registrarAuditoria(registro: AuditoriaRegistro, ctx: ContextoTenant): Promise<AuditoriaRegistro> {
-    if (!visivel(ctx, registro.empresaId)) throw new ErroAplicacao('SEM_PERMISSAO', 403, 'sem permissão');
+  async registrarAuditoria(
+    registro: AuditoriaRegistro,
+    ctx: ContextoTenant,
+  ): Promise<AuditoriaRegistro> {
+    if (!visivel(ctx, registro.empresaId))
+      throw new ErroAplicacao('SEM_PERMISSAO', 403, 'sem permissão');
     this.auditorias.push({ ...registro });
     return { ...registro };
   }
@@ -486,8 +551,12 @@ export class RepositorioMemoria implements Repositorio {
     throw new ErroAplicacao('AUDITORIA_APPEND_ONLY', 409, 'auditorias_acesso é append-only');
   }
 
-  async salvarInstancia(instancia: InstanciaRegistro, ctx: ContextoTenant): Promise<InstanciaRegistro> {
-    if (!visivel(ctx, instancia.empresaId)) throw new ErroAplicacao('SEM_PERMISSAO', 403, 'sem permissão');
+  async salvarInstancia(
+    instancia: InstanciaRegistro,
+    ctx: ContextoTenant,
+  ): Promise<InstanciaRegistro> {
+    if (!visivel(ctx, instancia.empresaId))
+      throw new ErroAplicacao('SEM_PERMISSAO', 403, 'sem permissão');
     this.instancias.set(instancia.empresaId, { ...instancia });
     return { ...instancia };
   }
@@ -501,13 +570,116 @@ export class RepositorioMemoria implements Repositorio {
     return instancia ? { ...instancia } : null;
   }
 
+  async buscarInstanciaPorId(id: string, ctx: ContextoTenant): Promise<InstanciaRegistro | null> {
+    const instancia = this.instanciaById(id);
+    return instancia && visivel(ctx, instancia.empresaId) ? { ...instancia } : null;
+  }
+
+  async registrarEventoWhatsappEntrada(
+    registro: EventoWhatsappEntradaRegistro,
+    ctx: ContextoTenant,
+  ): Promise<EventoWhatsappEntradaRegistro | null> {
+    if (!visivel(ctx, registro.empresaId))
+      throw new ErroAplicacao('SEM_PERMISSAO', 403, 'sem permissão');
+    const chave = `${registro.instanciaWhatsappId}:${registro.mensagemIdProvedor}`;
+    if (this.eventosWhatsappEntrada.has(chave)) return null;
+    this.eventosWhatsappEntrada.set(chave, {
+      ...registro,
+      payloadNormalizado: { ...registro.payloadNormalizado },
+    });
+    return { ...registro, payloadNormalizado: { ...registro.payloadNormalizado } };
+  }
+
+  async buscarEventoWhatsappEntrada(
+    id: string,
+    ctx: ContextoTenant,
+  ): Promise<EventoWhatsappEntradaRegistro | null> {
+    const evento = [...this.eventosWhatsappEntrada.values()].find((item) => item.id === id);
+    if (!evento || !visivel(ctx, evento.empresaId)) return null;
+    return { ...evento, payloadNormalizado: { ...evento.payloadNormalizado } };
+  }
+
+  async atualizarEventoWhatsappEntrada(
+    id: string,
+    status: EventoWhatsappEntradaRegistro['status'],
+    ctx: ContextoTenant,
+  ): Promise<void> {
+    const evento = await this.buscarEventoWhatsappEntrada(id, ctx);
+    if (!evento) return;
+    const chave = `${evento.instanciaWhatsappId}:${evento.mensagemIdProvedor}`;
+    this.eventosWhatsappEntrada.set(chave, { ...evento, status });
+  }
+
+  async buscarPerfilPorWhatsapp(numero: string): Promise<PerfilCandidato | null> {
+    const digitos = numero.replace(/\D/g, '');
+    const perfil = [...this.candidatos.values()].find(
+      (item) => (item.whatsapp ?? '').replace(/\D/g, '') === digitos,
+    );
+    return perfil ? { ...perfil, perfil: { ...perfil.perfil } } : null;
+  }
+
+  async listarUsuariosPorPapel(papel: UsuarioRegistro['papeisGlobais'][number]): Promise<UsuarioRegistro[]> {
+    return [...this.usuarios.values()]
+      .filter((usuario) => usuario.papeisGlobais.includes(papel))
+      .map((usuario) => ({ ...usuario, papeisGlobais: [...usuario.papeisGlobais] }));
+  }
+
+  async criarResposta(resposta: RespostaSensivel): Promise<void> {
+    await this.guardarResposta(resposta);
+  }
+
+  async buscarRespostaPorMensagem(
+    mensagemIdProvedor: string,
+    ctx: ContextoTenant,
+  ): Promise<RespostaSensivel | null> {
+    const resposta = [...this.respostas.values()].find(
+      (item) => item.mensagemIdProvedor === mensagemIdProvedor,
+    );
+    if (!resposta || !visivel(ctx, resposta.empresaId)) return null;
+    return { ...resposta };
+  }
+
+  async salvarAvaliacao(avaliacao: AvaliacaoRegistro, _ctx: ContextoTenant): Promise<void> {
+    this.avaliacoes.set(avaliacao.id, { ...avaliacao, criterios: { ...avaliacao.criterios } });
+  }
+
+  async listarAvaliacoes(respostaId: string, _ctx: ContextoTenant): Promise<AvaliacaoRegistro[]> {
+    return [...this.avaliacoes.values()]
+      .filter((item) => item.respostaId === respostaId)
+      .map((item) => ({ ...item, criterios: { ...item.criterios } }));
+  }
+
+  async registrarQueda(queda: QuedaInstanciaRegistro, ctx: ContextoTenant): Promise<void> {
+    if (!visivel(ctx, queda.empresaId)) throw new ErroAplicacao('SEM_PERMISSAO', 403, 'sem permissão');
+    this.quedas.set(queda.id, { ...queda });
+  }
+
+  async quedaAberta(instanciaId: string, ctx: ContextoTenant): Promise<QuedaInstanciaRegistro | null> {
+    const queda = [...this.quedas.values()].find(
+      (item) => item.instanciaWhatsappId === instanciaId && !item.fimEm && visivel(ctx, item.empresaId),
+    );
+    return queda ? { ...queda } : null;
+  }
+
+  async encerrarQuedasAbertas(instanciaId: string, fimEm: Date, ctx: ContextoTenant): Promise<void> {
+    for (const queda of this.quedas.values()) {
+      if (queda.instanciaWhatsappId === instanciaId && !queda.fimEm && visivel(ctx, queda.empresaId)) {
+        queda.fimEm = fimEm;
+      }
+    }
+  }
+
   async listarInstancias(ctx: ContextoTenant): Promise<InstanciaRegistro[]> {
     return [...this.instancias.values()]
       .filter((item) => visivel(ctx, item.empresaId))
       .map((item) => ({ ...item }));
   }
 
-  async pausarVagasPublicadas(empresaId: string, quando: Date, ctx: ContextoTenant): Promise<number> {
+  async pausarVagasPublicadas(
+    empresaId: string,
+    quando: Date,
+    ctx: ContextoTenant,
+  ): Promise<number> {
     return this.vagasStore.pausarPublicadas(empresaId, quando, ctx);
   }
 
@@ -529,7 +701,11 @@ export class RepositorioMemoria implements Repositorio {
     return this.vagasStore.criarVaga(dados, ctx);
   }
 
-  atualizarVaga(id: string, patch: Parameters<VagasMemoria['atualizarVaga']>[1], ctx: ContextoTenant) {
+  atualizarVaga(
+    id: string,
+    patch: Parameters<VagasMemoria['atualizarVaga']>[1],
+    ctx: ContextoTenant,
+  ) {
     return this.vagasStore.atualizarVaga(id, patch, ctx);
   }
 
@@ -545,7 +721,11 @@ export class RepositorioMemoria implements Repositorio {
     return this.vagasStore.listarVagasPublicas(filtro);
   }
 
-  substituirHabilidades(vagaId: string, itens: Parameters<VagasMemoria['substituirHabilidades']>[1], ctx: ContextoTenant) {
+  substituirHabilidades(
+    vagaId: string,
+    itens: Parameters<VagasMemoria['substituirHabilidades']>[1],
+    ctx: ContextoTenant,
+  ) {
     return this.vagasStore.substituirHabilidades(vagaId, itens, ctx);
   }
 
@@ -585,7 +765,11 @@ export class RepositorioMemoria implements Repositorio {
     return this.vagasStore.criarPergunta(dados, ctx);
   }
 
-  atualizarPergunta(id: string, patch: Parameters<VagasMemoria['atualizarPergunta']>[1], ctx: ContextoTenant) {
+  atualizarPergunta(
+    id: string,
+    patch: Parameters<VagasMemoria['atualizarPergunta']>[1],
+    ctx: ContextoTenant,
+  ) {
     return this.vagasStore.atualizarPergunta(id, patch, ctx);
   }
 
@@ -609,7 +793,10 @@ export class RepositorioMemoria implements Repositorio {
     return this.vagasStore.listarVinculosEtapa(etapaId, ctx);
   }
 
-  registrarEventoVaga(evento: Parameters<VagasMemoria['registrarEventoVaga']>[0], ctx: ContextoTenant) {
+  registrarEventoVaga(
+    evento: Parameters<VagasMemoria['registrarEventoVaga']>[0],
+    ctx: ContextoTenant,
+  ) {
     return this.vagasStore.registrarEventoVaga(evento, ctx);
   }
 
@@ -633,7 +820,11 @@ export class RepositorioMemoria implements Repositorio {
     return this.vagasStore.listarPausasParaAlerta(limite, ctx);
   }
 
-  criarCandidatura(dados: Parameters<CandidaturasMemoria['criarCandidatura']>[0], historico: Parameters<CandidaturasMemoria['criarCandidatura']>[1], ctx: ContextoTenant) {
+  criarCandidatura(
+    dados: Parameters<CandidaturasMemoria['criarCandidatura']>[0],
+    historico: Parameters<CandidaturasMemoria['criarCandidatura']>[1],
+    ctx: ContextoTenant,
+  ) {
     return this.candidaturasStore.criarCandidatura(dados, historico, ctx);
   }
 
@@ -649,7 +840,10 @@ export class RepositorioMemoria implements Repositorio {
     return this.candidaturasStore.listarCandidaturasCandidato(candidatoId, ctx);
   }
 
-  transicionarCandidatura(transicao: Parameters<CandidaturasMemoria['transicionarCandidatura']>[0], ctx: ContextoTenant) {
+  transicionarCandidatura(
+    transicao: Parameters<CandidaturasMemoria['transicionarCandidatura']>[0],
+    ctx: ContextoTenant,
+  ) {
     return this.candidaturasStore.transicionarCandidatura(transicao, ctx);
   }
 
@@ -673,7 +867,10 @@ export class RepositorioMemoria implements Repositorio {
     return this.matchStore.buscarVagasSimilares(candidatoId, agora, limite);
   }
 
-  registrarSugestao(entrada: Parameters<MatchMemoria['registrarSugestao']>[0], ctx: ContextoTenant) {
+  registrarSugestao(
+    entrada: Parameters<MatchMemoria['registrarSugestao']>[0],
+    ctx: ContextoTenant,
+  ) {
     return this.matchStore.registrarSugestao(entrada, ctx);
   }
 
@@ -689,7 +886,11 @@ export class RepositorioMemoria implements Repositorio {
     return this.notificacoesStore.buscarSugestao(id, ctx);
   }
 
-  atualizarStatusSugestao(id: string, status: Parameters<MatchMemoria['atualizarStatusSugestao']>[1], ctx: ContextoTenant) {
+  atualizarStatusSugestao(
+    id: string,
+    status: Parameters<MatchMemoria['atualizarStatusSugestao']>[1],
+    ctx: ContextoTenant,
+  ) {
     return this.matchStore.atualizarStatusSugestao(id, status, ctx);
   }
 
@@ -713,7 +914,12 @@ export class RepositorioMemoria implements Repositorio {
     return this.notificacoesStore.marcarNotificacaoLida(id, usuarioId, quando, ctx);
   }
 
-  marcarTodasLidas(usuarioId: string, empresaId: string | undefined, quando: Date, ctx: ContextoTenant) {
+  marcarTodasLidas(
+    usuarioId: string,
+    empresaId: string | undefined,
+    quando: Date,
+    ctx: ContextoTenant,
+  ) {
     return this.notificacoesStore.marcarTodasLidas(usuarioId, empresaId, quando, ctx);
   }
 
@@ -733,5 +939,51 @@ export class RepositorioMemoria implements Repositorio {
 
   async guardarResposta(resposta: RespostaSensivel): Promise<void> {
     this.respostas.set(resposta.id, { ...resposta });
+  }
+
+  listarRespostasEntrevista(
+    entrevistaId: string,
+    ctx: ContextoTenant,
+  ): Promise<RespostaSensivel[]> {
+    return this.entrevistasStore.buscar(entrevistaId, ctx).then((entrevista) => {
+      if (!entrevista) return [];
+      return [...this.respostas.values()]
+        .filter((resposta) => resposta.entrevistaId === entrevistaId)
+        .map((resposta) => ({ ...resposta }));
+    });
+  }
+
+  criarEntrevista(dados: EntrevistaRegistro, ctx: ContextoTenant) {
+    return this.entrevistasStore.criar(dados, ctx);
+  }
+
+  buscarEntrevista(id: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.buscar(id, ctx);
+  }
+
+  buscarEntrevistaPorCandidaturaEtapa(candidaturaId: string, etapaId: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.buscarPorCandidaturaEtapa(candidaturaId, etapaId, ctx);
+  }
+
+  atualizarEntrevista(
+    id: string,
+    patch: Partial<EntrevistaRegistro>,
+    ctx: ContextoTenant,
+    esperadoAtualizadoEm?: Date,
+  ) {
+    return this.entrevistasStore.atualizar(id, patch, ctx, esperadoAtualizadoEm);
+  }
+
+  listarEntrevistas(ctx: ContextoTenant) {
+    return this.entrevistasStore.listar(ctx);
+  }
+
+  async marcarRespostasParciais(entrevistaId: string, ctx: ContextoTenant): Promise<void> {
+    await this.entrevistasStore.marcarRespostasParciais(this, entrevistaId, ctx);
+  }
+
+  private instanciaById(id: string): InstanciaRegistro | null {
+    for (const instancia of this.instancias.values()) if (instancia.id === id) return instancia;
+    return null;
   }
 }

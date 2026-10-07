@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export interface PedidoUpload {
@@ -16,7 +21,9 @@ export interface UrlUpload {
 }
 
 export interface Armazenamento {
+  salvar(key: string, corpo: Buffer, mimeType: string): Promise<void>;
   criarUrlUpload(pedido: PedidoUpload): Promise<UrlUpload>;
+  criarUrlDownload(key: string, segundos: number): Promise<string>;
   ler(key: string): Promise<Buffer | null>;
   apagar(key: string): Promise<void>;
 }
@@ -29,6 +36,9 @@ interface ReservaUpload {
 }
 
 export class ArmazenamentoMemoria implements Armazenamento {
+  async salvar(key: string, corpo: Buffer): Promise<void> {
+    this.objetos.set(key, Buffer.from(corpo));
+  }
   private readonly reservas = new Map<string, ReservaUpload>();
   private readonly objetos = new Map<string, Buffer>();
 
@@ -42,13 +52,20 @@ export class ArmazenamentoMemoria implements Armazenamento {
     };
   }
 
-  receber(token: string, corpo: Buffer): { ok: true; key: string } | { ok: false; codigo: 'UPLOAD_INVALIDO' | 'TAMANHO_INVALIDO' } {
+  receber(
+    token: string,
+    corpo: Buffer,
+  ): { ok: true; key: string } | { ok: false; codigo: 'UPLOAD_INVALIDO' | 'TAMANHO_INVALIDO' } {
     const reserva = this.reservas.get(token);
     if (!reserva) return { ok: false, codigo: 'UPLOAD_INVALIDO' };
     if (corpo.length !== reserva.tamanhoBytes) return { ok: false, codigo: 'TAMANHO_INVALIDO' };
     this.objetos.set(reserva.key, Buffer.from(corpo));
     reserva.corpo = Buffer.from(corpo);
     return { ok: true, key: reserva.key };
+  }
+
+  async criarUrlDownload(key: string, segundos: number): Promise<string> {
+    return `http://localhost/audio/${encodeURIComponent(key)}?expira=${segundos}`;
   }
 
   async ler(key: string): Promise<Buffer | null> {
@@ -116,9 +133,28 @@ export class ArmazenamentoS3 implements Armazenamento {
     };
   }
 
+  async salvar(key: string, corpo: Buffer, mimeType: string): Promise<void> {
+    await this.cliente.send(
+      new PutObjectCommand({
+        Bucket: this.config.bucket,
+        Key: key,
+        Body: corpo,
+        ContentType: mimeType,
+        ContentLength: corpo.length,
+      }),
+    );
+  }
+
+  async criarUrlDownload(key: string, segundos: number): Promise<string> {
+    const comando = new GetObjectCommand({ Bucket: this.config.bucket, Key: key });
+    return getSignedUrl(this.cliente, comando, { expiresIn: segundos });
+  }
+
   async ler(key: string): Promise<Buffer | null> {
     try {
-      const saida = await this.cliente.send(new GetObjectCommand({ Bucket: this.config.bucket, Key: key }));
+      const saida = await this.cliente.send(
+        new GetObjectCommand({ Bucket: this.config.bucket, Key: key }),
+      );
       const bytes = await saida.Body?.transformToByteArray();
       return bytes ? Buffer.from(bytes) : null;
     } catch {

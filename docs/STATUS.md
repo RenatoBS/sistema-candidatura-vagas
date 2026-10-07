@@ -1,15 +1,16 @@
 # Status do Projeto — Sistema de Candidatura a Vagas
 
-**Última atualização:** 2026-10-06  
-**Branch ativa:** `feat/f6-candidatura-match-notificacoes`  
-**PR:** a abrir
+**Última atualização:** 2026-10-07  
+**Branch ativa:** `feat/f7-entrevista-whatsapp`  
+**PR:** #12 (Fase 7 implementada, aguardando CI para sair de draft)
 
 ## Status geral
 
 🟢 **Fase 1 concluída** na `main` — monorepo, CI, Docker e esqueletos.  
 ✅ **Fase 2 concluída** — modelo de dados, RLS, seeds, testes de isolamento e ADR multi-tenant aprovado.  
 🟢 **Fases 1–5 concluídas** na `main` — Fases 3, 4 e 5 mergeadas nos PRs [#8](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/8), [#10](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/10) e [#9](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/9).  
-🟢 **Fase 6 implementada** nesta branch — candidatura, match e notificações; PR a abrir. ADR 0005 está provisório, aguardando o Renato.  
+🟢 **Fase 6 concluída** na `main` (PR [#11](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/11)). ADR 0005 está provisório, aguardando o Renato.  
+🟢 **Fase 7 implementada** na branch `feat/f7-entrevista-whatsapp` — orquestração, retry, inatividade, monitor, avaliação, telas e suíte de aceite. Ficam com o Renato: F7-01, F7-02 (decisão final) e F7-15. ADR 0006 continua provisório. Fases 8 a 10 seguem em [plano-restante.md](plano-restante.md).  
 🟢 **POC 8.1 concluída** na `main` — latência de voz STT→LLM→TTS.
 
 ## Decisões do Renato (registro)
@@ -23,18 +24,18 @@
 
 ## Fases de implementação
 
-| Fase | Objetivo                     |            Status            |
-| :--: | ---------------------------- | :--------------------------: |
-|  1   | Setup do repo e ambientes    |         ✅ Concluída         |
-|  2   | Modelo de dados              |         ✅ Concluída         |
-|  3   | Auth e papéis                |    ✅ Concluída na `main`    |
-|  4   | CRUD de vagas                |    ✅ Concluída na `main`    |
-|  5   | Perfil do candidato com OCR  |    ✅ Concluída na `main`    |
-|  6   | Candidatura e notificações   | 🟢 Implementada nesta branch |
-|  7   | Entrevista WhatsApp (Uazapi) |         ⬜ Pendente          |
-|  8   | Entrevista IA por voz        |         ⬜ Pendente          |
-|  9   | Ranqueamento                 |         ⬜ Pendente          |
-|  10  | Multiprocesso                |         ⬜ Pendente          |
+| Fase | Objetivo                     |         Status         |
+| :--: | ---------------------------- | :--------------------: |
+|  1   | Setup do repo e ambientes    |      ✅ Concluída      |
+|  2   | Modelo de dados              |      ✅ Concluída      |
+|  3   | Auth e papéis                | ✅ Concluída na `main` |
+|  4   | CRUD de vagas                | ✅ Concluída na `main` |
+|  5   | Perfil do candidato com OCR  | ✅ Concluída na `main` |
+|  6   | Candidatura e notificações   | ✅ Concluída na `main` |
+|  7   | Entrevista WhatsApp (Uazapi) |    🟡 Em andamento     |
+|  8   | Entrevista IA por voz        |      ⬜ Pendente       |
+|  9   | Ranqueamento                 |      ⬜ Pendente       |
+|  10  | Multiprocesso                |      ⬜ Pendente       |
 
 ## POCs e trabalho paralelo
 
@@ -152,6 +153,29 @@ Detalhes de execução, profiles Docker e o que ficou de fora: [fase-5-perfil-oc
 | F6-11 | Telas e fluxos da empresa            |                  ✅ Feito                  | Codex       |
 | F6-12 | Suíte de testes de aceite            |                  ✅ Feito                  | Codex       |
 
+## Checklist Fase 7
+
+Plano do restante (handoff para agente Cursor): [plano-restante.md](plano-restante.md). Decisões provisórias: [ADR 0006](adr/0006-entrevista-whatsapp.md).
+
+| ID    | Tarefa                                                                     |             Status              | Responsável    |
+| ----- | -------------------------------------------------------------------------- | :-----------------------------: | -------------- |
+| F7-01 | Instância Uazapi de teste em staging                                       |      ⏸️ Pendente (pulada)       | Renato         |
+| F7-02 | Decidir Q2, Q7, Q8, Q19 (e Q21)                                            |    🟡 Provisório (ADR 0006)     | Renato         |
+| F7-03 | `WhatsappProvider` + `UazapiProvider` (mensagens) + `FakeWhatsappProvider` |            ✅ Feito             | Codex          |
+| F7-04 | Webhook com segredo, token, normalização, dedup Redis + índice único, fila |            ✅ Feito             | Codex          |
+| F7-05 | Monitoramento das instâncias                                               |            ✅ Feito             | Cursor         |
+| F7-06 | Orquestrador da triagem                                                    |            ✅ Feito             | Cursor         |
+| F7-07 | Motor de retry                                                             |            ✅ Feito             | Cursor         |
+| F7-08 | Tentativa consumida/abandono                                               |            ✅ Feito             | Codex → Cursor |
+| F7-09 | Pipeline de áudio (download → S3 → ffmpeg → STT)                           |            ✅ Feito             | Codex          |
+| F7-10 | Avaliação da resposta por IA                                               |            ✅ Feito             | Cursor         |
+| F7-11 | Tratamentos de borda                                                       |            ✅ Feito             | Cursor         |
+| F7-12 | Verificação do número + opt-in                                             |            ✅ Feito             | Cursor         |
+| F7-13 | Telas da empresa (acompanhamento da triagem)                               |            ✅ Feito             | Cursor         |
+| F7-14 | Testes com relógio simulado                                                |            ✅ Feito             | Cursor         |
+| F7-15 | Teste ponta a ponta com número real                                        |      ⏸️ Pendente (pulada)       | Renato         |
+| F7-16 | Roteamento por empresa                                                     |            ✅ Feito             | Cursor         |
+
 ## Documentos de referência
 
 - [Plano Técnico e de Produto](plano-sistema.md)
@@ -161,7 +185,10 @@ Detalhes de execução, profiles Docker e o que ficou de fora: [fase-5-perfil-oc
 - [ADR 0003 — CNPJ e revisão de empresa (provisório)](adr/0003-verificacao-empresa.md)
 - [ADR 0004 — LLM e regras de vaga (provisório)](adr/0004-vagas-llm.md)
 - [ADR 0005 — Candidatura, match e notificações (provisório)](adr/0005-candidatura-match-notificacoes.md)
+- [ADR 0006 — Entrevista WhatsApp (provisório)](adr/0006-entrevista-whatsapp.md)
+- [Plano restante (Fases 7–10, handoff)](plano-restante.md)
 - [Guia da Fase 6](fase-6-candidatura-notificacoes.md)
+- [Guia da Fase 7](fase-7-entrevista-whatsapp.md)
 - [Diagrama ER Fase 2](diagrama-er-fase2.md)
 - [Proteção da branch main](protecao-branch-main.md)
 - [AGENTS.md](../AGENTS.md)

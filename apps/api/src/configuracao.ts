@@ -1,4 +1,9 @@
-import { LIMIAR_MATCH_FORTE_PADRAO, limiarMatchValido, politicaRevisaoValida, type PoliticaRevisaoManual } from '@scv/domain';
+import {
+  LIMIAR_MATCH_FORTE_PADRAO,
+  limiarMatchValido,
+  politicaRevisaoValida,
+  type PoliticaRevisaoManual,
+} from '@scv/domain';
 
 export interface ConfiguracaoApp {
   jwtSecret: string;
@@ -7,8 +12,10 @@ export interface ConfiguracaoApp {
   authStore: 'memory' | 'prisma';
   uazapiBaseUrl: string;
   uazapiAdminToken: string;
+  uazapiWebhookSecret: string;
   internalToken: string;
   apiPublicUrl: string;
+  sttLimiarConfianca: number;
   accessTtlSegundos: number;
   accessAdminTtlSegundos: number;
   refreshTtlSegundos: number;
@@ -44,8 +51,10 @@ export function lerConfiguracao(env: NodeJS.ProcessEnv = process.env): Configura
     authStore,
     uazapiBaseUrl: env.UAZAPI_BASE_URL ?? '',
     uazapiAdminToken: env.UAZAPI_ADMIN_TOKEN ?? '',
+    uazapiWebhookSecret: env.UAZAPI_WEBHOOK_SECRET ?? '',
     internalToken: env.INTERNAL_JOB_TOKEN ?? '',
     apiPublicUrl: env.API_PUBLIC_URL ?? 'http://localhost:3000',
+    sttLimiarConfianca: limiarConfianca(env.STT_LIMIAR_CONFIANCA),
     accessTtlSegundos: 15 * 60,
     accessAdminTtlSegundos: 5 * 60,
     refreshTtlSegundos: 14 * 24 * 60 * 60,
@@ -60,7 +69,8 @@ export function lerConfiguracao(env: NodeJS.ProcessEnv = process.env): Configura
 function limiarMatch(valor: string | undefined): number {
   if (!valor) return LIMIAR_MATCH_FORTE_PADRAO;
   const numero = Number(valor);
-  if (!limiarMatchValido(numero)) throw new Error('MATCH_LIMIAR_FORTE deve ser um número em (0, 1]');
+  if (!limiarMatchValido(numero))
+    throw new Error('MATCH_LIMIAR_FORTE deve ser um número em (0, 1]');
   return numero;
 }
 
@@ -69,6 +79,15 @@ function inteiroPositivo(valor: string | undefined, padrao: number): number {
   const numero = Number(valor);
   if (!Number.isInteger(numero) || numero < 1 || numero > 365) {
     throw new Error('PAUSA_MAX_DIAS deve ser um inteiro entre 1 e 365');
+  }
+  return numero;
+}
+
+function limiarConfianca(valor: string | undefined): number {
+  if (!valor) return 0.6;
+  const numero = Number(valor);
+  if (!Number.isFinite(numero) || numero < 0 || numero > 1) {
+    throw new Error('STT_LIMIAR_CONFIANCA deve ser um número entre 0 e 1');
   }
   return numero;
 }

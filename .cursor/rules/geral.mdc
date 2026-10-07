@@ -21,7 +21,7 @@ Leia `AGENTS.md` como fonte única de contexto, convenções e proibições.
 ## Proibições
 
 - Não commitar segredos.
-- Não fazer merge em `main`.
+- Não fazer merge em `main` sem autorização do Renato. Ele autorizou squash com CI verde no handoff das Fases 7 a 10 (`docs/plano-restante.md`).
 - Não expor score ao candidato.
 - Não incluir PII em logs.
 

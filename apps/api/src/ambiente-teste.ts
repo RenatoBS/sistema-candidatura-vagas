@@ -5,6 +5,9 @@ import {
   MockPushProvider,
   FakeEmbeddingProvider,
   FakeUazapiInstancia,
+  FakeWhatsappProvider,
+  FakeSttProvider,
+  ConversorAudioFake,
   FonteCnpjControlavel,
 } from '@scv/providers';
 
@@ -13,9 +16,13 @@ import { DnsControlavel } from './dns';
 import { FilaCnpjMemoria } from './fila/fila-cnpj';
 import { FilaCurriculoMemoria } from './fila/fila-curriculo';
 import { FilaMatchMemoria } from './fila/fila-match';
+import { FilaTriagemMemoria } from './fila/fila-triagem';
 import { FilaVagasMemoria } from './fila/fila-vagas';
+import { DeduplicadorWebhookMemoria } from './fila/fila-whatsapp-entrada';
+import { FilaWhatsappEntradaMemoria } from './fila/fila-whatsapp-entrada';
 import { CanalEntregaMemoria } from './notificacoes/canal-entrega';
 import { RepositorioMemoria } from './repositorio/memoria';
+import { LimitadorEnvioMemoria } from './triagem/limitador-envio';
 
 export const repositorioTeste = new RepositorioMemoria();
 export const emailTeste = new EmailLogProvider(false);
@@ -24,10 +31,17 @@ export const filaCnpjTeste = new FilaCnpjMemoria();
 export const filaCurriculoTeste = new FilaCurriculoMemoria();
 export const dnsTeste = new DnsControlavel();
 export const whatsappTeste = new FakeUazapiInstancia();
+export const whatsappMensagensTeste = new FakeWhatsappProvider();
+export const sttTeste = new FakeSttProvider();
+export const conversorAudioTeste = new ConversorAudioFake();
 export const armazenamentoTeste = new ArmazenamentoMemoria();
 export const antivirusTeste = new AntivirusMock();
 export const filaVagasTeste = new FilaVagasMemoria();
 export const filaMatchTeste = new FilaMatchMemoria();
+export const filaWhatsappEntradaTeste = new FilaWhatsappEntradaMemoria();
+export const filaTriagemTeste = new FilaTriagemMemoria();
+export const limitadorEnvioTeste = new LimitadorEnvioMemoria();
+export const deduplicadorWebhookTeste = new DeduplicadorWebhookMemoria();
 export const embeddingsTeste = new FakeEmbeddingProvider();
 export const pushTeste = new CanalEntregaMemoria('push');
 export const emailNotificacaoTeste = new CanalEntregaMemoria('email');
@@ -50,12 +64,18 @@ export function limparAmbienteTeste(): void {
   filaCurriculoTeste.limpar();
   filaVagasTeste.limpar();
   filaMatchTeste.limpar();
+  filaWhatsappEntradaTeste.limpar();
+  filaTriagemTeste.limpar();
+  limitadorEnvioTeste.limpar();
+  deduplicadorWebhookTeste.limpar();
   embeddingsTeste.limpar();
   pushTeste.limpar();
   pushProviderTeste.limpar();
   emailNotificacaoTeste.limpar();
   dnsTeste.limpar();
   whatsappTeste.limpar();
+  whatsappMensagensTeste.limpar();
   armazenamentoTeste.limpar();
+  sttTeste.limpar();
   relogioTeste.definir(null);
 }

@@ -44,6 +44,7 @@ import type {
   VagaRegistro,
 } from '../repositorio/tipos';
 import { ctxDe, exigir, montarAtor, papelAuditoria, type SessaoRequest } from '../sessao';
+import type { TriagemRetryService } from '../triagem/triagem-retry.service';
 
 const MENSAGENS: Record<ErroTransicaoVaga, string> = {
   PRAZO_OBRIGATORIO: 'prazo de inscrições obrigatório para publicar',
@@ -72,6 +73,7 @@ export class VagasService {
     private readonly relogio: Relogio,
     private readonly candidaturas: CandidaturaStateMachine,
     private readonly filaMatch: FilaMatch,
+    private readonly retries: TriagemRetryService,
   ) {}
 
   listarCatalogo(): Promise<Array<{ id: string; nome: string; categoria: string }>> {
@@ -565,6 +567,10 @@ export class VagasService {
     const autoria = { autorId: null, motivo: `${MOTIVO_EVENTO[tipo]}${detalhe}` };
     const ctx: ContextoTenant = { empresaId: evento.empresaId };
     for (const efeito of EFEITOS_EVENTO_VAGA[tipo]) {
+      if (efeito === 'SUSPENDER_RETRIES' || efeito === 'REAGENDAR_RETRIES' || efeito === 'CANCELAR_RETRIES') {
+        await this.retries.consumirEfeito(efeito, evento.vagaId, evento.empresaId);
+        continue;
+      }
       const parcial = await this.candidaturas.aplicarEfeitoVaga(evento.vagaId, efeito, autoria, ctx);
       resumo.aplicadas += parcial.aplicadas;
       resumo.ignoradas += parcial.ignoradas;

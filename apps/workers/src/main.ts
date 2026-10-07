@@ -8,7 +8,26 @@ import pino from 'pino';
 import { FILA_EMBEDDINGS, FILA_MATCH, processarEmbedding, processarMatch } from './match-jobs';
 import { FILA_NOTIFICACOES, processarNotificacao } from './notificacoes-jobs';
 import { FILA_CV, processarJobCurriculo } from './processar-cv';
-import { aplicarEventoVaga, encerrarInscricoesVaga, reconciliarVagas, sugerirPerguntasVaga } from './vagas-jobs';
+import { FILA_STT_TRANSCRICAO } from './triagem-audio';
+import {
+  FILA_TRIAGEM_AVALIACAO,
+  FILA_TRIAGEM_RETRY,
+  FILA_WHATSAPP_ENTRADA,
+  FILA_WHATSAPP_MONITORAMENTO,
+  processarAvaliacaoTriagem,
+  processarEntradaWhatsapp,
+  processarEsgotarTriagem,
+  processarMonitoramentoWhatsapp,
+  processarRetryTriagem,
+} from './triagem-fila';
+import { FILA_TRIAGEM_INATIVIDADE, processarJobInatividade } from './triagem-inatividade';
+import { processarJobTranscricao } from './triagem-jobs';
+import {
+  aplicarEventoVaga,
+  encerrarInscricoesVaga,
+  reconciliarVagas,
+  sugerirPerguntasVaga,
+} from './vagas-jobs';
 import { executarVerificacaoCnpj } from './verificar-cnpj';
 
 const logger = pino({ level: process.env.LOG_LEVEL ?? 'info' });
@@ -27,8 +46,27 @@ const filaEfeitos = new Queue('vagas-efeitos', { connection: redisConnection });
 const filaEmbeddings = new Queue(FILA_EMBEDDINGS, { connection: redisConnection });
 const filaMatch = new Queue(FILA_MATCH, { connection: redisConnection });
 const filaNotificacoes = new Queue(FILA_NOTIFICACOES, { connection: redisConnection });
+const filaStt = new Queue(FILA_STT_TRANSCRICAO, { connection: redisConnection });
+const filaTriagemInatividade = new Queue(FILA_TRIAGEM_INATIVIDADE, { connection: redisConnection });
+const filaWhatsappEntrada = new Queue(FILA_WHATSAPP_ENTRADA, { connection: redisConnection });
+const filaTriagemRetry = new Queue(FILA_TRIAGEM_RETRY, { connection: redisConnection });
+const filaTriagemAvaliacao = new Queue(FILA_TRIAGEM_AVALIACAO, { connection: redisConnection });
+const filaWhatsappMonitoramento = new Queue(FILA_WHATSAPP_MONITORAMENTO, { connection: redisConnection });
 
-void filaPrazos.add('reconciliar', {}, { repeat: { every: 15 * 60 * 1000 }, jobId: 'reconciliar-vagas' });
+void filaWhatsappMonitoramento.add(
+  'varrer',
+  {},
+  {
+    repeat: { every: Number(process.env.WHATSAPP_MONITOR_INTERVALO_MS ?? 300_000) },
+    jobId: 'monitor-whatsapp',
+  },
+);
+
+void filaPrazos.add(
+  'reconciliar',
+  {},
+  { repeat: { every: 15 * 60 * 1000 }, jobId: 'reconciliar-vagas' },
+);
 
 const worker = new Worker(
   'exemplo',
@@ -118,6 +156,52 @@ const workerNotificacoes = new Worker(FILA_NOTIFICACOES, async (job) => processa
   connection: redisConnection,
   concurrency: 4,
 });
+// Costura para F7-10 (Claude Code): a avaliação IA será enfileirada após a transcrição.
+const workerStt = new Worker(
+  FILA_STT_TRANSCRICAO,
+  async (job: {
+    data: { respostaId: string };
+    attemptsMade: number;
+    opts: { attempts?: number };
+  }) => processarJobTranscricao(job),
+  {
+    connection: redisConnection,
+  },
+);
+
+const workerTriagemInatividade = new Worker(
+  FILA_TRIAGEM_INATIVIDADE,
+  async (job: { data: { entrevistaId: string; ultimaInteracaoEm: string } }) =>
+    processarJobInatividade(job),
+  { connection: redisConnection },
+);
+
+const workerWhatsappEntrada = new Worker(
+  FILA_WHATSAPP_ENTRADA,
+  async (job: { data: { eventoId: string } }) => processarEntradaWhatsapp(job.data.eventoId),
+  { connection: redisConnection },
+);
+
+const workerTriagemRetry = new Worker(
+  FILA_TRIAGEM_RETRY,
+  async (job: { name: string; data: { entrevistaId: string; numero?: number } }) => {
+    if (job.name === 'esgotar') return processarEsgotarTriagem(job.data.entrevistaId);
+    return processarRetryTriagem(job.data.entrevistaId, Number(job.data.numero ?? 1));
+  },
+  { connection: redisConnection },
+);
+
+const workerTriagemAvaliacao = new Worker(
+  FILA_TRIAGEM_AVALIACAO,
+  async (job: { data: { respostaId: string } }) => processarAvaliacaoTriagem(job.data.respostaId),
+  { connection: redisConnection },
+);
+
+const workerWhatsappMonitoramento = new Worker(
+  FILA_WHATSAPP_MONITORAMENTO,
+  async () => processarMonitoramentoWhatsapp(),
+  { connection: redisConnection },
+);
 
 workerNotificacoes.on('failed', (job, err) => {
   logger.error({ jobId: job?.id, name: job?.name, err: err.message }, 'Job de notificação falhou');
@@ -137,6 +221,12 @@ createBullBoard({
     new BullMQAdapter(filaEmbeddings),
     new BullMQAdapter(filaMatch),
     new BullMQAdapter(filaNotificacoes),
+    new BullMQAdapter(filaStt),
+    new BullMQAdapter(filaTriagemInatividade),
+    new BullMQAdapter(filaWhatsappEntrada),
+    new BullMQAdapter(filaTriagemRetry),
+    new BullMQAdapter(filaTriagemAvaliacao),
+    new BullMQAdapter(filaWhatsappMonitoramento),
   ],
   serverAdapter,
 });
@@ -165,6 +255,12 @@ process.on('SIGTERM', async () => {
   await workerEmbeddings.close();
   await workerMatch.close();
   await workerNotificacoes.close();
+  await workerStt.close();
+  await workerTriagemInatividade.close();
+  await workerWhatsappEntrada.close();
+  await workerTriagemRetry.close();
+  await workerTriagemAvaliacao.close();
+  await workerWhatsappMonitoramento.close();
   await exampleQueue.close();
   await filaCnpj.close();
   await filaCv.close();
@@ -174,5 +270,11 @@ process.on('SIGTERM', async () => {
   await filaEmbeddings.close();
   await filaMatch.close();
   await filaNotificacoes.close();
+  await filaStt.close();
+  await filaTriagemInatividade.close();
+  await filaWhatsappEntrada.close();
+  await filaTriagemRetry.close();
+  await filaTriagemAvaliacao.close();
+  await filaWhatsappMonitoramento.close();
   process.exit(0);
 });

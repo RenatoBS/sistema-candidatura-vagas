@@ -2,18 +2,18 @@ import { randomUUID } from 'node:crypto';
 
 import { cifrar, decifrar, type ClienteInstanciaWhatsapp } from '@scv/providers';
 
-import type { Relogio } from '../auth/auth.service';
 import type { ConfiguracaoApp } from '../configuracao';
 import { ErroAplicacao } from '../erros';
 import type { InstanciaRegistro, Repositorio } from '../repositorio/tipos';
 import { ctxDe, exigir, montarAtor, type SessaoRequest } from '../sessao';
+import type { TriagemMonitorService } from '../triagem/triagem-monitor.service';
 
 export class WhatsappService {
   constructor(
     private readonly repo: Repositorio,
     private readonly cliente: ClienteInstanciaWhatsapp,
     private readonly config: ConfiguracaoApp,
-    private readonly relogio: Relogio,
+    private readonly monitor: TriagemMonitorService,
   ) {}
 
   async criar(sessao: SessaoRequest, empresaId: string) {
@@ -62,10 +62,7 @@ export class WhatsappService {
     exigir(alinhada, 'conectar_whatsapp');
     const instancia = await this.exigirInstancia(alinhada, empresaId);
     await this.cliente.disconnect(this.tokenDe(instancia));
-    const atualizada = await this.repo.salvarInstancia(
-      { ...instancia, status: 'DESCONECTADA', desconectadaEm: this.relogio.agora() },
-      ctxDe(alinhada, empresaId),
-    );
+    const atualizada = await this.monitor.aplicar(instancia, { conectada: false, numero: instancia.numero });
     return this.resumo(atualizada);
   }
 
@@ -79,39 +76,15 @@ export class WhatsappService {
     }));
   }
 
-  private async sincronizar(instancia: InstanciaRegistro, isAdmin: boolean) {
-    const ctx = { empresaId: instancia.empresaId, isAdmin };
+  private async sincronizar(instancia: InstanciaRegistro, _isAdmin: boolean) {
     let statusProvedor: { conectada: boolean; numero: string | null };
     try {
       statusProvedor = await this.cliente.status(this.tokenDe(instancia));
     } catch {
       return this.resumo(instancia);
     }
-    if (statusProvedor.conectada && instancia.status !== 'CONECTADA') {
-      await this.cliente.configurarWebhook(
-        this.tokenDe(instancia),
-        `${this.config.apiPublicUrl}/api/v1/webhooks/whatsapp/uazapi/${instancia.id}`,
-      );
-      const atualizada = await this.repo.salvarInstancia(
-        {
-          ...instancia,
-          status: 'CONECTADA',
-          numero: statusProvedor.numero,
-          ultimaConexaoEm: this.relogio.agora(),
-          desconectadaEm: null,
-        },
-        ctx,
-      );
-      return this.resumo(atualizada);
-    }
-    if (!statusProvedor.conectada && instancia.status === 'CONECTADA') {
-      const atualizada = await this.repo.salvarInstancia(
-        { ...instancia, status: 'DESCONECTADA', desconectadaEm: this.relogio.agora() },
-        ctx,
-      );
-      return this.resumo(atualizada);
-    }
-    return this.resumo(instancia);
+    const atualizada = await this.monitor.aplicar(instancia, statusProvedor);
+    return this.resumo(atualizada);
   }
 
   private async exigirInstancia(sessao: SessaoRequest, empresaId: string): Promise<InstanciaRegistro> {

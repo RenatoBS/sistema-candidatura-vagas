@@ -75,6 +75,7 @@ export class PerfilService {
       nome: entrada.nome?.trim() || atual.nome,
       whatsapp: entrada.whatsapp !== undefined ? whatsapp.numero : atual.whatsapp,
       whatsappVerificado: whatsappMudou ? false : atual.whatsappVerificado,
+      whatsappVerificadoEm: whatsappMudou ? null : (atual.whatsappVerificadoEm ?? null),
       linkedinUrl: entrada.linkedinUrl !== undefined ? linkedin.url : atual.linkedinUrl,
       visivelParaMatch: entrada.visivelParaMatch ?? atual.visivelParaMatch,
       perfil: semRanking({ ...atual.perfil, ...(entrada.perfil ?? {}) }),

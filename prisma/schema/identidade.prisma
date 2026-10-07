@@ -61,6 +61,8 @@ model Empresa {
   convites           ConviteMembro[]
   tokensUsoUnico     TokenUsoUnico[]
   eventosVaga        EventoVaga[]
+  eventosWhatsappEntrada EventoWhatsappEntrada[]
+  quedasInstanciaWhatsapp QuedaInstanciaWhatsapp[]
 
   @@index([statusVerificacao])
   @@map("empresas")

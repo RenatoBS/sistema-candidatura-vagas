@@ -2,6 +2,7 @@ export async function postInterno(
   caminho: string,
   fetchImpl: typeof fetch,
   env: NodeJS.ProcessEnv,
+  corpo?: unknown,
 ): Promise<unknown> {
   const base = env.API_PUBLIC_URL ?? 'http://localhost:3000';
   const resposta = await fetchImpl(`${base}/api/v1${caminho}`, {
@@ -10,6 +11,7 @@ export async function postInterno(
       'content-type': 'application/json',
       'x-internal-token': env.INTERNAL_JOB_TOKEN ?? '',
     },
+    body: corpo === undefined ? undefined : JSON.stringify(corpo),
   });
   if (!resposta.ok) throw new Error(`job de vaga falhou com status ${resposta.status}`);
   return resposta.json();

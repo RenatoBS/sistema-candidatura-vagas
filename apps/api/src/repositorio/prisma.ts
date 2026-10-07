@@ -2,10 +2,13 @@ import { Prisma, PrismaClient } from '@prisma/client';
 
 import { ErroAplicacao } from '../erros';
 import { CandidaturasPrisma } from './candidaturas-prisma';
+import { EntrevistasPrisma } from './entrevistas-prisma';
+import type { EntrevistaRegistro } from './entrevistas-tipos';
 import { MatchPrisma } from './match-prisma';
 import { NotificacoesPrisma } from './notificacoes-prisma';
 import type {
   AuditoriaRegistro,
+  AvaliacaoRegistro,
   CandidatoRegistro,
   CodigoMfaRegistro,
   ConsentimentoRegistro,
@@ -17,10 +20,12 @@ import type {
   HabilidadeCatalogo,
   HabilidadeDoCandidato,
   InstanciaRegistro,
+  EventoWhatsappEntradaRegistro,
   LinhaHabilidade,
   MembroRegistro,
   NotificacaoNova,
   PerfilCandidato,
+  QuedaInstanciaRegistro,
   PreferenciaNotificacaoRegistro,
   RefreshRegistro,
   Repositorio,
@@ -40,7 +45,8 @@ function semId<T extends { id?: string }>(patch: T): Omit<T, 'id'> {
 }
 
 function objeto(valor: Prisma.JsonValue | null | undefined): Record<string, unknown> {
-  if (valor && typeof valor === 'object' && !Array.isArray(valor)) return valor as Record<string, unknown>;
+  if (valor && typeof valor === 'object' && !Array.isArray(valor))
+    return valor as Record<string, unknown>;
   return {};
 }
 
@@ -58,15 +64,20 @@ export class RepositorioPrisma implements Repositorio {
   private readonly candidaturasStore: CandidaturasPrisma;
   private readonly matchStore: MatchPrisma;
   private readonly notificacoesStore: NotificacoesPrisma;
+  private readonly entrevistasStore: EntrevistasPrisma;
 
   constructor(private readonly prisma = new PrismaClient()) {
     this.vagasStore = new VagasPrisma(this.prisma, (ctx, fn) => this.comTenant(ctx, fn));
     this.candidaturasStore = new CandidaturasPrisma((ctx, fn) => this.comTenant(ctx, fn));
     this.matchStore = new MatchPrisma(this.prisma, (ctx, fn) => this.comTenant(ctx, fn));
     this.notificacoesStore = new NotificacoesPrisma((ctx, fn) => this.comTenant(ctx, fn));
+    this.entrevistasStore = new EntrevistasPrisma((ctx, fn) => this.comTenant(ctx, fn));
   }
 
-  private async comTenant<T>(ctx: ContextoTenant, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+  private async comTenant<T>(
+    ctx: ContextoTenant,
+    fn: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`
         SELECT
@@ -101,16 +112,40 @@ export class RepositorioPrisma implements Repositorio {
     return usuario ? this.usuario(usuario) : null;
   }
 
-  async registrarDispositivoPush(registro: { usuarioId: string; token: string; plataforma: 'IOS' | 'ANDROID' | 'WEB'; ultimoUsoEm: Date }): Promise<void> {
-    await this.prisma.dispositivoPush.upsert({ where: { token: registro.token }, create: registro, update: { usuarioId: registro.usuarioId, plataforma: registro.plataforma, ultimoUsoEm: registro.ultimoUsoEm } });
+  async registrarDispositivoPush(registro: {
+    usuarioId: string;
+    token: string;
+    plataforma: 'IOS' | 'ANDROID' | 'WEB';
+    ultimoUsoEm: Date;
+  }): Promise<void> {
+    await this.prisma.dispositivoPush.upsert({
+      where: { token: registro.token },
+      create: registro,
+      update: {
+        usuarioId: registro.usuarioId,
+        plataforma: registro.plataforma,
+        ultimoUsoEm: registro.ultimoUsoEm,
+      },
+    });
   }
   async removerDispositivoPush(token: string, usuarioId: string): Promise<boolean> {
-    const r = await this.prisma.dispositivoPush.deleteMany({ where: { token, usuarioId } }); return r.count > 0;
+    const r = await this.prisma.dispositivoPush.deleteMany({ where: { token, usuarioId } });
+    return r.count > 0;
   }
-  async listarDispositivosPush(usuarioId: string) { return this.prisma.dispositivoPush.findMany({ where: { usuarioId }, select: { token: true, plataforma: true } }); }
-  async removerDispositivosPush(tokens: string[]): Promise<void> { if (tokens.length) await this.prisma.dispositivoPush.deleteMany({ where: { token: { in: tokens } } }); }
+  async listarDispositivosPush(usuarioId: string) {
+    return this.prisma.dispositivoPush.findMany({
+      where: { usuarioId },
+      select: { token: true, plataforma: true },
+    });
+  }
+  async removerDispositivosPush(tokens: string[]): Promise<void> {
+    if (tokens.length)
+      await this.prisma.dispositivoPush.deleteMany({ where: { token: { in: tokens } } });
+  }
   async removerDispositivosPushInativos(antesDe: Date): Promise<number> {
-    const resultado = await this.prisma.dispositivoPush.deleteMany({ where: { ultimoUsoEm: { lt: antesDe } } });
+    const resultado = await this.prisma.dispositivoPush.deleteMany({
+      where: { ultimoUsoEm: { lt: antesDe } },
+    });
     return resultado.count;
   }
 
@@ -133,15 +168,23 @@ export class RepositorioPrisma implements Repositorio {
   }
 
   async revogarFamilia(familiaId: string, quando: Date): Promise<void> {
-    await this.prisma.refreshToken.updateMany({ where: { familiaId }, data: { revogadoEm: quando } });
+    await this.prisma.refreshToken.updateMany({
+      where: { familiaId },
+      data: { revogadoEm: quando },
+    });
   }
 
   async revogarRefreshDoUsuario(usuarioId: string, quando: Date): Promise<void> {
-    await this.prisma.refreshToken.updateMany({ where: { usuarioId }, data: { revogadoEm: quando } });
+    await this.prisma.refreshToken.updateMany({
+      where: { usuarioId },
+      data: { revogadoEm: quando },
+    });
   }
 
   async salvarToken(registro: TokenRegistro, ctx: ContextoTenant = {}): Promise<void> {
-    await this.comTenant(ctx.empresaId ? ctx : {}, (tx) => tx.tokenUsoUnico.create({ data: registro }));
+    await this.comTenant(ctx.empresaId ? ctx : {}, (tx) =>
+      tx.tokenUsoUnico.create({ data: registro }),
+    );
   }
 
   async buscarTokenPorHash(hash: string, ctx: ContextoTenant = {}): Promise<TokenRegistro | null> {
@@ -149,7 +192,9 @@ export class RepositorioPrisma implements Repositorio {
   }
 
   async marcarTokenUsado(id: string, quando: Date, ctx: ContextoTenant = {}): Promise<void> {
-    await this.comTenant(ctx, (tx) => tx.tokenUsoUnico.update({ where: { id }, data: { usadoEm: quando } }));
+    await this.comTenant(ctx, (tx) =>
+      tx.tokenUsoUnico.update({ where: { id }, data: { usadoEm: quando } }),
+    );
   }
 
   async substituirCodigosMfa(usuarioId: string, codigos: CodigoMfaRegistro[]): Promise<void> {
@@ -164,7 +209,10 @@ export class RepositorioPrisma implements Repositorio {
       where: { usuarioId, codigoHash, usadoEm: null },
     });
     if (!codigo) return false;
-    await this.prisma.codigoRecuperacaoMfa.update({ where: { id: codigo.id }, data: { usadoEm: quando } });
+    await this.prisma.codigoRecuperacaoMfa.update({
+      where: { id: codigo.id },
+      data: { usadoEm: quando },
+    });
     return true;
   }
 
@@ -175,12 +223,18 @@ export class RepositorioPrisma implements Repositorio {
     return linhas[0]?.existe === true;
   }
 
-  async criarEmpresaComResponsavel(empresa: EmpresaRegistro, membro: MembroRegistro): Promise<void> {
+  async criarEmpresaComResponsavel(
+    empresa: EmpresaRegistro,
+    membro: MembroRegistro,
+  ): Promise<void> {
     await this.comTenant({ empresaId: empresa.id }, async (tx) => {
       await tx.empresa.create({
         data: {
           ...empresa,
-          endereco: empresa.endereco === null ? Prisma.JsonNull : (empresa.endereco as Prisma.InputJsonValue),
+          endereco:
+            empresa.endereco === null
+              ? Prisma.JsonNull
+              : (empresa.endereco as Prisma.InputJsonValue),
           configuracoes: empresa.configuracoes as Prisma.InputJsonValue,
         },
       });
@@ -193,7 +247,11 @@ export class RepositorioPrisma implements Repositorio {
     return empresa ? this.empresa(empresa) : null;
   }
 
-  async atualizarEmpresa(id: string, patch: Partial<EmpresaRegistro>, ctx: ContextoTenant): Promise<EmpresaRegistro> {
+  async atualizarEmpresa(
+    id: string,
+    patch: Partial<EmpresaRegistro>,
+    ctx: ContextoTenant,
+  ): Promise<EmpresaRegistro> {
     const data: Prisma.EmpresaUpdateInput = {};
     if (patch.razaoSocial !== undefined) data.razaoSocial = patch.razaoSocial;
     if (patch.nomeFantasia !== undefined) data.nomeFantasia = patch.nomeFantasia;
@@ -206,15 +264,19 @@ export class RepositorioPrisma implements Repositorio {
     if (patch.statusVerificacao !== undefined) data.statusVerificacao = patch.statusVerificacao;
     if (patch.verificadaEm !== undefined) data.verificadaEm = patch.verificadaEm;
     if (patch.endereco !== undefined) {
-      data.endereco = patch.endereco === null ? Prisma.JsonNull : (patch.endereco as Prisma.InputJsonValue);
+      data.endereco =
+        patch.endereco === null ? Prisma.JsonNull : (patch.endereco as Prisma.InputJsonValue);
     }
-    if (patch.configuracoes !== undefined) data.configuracoes = patch.configuracoes as Prisma.InputJsonValue;
+    if (patch.configuracoes !== undefined)
+      data.configuracoes = patch.configuracoes as Prisma.InputJsonValue;
     const empresa = await this.comTenant(ctx, (tx) => tx.empresa.update({ where: { id }, data }));
     return this.empresa(empresa);
   }
 
   async listarEmpresas(ctx: ContextoTenant): Promise<EmpresaRegistro[]> {
-    const empresas = await this.comTenant(ctx, (tx) => tx.empresa.findMany({ orderBy: { criadoEm: 'asc' } }));
+    const empresas = await this.comTenant(ctx, (tx) =>
+      tx.empresa.findMany({ orderBy: { criadoEm: 'asc' } }),
+    );
     return empresas.map((empresa) => this.empresa(empresa));
   }
 
@@ -237,15 +299,25 @@ export class RepositorioPrisma implements Repositorio {
     return this.comTenant(ctx, (tx) => tx.membroEmpresa.create({ data: membro }));
   }
 
-  async buscarMembro(usuarioId: string, empresaId: string, ctx: ContextoTenant): Promise<MembroRegistro | null> {
-    return this.comTenant(ctx, (tx) => tx.membroEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId, empresaId } } }));
+  async buscarMembro(
+    usuarioId: string,
+    empresaId: string,
+    ctx: ContextoTenant,
+  ): Promise<MembroRegistro | null> {
+    return this.comTenant(ctx, (tx) =>
+      tx.membroEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId, empresaId } } }),
+    );
   }
 
   async listarMembros(empresaId: string, ctx: ContextoTenant): Promise<MembroRegistro[]> {
     return this.comTenant(ctx, (tx) => tx.membroEmpresa.findMany({ where: { empresaId } }));
   }
 
-  async atualizarMembro(id: string, patch: Partial<MembroRegistro>, ctx: ContextoTenant): Promise<MembroRegistro> {
+  async atualizarMembro(
+    id: string,
+    patch: Partial<MembroRegistro>,
+    ctx: ContextoTenant,
+  ): Promise<MembroRegistro> {
     const data = semId(patch);
     return this.comTenant(ctx, (tx) => tx.membroEmpresa.update({ where: { id }, data }));
   }
@@ -273,7 +345,11 @@ export class RepositorioPrisma implements Repositorio {
     return this.comTenant(ctx, (tx) => tx.conviteMembro.findMany({ where: { empresaId } }));
   }
 
-  async atualizarConvite(id: string, patch: Partial<ConviteRegistro>, ctx: ContextoTenant): Promise<ConviteRegistro> {
+  async atualizarConvite(
+    id: string,
+    patch: Partial<ConviteRegistro>,
+    ctx: ContextoTenant,
+  ): Promise<ConviteRegistro> {
     const data = semId(patch);
     return this.comTenant(ctx, (tx) => tx.conviteMembro.update({ where: { id }, data }));
   }
@@ -287,7 +363,9 @@ export class RepositorioPrisma implements Repositorio {
 
   async buscarCandidatoPorUsuario(usuarioId: string): Promise<CandidatoRegistro | null> {
     const candidato = await this.prisma.candidato.findUnique({ where: { usuarioId } });
-    return candidato ? { id: candidato.id, usuarioId: candidato.usuarioId, nome: candidato.nome } : null;
+    return candidato
+      ? { id: candidato.id, usuarioId: candidato.usuarioId, nome: candidato.nome }
+      : null;
   }
 
   async buscarCandidatoPorId(id: string): Promise<CandidatoRegistro | null> {
@@ -307,6 +385,7 @@ export class RepositorioPrisma implements Repositorio {
         nome: perfil.nome,
         whatsapp: perfil.whatsapp,
         whatsappVerificado: perfil.whatsappVerificado,
+        whatsappVerificadoEm: perfil.whatsappVerificadoEm ?? null,
         linkedinUrl: perfil.linkedinUrl,
         visivelParaMatch: perfil.visivelParaMatch,
         perfil: json(perfil.perfil),
@@ -392,23 +471,32 @@ export class RepositorioPrisma implements Repositorio {
   }
 
   async listarCurriculos(candidatoId: string): Promise<CurriculoRegistro[]> {
-    const itens = await this.prisma.curriculo.findMany({ where: { candidatoId }, orderBy: { criadoEm: 'desc' } });
+    const itens = await this.prisma.curriculo.findMany({
+      where: { candidatoId },
+      orderBy: { criadoEm: 'desc' },
+    });
     return itens.map((item) => this.curriculo(item));
   }
 
-  async atualizarCurriculo(id: string, patch: Partial<CurriculoRegistro>): Promise<CurriculoRegistro> {
+  async atualizarCurriculo(
+    id: string,
+    patch: Partial<CurriculoRegistro>,
+  ): Promise<CurriculoRegistro> {
     const data: Prisma.CurriculoUpdateInput = {};
     if (patch.mimeType !== undefined) data.mimeType = patch.mimeType;
     if (patch.tamanhoBytes !== undefined) data.tamanhoBytes = patch.tamanhoBytes;
     if (patch.antivirusStatus !== undefined) data.antivirusStatus = patch.antivirusStatus;
     if (patch.metodoExtracao !== undefined) data.metodoExtracao = patch.metodoExtracao;
-    if (patch.statusProcessamento !== undefined) data.statusProcessamento = patch.statusProcessamento;
+    if (patch.statusProcessamento !== undefined)
+      data.statusProcessamento = patch.statusProcessamento;
     if (patch.confiancaOcr !== undefined) data.confiancaOcr = patch.confiancaOcr;
     if (patch.textoExtraido !== undefined) data.textoExtraido = patch.textoExtraido;
-    if (patch.dadosExtraidos !== undefined) data.dadosExtraidos = patch.dadosExtraidos ? json(patch.dadosExtraidos) : Prisma.JsonNull;
+    if (patch.dadosExtraidos !== undefined)
+      data.dadosExtraidos = patch.dadosExtraidos ? json(patch.dadosExtraidos) : Prisma.JsonNull;
     if (patch.confirmadoEm !== undefined) data.confirmadoEm = patch.confirmadoEm;
     if (patch.aplicadoAoPerfil !== undefined) data.aplicadoAoPerfil = patch.aplicadoAoPerfil;
-    if (patch.paginas !== undefined) data.paginas = patch.paginas ? json(patch.paginas) : Prisma.JsonNull;
+    if (patch.paginas !== undefined)
+      data.paginas = patch.paginas ? json(patch.paginas) : Prisma.JsonNull;
     const curriculo = await this.prisma.curriculo.update({ where: { id }, data });
     return this.curriculo(curriculo);
   }
@@ -437,7 +525,10 @@ export class RepositorioPrisma implements Repositorio {
   }
 
   async listarConsentimentos(candidatoId: string): Promise<ConsentimentoRegistro[]> {
-    const itens = await this.prisma.consentimento.findMany({ where: { candidatoId }, orderBy: { criadoEm: 'asc' } });
+    const itens = await this.prisma.consentimento.findMany({
+      where: { candidatoId },
+      orderBy: { criadoEm: 'asc' },
+    });
     return itens.map((item) => ({
       id: item.id,
       candidatoId: item.candidatoId,
@@ -474,7 +565,10 @@ export class RepositorioPrisma implements Repositorio {
           visivelParaMatch: false,
         },
       });
-      await tx.usuario.update({ where: { id: usuarioId }, data: { email: anon.email, senhaHash: anon.senhaHash } });
+      await tx.usuario.update({
+        where: { id: usuarioId },
+        data: { email: anon.email, senhaHash: anon.senhaHash },
+      });
       await tx.refreshToken.updateMany({
         where: { usuarioId, revogadoEm: null },
         data: { revogadoEm: new Date() },
@@ -483,7 +577,10 @@ export class RepositorioPrisma implements Repositorio {
     });
   }
 
-  async registrarAuditoria(registro: AuditoriaRegistro, ctx: ContextoTenant): Promise<AuditoriaRegistro> {
+  async registrarAuditoria(
+    registro: AuditoriaRegistro,
+    ctx: ContextoTenant,
+  ): Promise<AuditoriaRegistro> {
     return this.comTenant(ctx, (tx) => tx.auditoriaAcesso.create({ data: registro }));
   }
 
@@ -500,7 +597,10 @@ export class RepositorioPrisma implements Repositorio {
     throw new ErroAplicacao('AUDITORIA_APPEND_ONLY', 409, 'auditorias_acesso é append-only');
   }
 
-  async salvarInstancia(instancia: InstanciaRegistro, ctx: ContextoTenant): Promise<InstanciaRegistro> {
+  async salvarInstancia(
+    instancia: InstanciaRegistro,
+    ctx: ContextoTenant,
+  ): Promise<InstanciaRegistro> {
     const data = { ...instancia, provedor: 'UAZAPI' as const };
     return this.comTenant(ctx, (tx) =>
       tx.instanciaWhatsapp.upsert({
@@ -511,9 +611,172 @@ export class RepositorioPrisma implements Repositorio {
     );
   }
 
-  async buscarInstanciaPorEmpresa(empresaId: string, ctx: ContextoTenant): Promise<InstanciaRegistro | null> {
-    const instancia = await this.comTenant(ctx, (tx) => tx.instanciaWhatsapp.findUnique({ where: { empresaId } }));
+  async buscarInstanciaPorEmpresa(
+    empresaId: string,
+    ctx: ContextoTenant,
+  ): Promise<InstanciaRegistro | null> {
+    const instancia = await this.comTenant(ctx, (tx) =>
+      tx.instanciaWhatsapp.findUnique({ where: { empresaId } }),
+    );
     return instancia ? this.instancia(instancia) : null;
+  }
+
+  async buscarInstanciaPorId(id: string, ctx: ContextoTenant): Promise<InstanciaRegistro | null> {
+    const instancia = await this.comTenant(ctx, (tx) =>
+      tx.instanciaWhatsapp.findUnique({ where: { id } }),
+    );
+    return instancia ? this.instancia(instancia) : null;
+  }
+
+  async registrarEventoWhatsappEntrada(
+    registro: EventoWhatsappEntradaRegistro,
+    ctx: ContextoTenant,
+  ): Promise<EventoWhatsappEntradaRegistro | null> {
+    try {
+      const evento = await this.comTenant(ctx, (tx) =>
+        tx.eventoWhatsappEntrada.create({
+          data: {
+            ...registro,
+            tipo: registro.tipo === 'BOTAO' ? 'MENU' : registro.tipo,
+            payloadNormalizado: registro.payloadNormalizado as Prisma.InputJsonValue,
+          },
+        }),
+      );
+      return { ...registro, id: evento.id, criadoEm: evento.criadoEm };
+    } catch (erro) {
+      if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === 'P2002')
+        return null;
+      throw erro;
+    }
+  }
+
+  async buscarEventoWhatsappEntrada(
+    id: string,
+    ctx: ContextoTenant,
+  ): Promise<EventoWhatsappEntradaRegistro | null> {
+    const evento = await this.comTenant(ctx, (tx) => tx.eventoWhatsappEntrada.findUnique({ where: { id } }));
+    if (!evento) return null;
+    return {
+      id: evento.id,
+      empresaId: evento.empresaId,
+      instanciaWhatsappId: evento.instanciaWhatsappId,
+      mensagemIdProvedor: evento.mensagemIdProvedor,
+      tipo: evento.tipo === 'MENU' ? 'BOTAO' : evento.tipo,
+      payloadNormalizado: objeto(evento.payloadNormalizado),
+      status: evento.status,
+      criadoEm: evento.criadoEm,
+    };
+  }
+
+  async atualizarEventoWhatsappEntrada(
+    id: string,
+    status: EventoWhatsappEntradaRegistro['status'],
+    ctx: ContextoTenant,
+  ): Promise<void> {
+    await this.comTenant(ctx, (tx) => tx.eventoWhatsappEntrada.updateMany({ where: { id }, data: { status } }));
+  }
+
+  async buscarPerfilPorWhatsapp(numero: string): Promise<PerfilCandidato | null> {
+    const digitos = numero.replace(/\D/g, '');
+    const candidato = await this.prisma.candidato.findFirst({
+      where: { OR: [{ whatsapp: `+${digitos}` }, { whatsapp: digitos }] },
+    });
+    return candidato ? this.perfil(candidato) : null;
+  }
+
+  async listarUsuariosPorPapel(papel: UsuarioRegistro['papeisGlobais'][number]): Promise<UsuarioRegistro[]> {
+    const usuarios = await this.prisma.usuario.findMany({ where: { papeisGlobais: { has: papel } } });
+    return usuarios.map((usuario) => this.usuario(usuario));
+  }
+
+  async criarResposta(resposta: RespostaSensivel): Promise<void> {
+    await this.comTenant({ empresaId: resposta.empresaId, sistema: true }, (tx) =>
+      tx.resposta.create({
+        data: {
+          id: resposta.id,
+          empresaId: resposta.empresaId,
+          entrevistaId: resposta.entrevistaId ?? '',
+          etapaPerguntaId: resposta.etapaPerguntaId ?? '',
+          tipo: resposta.tipo ?? 'TEXTO_WHATSAPP',
+          textoOriginal: resposta.textoOriginal ?? null,
+          audioUrl: resposta.audioUrl,
+          duracaoSegundos: resposta.duracaoSegundos ?? null,
+          statusTranscricao: resposta.statusTranscricao ?? 'PENDENTE',
+          transcricao: resposta.transcricao,
+          confiancaTranscricao: resposta.confiancaTranscricao ?? null,
+          revisaoHumanaNecessaria: resposta.revisaoHumanaNecessaria ?? false,
+          mensagemIdProvedor: resposta.mensagemIdProvedor ?? null,
+          tempoUsado: resposta.tempoUsado ?? null,
+          expirou: resposta.expirou ?? false,
+          parcial: resposta.parcial ?? false,
+        },
+      }),
+    );
+  }
+
+  async buscarRespostaPorMensagem(
+    mensagemIdProvedor: string,
+    ctx: ContextoTenant,
+  ): Promise<RespostaSensivel | null> {
+    return this.comTenant(ctx, (tx) => tx.resposta.findFirst({ where: { mensagemIdProvedor } }));
+  }
+
+  async salvarAvaliacao(avaliacao: AvaliacaoRegistro, ctx: ContextoTenant): Promise<void> {
+    await this.comTenant(ctx, (tx) =>
+      tx.avaliacao.create({
+        data: {
+          id: avaliacao.id,
+          respostaId: avaliacao.respostaId,
+          avaliador: avaliacao.avaliador,
+          nota: avaliacao.nota,
+          criterios: json(avaliacao.criterios),
+          justificativa: avaliacao.justificativa,
+          modelo: avaliacao.modelo,
+          versaoPrompt: avaliacao.versaoPrompt,
+          criadoEm: avaliacao.criadoEm,
+        },
+      }),
+    );
+  }
+
+  async listarAvaliacoes(respostaId: string, ctx: ContextoTenant): Promise<AvaliacaoRegistro[]> {
+    const itens = await this.comTenant(ctx, (tx) =>
+      tx.avaliacao.findMany({
+        where: { respostaId },
+        orderBy: { criadoEm: 'asc' },
+      }),
+    );
+    return itens.map((item) => ({
+      id: item.id,
+      respostaId: item.respostaId,
+      avaliador: item.avaliador,
+      nota: item.nota,
+      criterios: objeto(item.criterios),
+      justificativa: item.justificativa,
+      modelo: item.modelo,
+      versaoPrompt: item.versaoPrompt,
+      criadoEm: item.criadoEm,
+    }));
+  }
+
+  async registrarQueda(queda: QuedaInstanciaRegistro, ctx: ContextoTenant): Promise<void> {
+    await this.comTenant(ctx, (tx) => tx.quedaInstanciaWhatsapp.create({ data: queda }));
+  }
+
+  async quedaAberta(instanciaId: string, ctx: ContextoTenant): Promise<QuedaInstanciaRegistro | null> {
+    const queda = await this.comTenant(ctx, (tx) =>
+      tx.quedaInstanciaWhatsapp.findFirst({ where: { instanciaWhatsappId: instanciaId, fimEm: null } }),
+    );
+    return queda;
+  }
+
+  async encerrarQuedasAbertas(instanciaId: string, fimEm: Date, ctx: ContextoTenant): Promise<void> {
+    await this.comTenant(ctx, (tx) =>
+      tx.quedaInstanciaWhatsapp.updateMany({
+        where: { instanciaWhatsappId: instanciaId, fimEm: null },
+        data: { fimEm },
+      }),
+    );
   }
 
   async listarInstancias(ctx: ContextoTenant): Promise<InstanciaRegistro[]> {
@@ -537,7 +800,11 @@ export class RepositorioPrisma implements Repositorio {
     return this.vagasStore.criarVaga(dados, ctx);
   }
 
-  atualizarVaga(id: string, patch: Parameters<VagasPrisma['atualizarVaga']>[1], ctx: ContextoTenant) {
+  atualizarVaga(
+    id: string,
+    patch: Parameters<VagasPrisma['atualizarVaga']>[1],
+    ctx: ContextoTenant,
+  ) {
     return this.vagasStore.atualizarVaga(id, patch, ctx);
   }
 
@@ -553,7 +820,11 @@ export class RepositorioPrisma implements Repositorio {
     return this.vagasStore.listarVagasPublicas(filtro);
   }
 
-  substituirHabilidades(vagaId: string, itens: Parameters<VagasPrisma['substituirHabilidades']>[1], ctx: ContextoTenant) {
+  substituirHabilidades(
+    vagaId: string,
+    itens: Parameters<VagasPrisma['substituirHabilidades']>[1],
+    ctx: ContextoTenant,
+  ) {
     return this.vagasStore.substituirHabilidades(vagaId, itens, ctx);
   }
 
@@ -593,7 +864,11 @@ export class RepositorioPrisma implements Repositorio {
     return this.vagasStore.criarPergunta(dados, ctx);
   }
 
-  atualizarPergunta(id: string, patch: Parameters<VagasPrisma['atualizarPergunta']>[1], ctx: ContextoTenant) {
+  atualizarPergunta(
+    id: string,
+    patch: Parameters<VagasPrisma['atualizarPergunta']>[1],
+    ctx: ContextoTenant,
+  ) {
     return this.vagasStore.atualizarPergunta(id, patch, ctx);
   }
 
@@ -617,7 +892,10 @@ export class RepositorioPrisma implements Repositorio {
     return this.vagasStore.listarVinculosEtapa(etapaId, ctx);
   }
 
-  registrarEventoVaga(evento: Parameters<VagasPrisma['registrarEventoVaga']>[0], ctx: ContextoTenant) {
+  registrarEventoVaga(
+    evento: Parameters<VagasPrisma['registrarEventoVaga']>[0],
+    ctx: ContextoTenant,
+  ) {
     return this.vagasStore.registrarEventoVaga(evento, ctx);
   }
 
@@ -641,7 +919,11 @@ export class RepositorioPrisma implements Repositorio {
     return this.vagasStore.listarPausasParaAlerta(limite, ctx);
   }
 
-  criarCandidatura(dados: Parameters<CandidaturasPrisma['criarCandidatura']>[0], historico: Parameters<CandidaturasPrisma['criarCandidatura']>[1], ctx: ContextoTenant) {
+  criarCandidatura(
+    dados: Parameters<CandidaturasPrisma['criarCandidatura']>[0],
+    historico: Parameters<CandidaturasPrisma['criarCandidatura']>[1],
+    ctx: ContextoTenant,
+  ) {
     return this.candidaturasStore.criarCandidatura(dados, historico, ctx);
   }
 
@@ -657,7 +939,10 @@ export class RepositorioPrisma implements Repositorio {
     return this.candidaturasStore.listarCandidaturasCandidato(candidatoId, ctx);
   }
 
-  transicionarCandidatura(transicao: Parameters<CandidaturasPrisma['transicionarCandidatura']>[0], ctx: ContextoTenant) {
+  transicionarCandidatura(
+    transicao: Parameters<CandidaturasPrisma['transicionarCandidatura']>[0],
+    ctx: ContextoTenant,
+  ) {
     return this.candidaturasStore.transicionarCandidatura(transicao, ctx);
   }
 
@@ -697,7 +982,11 @@ export class RepositorioPrisma implements Repositorio {
     return this.notificacoesStore.buscarSugestao(id, ctx);
   }
 
-  atualizarStatusSugestao(id: string, status: Parameters<MatchPrisma['atualizarStatusSugestao']>[1], ctx: ContextoTenant) {
+  atualizarStatusSugestao(
+    id: string,
+    status: Parameters<MatchPrisma['atualizarStatusSugestao']>[1],
+    ctx: ContextoTenant,
+  ) {
     return this.matchStore.atualizarStatusSugestao(id, status, ctx);
   }
 
@@ -721,7 +1010,12 @@ export class RepositorioPrisma implements Repositorio {
     return this.notificacoesStore.marcarNotificacaoLida(id, usuarioId, quando, ctx);
   }
 
-  marcarTodasLidas(usuarioId: string, empresaId: string | undefined, quando: Date, ctx: ContextoTenant) {
+  marcarTodasLidas(
+    usuarioId: string,
+    empresaId: string | undefined,
+    quando: Date,
+    ctx: ContextoTenant,
+  ) {
     return this.notificacoesStore.marcarTodasLidas(usuarioId, empresaId, quando, ctx);
   }
 
@@ -733,15 +1027,62 @@ export class RepositorioPrisma implements Repositorio {
     return this.notificacoesStore.salvarPreferencia(preferencia, ctx);
   }
 
-  async buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null> {
-    const resposta = await this.comTenant(ctx, (tx) =>
-      tx.resposta.findUnique({ where: { id }, select: { id: true, empresaId: true, audioUrl: true, transcricao: true } }),
-    );
-    return resposta;
+  buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null> {
+    return this.comTenant(ctx, (tx) => tx.resposta.findUnique({ where: { id } }));
   }
 
-  async guardarResposta(): Promise<void> {
-    throw new ErroAplicacao('NAO_SUPORTADO', 500, 'gravação de resposta de teste só existe no repositório em memória');
+  async guardarResposta(resposta: RespostaSensivel): Promise<void> {
+    await this.comTenant({ empresaId: resposta.empresaId, sistema: true }, (tx) =>
+      tx.resposta.update({
+        where: { id: resposta.id },
+        data: {
+          audioUrl: resposta.audioUrl,
+          transcricao: resposta.transcricao,
+          mensagemIdProvedor: resposta.mensagemIdProvedor,
+          duracaoSegundos: resposta.duracaoSegundos,
+          confiancaTranscricao: resposta.confiancaTranscricao,
+          statusTranscricao: resposta.statusTranscricao,
+          revisaoHumanaNecessaria: resposta.revisaoHumanaNecessaria,
+          parcial: resposta.parcial,
+          textoOriginal: resposta.textoOriginal,
+          expirou: resposta.expirou,
+          tempoUsado: resposta.tempoUsado,
+        },
+      }),
+    );
+  }
+
+  listarRespostasEntrevista(entrevistaId: string, ctx: ContextoTenant): Promise<RespostaSensivel[]> {
+    return this.comTenant(ctx, (tx) => tx.resposta.findMany({ where: { entrevistaId } }));
+  }
+
+  criarEntrevista(dados: EntrevistaRegistro, ctx: ContextoTenant) {
+    return this.entrevistasStore.criar(dados, ctx);
+  }
+
+  buscarEntrevista(id: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.buscar(id, ctx);
+  }
+
+  buscarEntrevistaPorCandidaturaEtapa(candidaturaId: string, etapaId: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.buscarPorCandidaturaEtapa(candidaturaId, etapaId, ctx);
+  }
+
+  atualizarEntrevista(
+    id: string,
+    patch: Partial<EntrevistaRegistro>,
+    ctx: ContextoTenant,
+    esperadoAtualizadoEm?: Date,
+  ) {
+    return this.entrevistasStore.atualizar(id, patch, ctx, esperadoAtualizadoEm);
+  }
+
+  listarEntrevistas(ctx: ContextoTenant) {
+    return this.entrevistasStore.listar(ctx);
+  }
+
+  marcarRespostasParciais(entrevistaId: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.marcarRespostasParciais(entrevistaId, ctx);
   }
 
   private usuario(usuario: {
@@ -804,6 +1145,7 @@ export class RepositorioPrisma implements Repositorio {
     nome: string;
     whatsapp: string | null;
     whatsappVerificado: boolean;
+    whatsappVerificadoEm: Date | null;
     linkedinUrl: string | null;
     perfil: Prisma.JsonValue;
     visivelParaMatch: boolean;
@@ -814,6 +1156,7 @@ export class RepositorioPrisma implements Repositorio {
       nome: candidato.nome,
       whatsapp: candidato.whatsapp,
       whatsappVerificado: candidato.whatsappVerificado,
+      whatsappVerificadoEm: candidato.whatsappVerificadoEm,
       linkedinUrl: candidato.linkedinUrl,
       perfil: objeto(candidato.perfil),
       visivelParaMatch: candidato.visivelParaMatch,

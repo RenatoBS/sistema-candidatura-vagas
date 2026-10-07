@@ -5,6 +5,7 @@ import type {
   HistoricoStatusRegistro,
   TransicaoCandidaturaRegistro,
 } from './candidaturas-tipos';
+import type { EntrevistaRegistro } from './entrevistas-tipos';
 import type {
   CandidatoSimilar,
   EntradaSugestaoMatch,
@@ -67,6 +68,7 @@ export type {
   VagaHabilidadeRegistro,
   VagaRegistro,
 } from './vagas-tipos';
+export type { CanalEntrevista, EntrevistaRegistro, StatusEntrevista } from './entrevistas-tipos';
 
 export interface ContextoTenant {
   empresaId?: string;
@@ -181,6 +183,7 @@ export interface PerfilCandidato {
   nome: string;
   whatsapp: string | null;
   whatsappVerificado: boolean;
+  whatsappVerificadoEm?: Date | null;
   linkedinUrl: string | null;
   perfil: Record<string, unknown>;
   visivelParaMatch: boolean;
@@ -191,12 +194,7 @@ export type StatusAntivirus = 'PENDENTE' | 'LIMPO' | 'INFECTADO';
 export type MetodoExtracaoCurriculo = 'NATIVO' | 'OCR' | 'MISTO';
 export type StatusProcessamentoCurriculo = 'PENDENTE' | 'PROCESSANDO' | 'CONCLUIDO' | 'FALHA';
 export type TipoConsentimentoCandidato =
-  | 'TERMOS'
-  | 'WHATSAPP'
-  | 'AUDIO_WHATSAPP'
-  | 'GRAVACAO_VOZ'
-  | 'AVALIACAO_IA'
-  | 'VISIBILIDADE_MATCH';
+  'TERMOS' | 'WHATSAPP' | 'AUDIO_WHATSAPP' | 'GRAVACAO_VOZ' | 'AVALIACAO_IA' | 'VISIBILIDADE_MATCH';
 
 export interface HabilidadeCatalogo {
   id: string;
@@ -275,11 +273,57 @@ export interface InstanciaRegistro {
   desconectadaEm: Date | null;
 }
 
+export type StatusEventoWhatsapp = 'RECEBIDO' | 'PROCESSADO' | 'IGNORADO';
+export interface EventoWhatsappEntradaRegistro {
+  id: string;
+  empresaId: string;
+  instanciaWhatsappId: string;
+  mensagemIdProvedor: string;
+  tipo: 'TEXTO' | 'AUDIO' | 'BOTAO' | 'MIDIA' | 'OUTRO';
+  payloadNormalizado: Record<string, unknown>;
+  status: StatusEventoWhatsapp;
+  criadoEm: Date;
+}
+
 export interface RespostaSensivel {
   id: string;
   empresaId: string;
+  entrevistaId?: string;
+  etapaPerguntaId?: string;
+  tipo?: 'AUDIO_WHATSAPP' | 'TEXTO_WHATSAPP' | 'VOZ_TEMPO_REAL';
+  textoOriginal?: string | null;
   audioUrl: string | null;
   transcricao: string | null;
+  mensagemIdProvedor?: string | null;
+  duracaoSegundos?: number | null;
+  confiancaTranscricao?: number | null;
+  statusTranscricao?: 'PENDENTE' | 'PROCESSANDO' | 'CONCLUIDA' | 'FALHA';
+  revisaoHumanaNecessaria?: boolean;
+  parcial?: boolean;
+  expirou?: boolean;
+  tempoUsado?: number | null;
+  criadoEm?: Date;
+}
+
+export interface AvaliacaoRegistro {
+  id: string;
+  respostaId: string;
+  avaliador: 'IA' | 'HUMANO';
+  nota: number;
+  criterios: Record<string, unknown>;
+  justificativa: string | null;
+  modelo: string | null;
+  versaoPrompt: string | null;
+  criadoEm: Date;
+}
+
+export interface QuedaInstanciaRegistro {
+  id: string;
+  empresaId: string;
+  instanciaWhatsappId: string;
+  inicioEm: Date;
+  fimEm: Date | null;
+  notificadaEm: Date | null;
 }
 
 export interface VinculoUsuario {
@@ -293,7 +337,12 @@ export interface VinculoUsuario {
 }
 
 export interface Repositorio {
-  registrarDispositivoPush(registro: { usuarioId: string; token: string; plataforma: 'IOS' | 'ANDROID' | 'WEB'; ultimoUsoEm: Date }): Promise<void>;
+  registrarDispositivoPush(registro: {
+    usuarioId: string;
+    token: string;
+    plataforma: 'IOS' | 'ANDROID' | 'WEB';
+    ultimoUsoEm: Date;
+  }): Promise<void>;
   removerDispositivoPush(token: string, usuarioId: string): Promise<boolean>;
   listarDispositivosPush(usuarioId: string): Promise<Array<{ token: string; plataforma: string }>>;
   removerDispositivosPush(tokens: string[]): Promise<void>;
@@ -373,14 +422,60 @@ export interface Repositorio {
     empresaId: string,
     ctx: ContextoTenant,
   ): Promise<InstanciaRegistro | null>;
+  buscarInstanciaPorId(id: string, ctx: ContextoTenant): Promise<InstanciaRegistro | null>;
   listarInstancias(ctx: ContextoTenant): Promise<InstanciaRegistro[]>;
+  criarEntrevista(dados: EntrevistaRegistro, ctx: ContextoTenant): Promise<EntrevistaRegistro>;
+  buscarEntrevista(id: string, ctx: ContextoTenant): Promise<EntrevistaRegistro | null>;
+  buscarEntrevistaPorCandidaturaEtapa(
+    candidaturaId: string,
+    etapaId: string,
+    ctx: ContextoTenant,
+  ): Promise<EntrevistaRegistro | null>;
+  atualizarEntrevista(
+    id: string,
+    patch: Partial<EntrevistaRegistro>,
+    ctx: ContextoTenant,
+    esperadoAtualizadoEm?: Date,
+  ): Promise<EntrevistaRegistro | null>;
+  listarEntrevistas(ctx: ContextoTenant): Promise<EntrevistaRegistro[]>;
+  marcarRespostasParciais(entrevistaId: string, ctx: ContextoTenant): Promise<void>;
+  registrarEventoWhatsappEntrada(
+    registro: EventoWhatsappEntradaRegistro,
+    ctx: ContextoTenant,
+  ): Promise<EventoWhatsappEntradaRegistro | null>;
+  buscarEventoWhatsappEntrada(
+    id: string,
+    ctx: ContextoTenant,
+  ): Promise<EventoWhatsappEntradaRegistro | null>;
+  atualizarEventoWhatsappEntrada(
+    id: string,
+    status: StatusEventoWhatsapp,
+    ctx: ContextoTenant,
+  ): Promise<void>;
+  buscarPerfilPorWhatsapp(numero: string): Promise<PerfilCandidato | null>;
+  listarUsuariosPorPapel(papel: PapelGlobal): Promise<UsuarioRegistro[]>;
+  criarResposta(resposta: RespostaSensivel): Promise<void>;
+  buscarRespostaPorMensagem(
+    mensagemIdProvedor: string,
+    ctx: ContextoTenant,
+  ): Promise<RespostaSensivel | null>;
+  salvarAvaliacao(avaliacao: AvaliacaoRegistro, ctx: ContextoTenant): Promise<void>;
+  listarAvaliacoes(respostaId: string, ctx: ContextoTenant): Promise<AvaliacaoRegistro[]>;
+  registrarQueda(queda: QuedaInstanciaRegistro, ctx: ContextoTenant): Promise<void>;
+  quedaAberta(instanciaId: string, ctx: ContextoTenant): Promise<QuedaInstanciaRegistro | null>;
+  encerrarQuedasAbertas(instanciaId: string, fimEm: Date, ctx: ContextoTenant): Promise<void>;
   pausarVagasPublicadas(empresaId: string, quando: Date, ctx: ContextoTenant): Promise<number>;
   buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null>;
+  listarRespostasEntrevista(entrevistaId: string, ctx: ContextoTenant): Promise<RespostaSensivel[]>;
   guardarResposta(resposta: RespostaSensivel): Promise<void>;
   garantirHabilidade(nome: string, categoria?: string): Promise<HabilidadeCatalogo>;
   buscarHabilidade(id: string): Promise<HabilidadeCatalogo | null>;
   criarVaga(dados: VagaRegistro, ctx: ContextoTenant): Promise<VagaRegistro>;
-  atualizarVaga(id: string, patch: Partial<VagaRegistro>, ctx: ContextoTenant): Promise<VagaRegistro | null>;
+  atualizarVaga(
+    id: string,
+    patch: Partial<VagaRegistro>,
+    ctx: ContextoTenant,
+  ): Promise<VagaRegistro | null>;
   buscarVaga(id: string, ctx: ContextoTenant): Promise<VagaRegistro | null>;
   listarVagasEmpresa(empresaId: string, ctx: ContextoTenant): Promise<VagaRegistro[]>;
   listarVagasPublicas(filtro: FiltroVagaPublica): Promise<VagaRegistro[]>;
@@ -398,11 +493,18 @@ export interface Repositorio {
   buscarEtapa(id: string, ctx: ContextoTenant): Promise<EtapaRegistro | null>;
   removerEtapa(id: string, ctx: ContextoTenant): Promise<void>;
   criarPergunta(dados: PerguntaRegistro, ctx: ContextoTenant): Promise<PerguntaRegistro>;
-  atualizarPergunta(id: string, patch: Partial<PerguntaRegistro>, ctx: ContextoTenant): Promise<PerguntaRegistro | null>;
+  atualizarPergunta(
+    id: string,
+    patch: Partial<PerguntaRegistro>,
+    ctx: ContextoTenant,
+  ): Promise<PerguntaRegistro | null>;
   buscarPergunta(id: string, ctx: ContextoTenant): Promise<PerguntaRegistro | null>;
   listarPerguntasEmpresa(empresaId: string, ctx: ContextoTenant): Promise<PerguntaRegistro[]>;
   listarSugestoesEtapa(etapaId: string, ctx: ContextoTenant): Promise<PerguntaRegistro[]>;
-  vincularPergunta(dados: EtapaPerguntaRegistro, ctx: ContextoTenant): Promise<EtapaPerguntaRegistro>;
+  vincularPergunta(
+    dados: EtapaPerguntaRegistro,
+    ctx: ContextoTenant,
+  ): Promise<EtapaPerguntaRegistro>;
   listarVinculosEtapa(etapaId: string, ctx: ContextoTenant): Promise<EtapaPerguntaRegistro[]>;
   registrarEventoVaga(evento: EventoVagaRegistro, ctx: ContextoTenant): Promise<EventoVagaRegistro>;
   buscarEventoVaga(id: string, ctx: ContextoTenant): Promise<EventoVagaRegistro | null>;
@@ -417,33 +519,73 @@ export interface Repositorio {
   ): Promise<CandidaturaRegistro>;
   buscarCandidatura(id: string, ctx: ContextoTenant): Promise<CandidaturaRegistro | null>;
   listarCandidaturasVaga(vagaId: string, ctx: ContextoTenant): Promise<CandidaturaRegistro[]>;
-  listarCandidaturasCandidato(candidatoId: string, ctx: ContextoTenant): Promise<CandidaturaRegistro[]>;
+  listarCandidaturasCandidato(
+    candidatoId: string,
+    ctx: ContextoTenant,
+  ): Promise<CandidaturaRegistro[]>;
   /** `null` quando o estado esperado mudou (conflito otimista) ou a candidatura não é visível. */
   transicionarCandidatura(
     transicao: TransicaoCandidaturaRegistro,
     ctx: ContextoTenant,
   ): Promise<CandidaturaRegistro | null>;
-  listarHistoricoStatus(candidaturaId: string, ctx: ContextoTenant): Promise<HistoricoStatusRegistro[]>;
+  listarHistoricoStatus(
+    candidaturaId: string,
+    ctx: ContextoTenant,
+  ): Promise<HistoricoStatusRegistro[]>;
   /** `false` quando a vaga não existe ou não é visível no contexto. */
   salvarEmbeddingVaga(vagaId: string, vetor: number[], ctx: ContextoTenant): Promise<boolean>;
   salvarEmbeddingCandidato(candidatoId: string, vetor: number[]): Promise<boolean>;
-  buscarCandidatosSimilares(vagaId: string, limite: number, ctx: ContextoTenant): Promise<CandidatoSimilar[]>;
+  buscarCandidatosSimilares(
+    vagaId: string,
+    limite: number,
+    ctx: ContextoTenant,
+  ): Promise<CandidatoSimilar[]>;
   buscarVagasSimilares(candidatoId: string, agora: Date, limite: number): Promise<VagaSimilar[]>;
-  registrarSugestao(entrada: EntradaSugestaoMatch, ctx: ContextoTenant): Promise<ResultadoSugestaoMatch | null>;
+  registrarSugestao(
+    entrada: EntradaSugestaoMatch,
+    ctx: ContextoTenant,
+  ): Promise<ResultadoSugestaoMatch | null>;
   listarSugestoesVaga(vagaId: string, ctx: ContextoTenant): Promise<SugestaoMatchRegistro[]>;
-  listarSugestoesCandidato(candidatoId: string, ctx: ContextoTenant): Promise<SugestaoMatchRegistro[]>;
+  listarSugestoesCandidato(
+    candidatoId: string,
+    ctx: ContextoTenant,
+  ): Promise<SugestaoMatchRegistro[]>;
   buscarSugestao(id: string, ctx: ContextoTenant): Promise<SugestaoMatchRegistro | null>;
-  atualizarStatusSugestao(id: string, status: StatusSugestaoMatch, ctx: ContextoTenant): Promise<SugestaoMatchRegistro | null>;
+  atualizarStatusSugestao(
+    id: string,
+    status: StatusSugestaoMatch,
+    ctx: ContextoTenant,
+  ): Promise<SugestaoMatchRegistro | null>;
   /** Grava `notificadoEm` só se ainda estiver vazio. */
   marcarSugestaoNotificada(id: string, quando: Date, ctx: ContextoTenant): Promise<void>;
   /** `null` quando a `chaveDedup` já existe (dedup) ou o contexto não permite. */
-  inserirNotificacaoUnica(dados: NotificacaoNova, ctx: ContextoTenant): Promise<NotificacaoRegistro | null>;
+  inserirNotificacaoUnica(
+    dados: NotificacaoNova,
+    ctx: ContextoTenant,
+  ): Promise<NotificacaoRegistro | null>;
   /** Upsert por `chaveDedup`: cria com `agrupadas = 1` ou incrementa, troca `dados` e volta a não lida. */
-  agruparNotificacao(dados: NotificacaoNova, ctx: ContextoTenant): Promise<NotificacaoRegistro | null>;
+  agruparNotificacao(
+    dados: NotificacaoNova,
+    ctx: ContextoTenant,
+  ): Promise<NotificacaoRegistro | null>;
   listarNotificacoes(filtro: FiltroNotificacoes, ctx: ContextoTenant): Promise<PaginaNotificacoes>;
-  marcarNotificacaoLida(id: string, usuarioId: string, quando: Date, ctx: ContextoTenant): Promise<NotificacaoRegistro | null>;
-  marcarTodasLidas(usuarioId: string, empresaId: string | undefined, quando: Date, ctx: ContextoTenant): Promise<number>;
-  listarPreferencias(usuarioId: string, empresaId: string, ctx: ContextoTenant): Promise<PreferenciaNotificacaoRegistro[]>;
+  marcarNotificacaoLida(
+    id: string,
+    usuarioId: string,
+    quando: Date,
+    ctx: ContextoTenant,
+  ): Promise<NotificacaoRegistro | null>;
+  marcarTodasLidas(
+    usuarioId: string,
+    empresaId: string | undefined,
+    quando: Date,
+    ctx: ContextoTenant,
+  ): Promise<number>;
+  listarPreferencias(
+    usuarioId: string,
+    empresaId: string,
+    ctx: ContextoTenant,
+  ): Promise<PreferenciaNotificacaoRegistro[]>;
   salvarPreferencia(
     preferencia: PreferenciaNotificacaoRegistro,
     ctx: ContextoTenant,

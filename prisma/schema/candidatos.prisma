@@ -43,8 +43,9 @@ model Candidato {
   id                 String   @id @default(uuid()) @db.Uuid
   usuarioId          String   @unique @db.Uuid
   nome               String
-  whatsapp           String?
-  whatsappVerificado Boolean  @default(false)
+  whatsapp             String?
+  whatsappVerificado   Boolean   @default(false)
+  whatsappVerificadoEm DateTime? @db.Timestamptz
   linkedinUrl        String?
   perfil             Json     @default("{}")
   visivelParaMatch   Boolean  @default(false)

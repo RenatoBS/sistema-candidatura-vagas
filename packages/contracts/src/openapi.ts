@@ -123,13 +123,50 @@ export const openApiFase6Match = {
   },
 } as const;
 
+/** Rotas da triagem WhatsApp (Fase 7). */
+export const openApiFase7 = {
+  openapi: '3.0.3',
+  info: {
+    title: 'Sistema de Candidatura a Vagas',
+    version: '0.7.0',
+  },
+  paths: {
+    '/interno/triagem/respostas/{respostaId}/transcrever': { post: { operationId: 'jobTranscreverResposta' } },
+    '/interno/triagem/respostas/{respostaId}/falha': { post: { operationId: 'jobFalhaTranscricao' } },
+    '/interno/triagem/respostas/{respostaId}/avaliar': { post: { operationId: 'jobAvaliarResposta' } },
+    '/interno/triagem/entrevistas/{entrevistaId}/abandonar-inatividade': {
+      post: { operationId: 'jobInatividadeTriagem' },
+    },
+    '/interno/triagem/entrevistas/{entrevistaId}/aceitar': { post: { operationId: 'jobAceiteTriagem' } },
+    '/interno/triagem/entrevistas/{entrevistaId}/retry': { post: { operationId: 'jobRetryTriagem' } },
+    '/interno/triagem/entrevistas/{entrevistaId}/esgotar': { post: { operationId: 'jobEsgotarTriagem' } },
+    '/interno/triagem/eventos/{eventoId}/processar': { post: { operationId: 'jobProcessarWhatsapp' } },
+    '/interno/triagem/candidaturas/{candidaturaId}/iniciar': { post: { operationId: 'jobIniciarTriagem' } },
+    '/interno/triagem/monitorar': { post: { operationId: 'jobMonitorarWhatsapp' } },
+    '/empresas/{empresaId}/vagas/{vagaId}/triagens': { get: { operationId: 'listarTriagens' } },
+    '/empresas/{empresaId}/triagens/{entrevistaId}': { get: { operationId: 'detalheTriagem' } },
+    '/empresas/{empresaId}/triagens/{entrevistaId}/respostas/{respostaId}/audio': {
+      get: { operationId: 'audioTriagem' },
+    },
+    '/empresas/{empresaId}/triagens/{entrevistaId}/respostas/{respostaId}/revisao': {
+      post: { operationId: 'revisarRespostaTriagem' },
+    },
+  },
+} as const;
+
 export const openApi = {
   openapi: '3.0.3',
   info: {
     title: 'Sistema de Candidatura a Vagas',
-    version: '0.6.0',
+    version: '0.7.0',
   },
-  paths: { ...openApiFase3.paths, ...openApiFase4.paths, ...openApiFase5.paths, ...openApiFase6Match.paths },
+  paths: {
+    ...openApiFase3.paths,
+    ...openApiFase4.paths,
+    ...openApiFase5.paths,
+    ...openApiFase6Match.paths,
+    ...openApiFase7.paths,
+  },
 } as const;
 
 export type CaminhoApi = keyof typeof openApi.paths;
