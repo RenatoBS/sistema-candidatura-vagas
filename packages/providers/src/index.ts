@@ -35,6 +35,8 @@ export type { FonteCnpjProvider, ResultadoFonteCnpj } from './cnpj';
 export { cifrar, decifrar } from './criptografia';
 export { criarEmailProvider, EmailLogProvider, EmailSmtpProvider } from './email';
 export type { EmailProvider, MensagemEmail } from './email';
+export { DeviceNotRegisteredError, ExpoPushProvider, MockPushProvider, criarPushProvider } from './push';
+export type { PushMessage, PushProvider } from './push';
 export { FakeUazapiInstancia, UazapiInstanciaCliente } from './uazapi-instancia';
 export type {
   ClienteInstanciaWhatsapp,
