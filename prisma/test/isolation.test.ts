@@ -74,6 +74,29 @@ describe('isolamento multi-tenant RLS (F2-10)', () => {
     await prisma.$disconnect();
   });
 
+  it('job de sistema lê processo e empresa de outro tenant', async () => {
+    const prisma = createPrisma(RLS_DATABASE_URL);
+    await setSessionContext(prisma, { empresaId: empresaAId, sistema: true });
+
+    const processos = await prisma.processoSeletivo.findMany({ where: { empresaId: empresaBId } });
+    assert.ok(processos.length >= 1);
+    const etapas = await prisma.etapa.findMany({ where: { processoId: processos[0]!.id } });
+    assert.ok(etapas.length >= 1);
+    const empresa = await prisma.empresa.findUnique({ where: { id: empresaBId } });
+    assert.ok(empresa);
+
+    await prisma.$disconnect();
+  });
+
+  it('membro da empresa A não lê o processo da empresa B', async () => {
+    const prisma = createPrisma(RLS_DATABASE_URL);
+    await setSessionContext(prisma, { empresaId: empresaAId, isAdmin: false });
+
+    const processos = await prisma.processoSeletivo.findMany({ where: { empresaId: empresaBId } });
+    assert.equal(processos.length, 0);
+    await prisma.$disconnect();
+  });
+
   it('admin sem MFA não obtém bypass (0 linhas de outra empresa)', async () => {
     const prisma = createPrisma(RLS_DATABASE_URL);
     await setSessionContext(prisma, { empresaId: empresaAId, isAdmin: false });

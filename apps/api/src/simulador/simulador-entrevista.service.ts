@@ -124,9 +124,10 @@ export class SimuladorEntrevistaService {
 
   private async candidaturaDo(candidatoId: string) {
     const lista = await this.repo.listarCandidaturasCandidato(candidatoId, SISTEMA);
-    const preferida =
-      [...lista].reverse().find((item) => item.status === 'INSCRITA' || item.status === 'TRIAGEM_WHATSAPP') ??
-      lista.at(-1);
+    const abertas = lista.filter((item) => item.status === 'INSCRITA' || item.status === 'TRIAGEM_WHATSAPP');
+    const maisRecente = (itens: typeof lista) =>
+      [...itens].sort((a, b) => b.criadoEm.getTime() - a.criadoEm.getTime())[0];
+    const preferida = maisRecente(abertas) ?? maisRecente(lista);
     if (!preferida) throw new ErroAplicacao('SEM_CANDIDATURA', 404, 'o candidato ainda não se candidatou');
     return preferida;
   }
