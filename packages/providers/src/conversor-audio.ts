@@ -10,7 +10,8 @@ export function duracaoWav(wav: Buffer): number {
   const inicio = wav.indexOf('data', 36, 'ascii');
   if (inicio < 0 || !canais || !taxa || !bits) return 0;
   const declarado = wav.readUInt32LE(inicio + 4);
-  const tamanho = declarado > 0 ? declarado : wav.length - inicio - 8;
+  const disponivel = wav.length - inicio - 8;
+  const tamanho = declarado > 0 && declarado <= disponivel ? declarado : disponivel;
   return tamanho / (taxa * canais * (bits / 8));
 }
 export class ConversorAudioFake implements ConversorAudio {
