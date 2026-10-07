@@ -101,6 +101,19 @@ export class RepositorioPrisma implements Repositorio {
     return usuario ? this.usuario(usuario) : null;
   }
 
+  async registrarDispositivoPush(registro: { usuarioId: string; token: string; plataforma: 'IOS' | 'ANDROID' | 'WEB'; ultimoUsoEm: Date }): Promise<void> {
+    await this.prisma.dispositivoPush.upsert({ where: { token: registro.token }, create: registro, update: { usuarioId: registro.usuarioId, plataforma: registro.plataforma, ultimoUsoEm: registro.ultimoUsoEm } });
+  }
+  async removerDispositivoPush(token: string, usuarioId: string): Promise<boolean> {
+    const r = await this.prisma.dispositivoPush.deleteMany({ where: { token, usuarioId } }); return r.count > 0;
+  }
+  async listarDispositivosPush(usuarioId: string) { return this.prisma.dispositivoPush.findMany({ where: { usuarioId }, select: { token: true, plataforma: true } }); }
+  async removerDispositivosPush(tokens: string[]): Promise<void> { if (tokens.length) await this.prisma.dispositivoPush.deleteMany({ where: { token: { in: tokens } } }); }
+  async removerDispositivosPushInativos(antesDe: Date): Promise<number> {
+    const resultado = await this.prisma.dispositivoPush.deleteMany({ where: { ultimoUsoEm: { lt: antesDe } } });
+    return resultado.count;
+  }
+
   async atualizarUsuario(id: string, patch: Partial<UsuarioRegistro>): Promise<UsuarioRegistro> {
     const data = semId(patch);
     const usuario = await this.prisma.usuario.update({ where: { id }, data });

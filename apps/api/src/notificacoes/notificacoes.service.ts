@@ -52,6 +52,12 @@ export class NotificacoesService {
     private readonly config: ConfiguracaoApp,
     private readonly relogio: Relogio,
   ) {}
+  async registrarDispositivo(sessao: SessaoRequest, token: string, plataforma: 'IOS' | 'ANDROID' | 'WEB') { await this.repo.registrarDispositivoPush({ usuarioId: sessao.usuario.id, token, plataforma, ultimoUsoEm: this.relogio.agora() }); return { ok: true }; }
+  async removerDispositivo(sessao: SessaoRequest, token: string) { return { removido: await this.repo.removerDispositivoPush(token, sessao.usuario.id) }; }
+  async limparDispositivosInativos(dias: number) {
+    const antesDe = new Date(this.relogio.agora().getTime() - dias * 24 * 60 * 60 * 1000);
+    return { removidos: await this.repo.removerDispositivosPushInativos(antesDe), dias };
+  }
 
   /**
    * CANDIDATO_NOVO (candidatura direta ou convite aceito). Nunca derruba a

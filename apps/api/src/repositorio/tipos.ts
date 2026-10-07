@@ -293,6 +293,11 @@ export interface VinculoUsuario {
 }
 
 export interface Repositorio {
+  registrarDispositivoPush(registro: { usuarioId: string; token: string; plataforma: 'IOS' | 'ANDROID' | 'WEB'; ultimoUsoEm: Date }): Promise<void>;
+  removerDispositivoPush(token: string, usuarioId: string): Promise<boolean>;
+  listarDispositivosPush(usuarioId: string): Promise<Array<{ token: string; plataforma: string }>>;
+  removerDispositivosPush(tokens: string[]): Promise<void>;
+  removerDispositivosPushInativos(antesDe: Date): Promise<number>;
   criarUsuario(dados: UsuarioRegistro): Promise<UsuarioRegistro>;
   buscarUsuarioPorEmail(email: string): Promise<UsuarioRegistro | null>;
   buscarUsuarioPorId(id: string): Promise<UsuarioRegistro | null>;

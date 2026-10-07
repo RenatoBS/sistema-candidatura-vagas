@@ -2,6 +2,7 @@ import {
   AntivirusMock,
   ArmazenamentoMemoria,
   EmailLogProvider,
+  MockPushProvider,
   FakeEmbeddingProvider,
   FakeUazapiInstancia,
   FonteCnpjControlavel,
@@ -30,6 +31,7 @@ export const filaMatchTeste = new FilaMatchMemoria();
 export const embeddingsTeste = new FakeEmbeddingProvider();
 export const pushTeste = new CanalEntregaMemoria('push');
 export const emailNotificacaoTeste = new CanalEntregaMemoria('email');
+export const pushProviderTeste = new MockPushProvider();
 export const relogioTeste: Relogio & { fixo: Date | null; definir(data: Date | null): void } = {
   fixo: null as Date | null,
   agora() {
@@ -50,6 +52,7 @@ export function limparAmbienteTeste(): void {
   filaMatchTeste.limpar();
   embeddingsTeste.limpar();
   pushTeste.limpar();
+  pushProviderTeste.limpar();
   emailNotificacaoTeste.limpar();
   dnsTeste.limpar();
   whatsappTeste.limpar();

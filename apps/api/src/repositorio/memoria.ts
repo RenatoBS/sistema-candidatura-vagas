@@ -59,6 +59,7 @@ function visivel(ctx: ContextoTenant | undefined, empresaId: string | null): boo
 }
 
 export class RepositorioMemoria implements Repositorio {
+  dispositivosPush = new Map<string, { usuarioId: string; token: string; plataforma: 'IOS' | 'ANDROID' | 'WEB'; ultimoUsoEm: Date }>();
   usuarios = new Map<string, UsuarioRegistro>();
   refresh = new Map<string, RefreshRegistro>();
   tokens = new Map<string, TokenRegistro>();
@@ -68,6 +69,19 @@ export class RepositorioMemoria implements Repositorio {
   membros = new Map<string, MembroRegistro>();
   convites = new Map<string, ConviteRegistro>();
   candidatos = new Map<string, PerfilCandidato>();
+  async registrarDispositivoPush(registro: { usuarioId: string; token: string; plataforma: 'IOS' | 'ANDROID' | 'WEB'; ultimoUsoEm: Date }): Promise<void> {
+    this.dispositivosPush.set(registro.token, registro);
+  }
+  async removerDispositivoPush(token: string, usuarioId: string): Promise<boolean> {
+    const atual = this.dispositivosPush.get(token); if (!atual || atual.usuarioId !== usuarioId) return false; return this.dispositivosPush.delete(token);
+  }
+  async listarDispositivosPush(usuarioId: string) { return [...this.dispositivosPush.values()].filter((d) => d.usuarioId === usuarioId); }
+  async removerDispositivosPush(tokens: string[]): Promise<void> { for (const token of tokens) this.dispositivosPush.delete(token); }
+  async removerDispositivosPushInativos(antesDe: Date): Promise<number> {
+    let removidos = 0;
+    for (const [token, dispositivo] of this.dispositivosPush) if (dispositivo.ultimoUsoEm < antesDe) { this.dispositivosPush.delete(token); removidos += 1; }
+    return removidos;
+  }
   linhasHabilidade: { candidatoId: string; linha: LinhaHabilidade }[] = [];
   curriculos = new Map<string, CurriculoRegistro>();
   consentimentos: ConsentimentoRegistro[] = [];

@@ -7,6 +7,7 @@ import {
   criarArmazenamentoS3,
   criarEmailProvider,
   criarEmbeddingProvider,
+  criarPushProvider,
   UazapiInstanciaCliente,
   type EmbeddingProvider,
 } from '@scv/providers';
@@ -54,7 +55,8 @@ import { VagasController } from './http/vagas.controller';
 import { WhatsappController } from './http/whatsapp.controller';
 import { MatchService } from './match/match.service';
 import { MembrosService } from './membros/membros.service';
-import { CanalEntregaNoop, type CanalEntrega } from './notificacoes/canal-entrega';
+import { CanalEmail, CanalPush } from './notificacoes/canais';
+import type { CanalEntrega } from './notificacoes/canal-entrega';
 import { NotificacoesService } from './notificacoes/notificacoes.service';
 import { RepositorioPrisma } from './repositorio/prisma';
 import type { Repositorio } from './repositorio/tipos';
@@ -161,11 +163,11 @@ const embeddingsProvider: FactoryProvider<EmbeddingProvider> = {
 /** Push (F6-07) e e-mail (F6-08) substituem os no-ops quando existirem. */
 const canaisEntregaProvider: FactoryProvider<CanalEntrega[]> = {
   provide: CANAIS_ENTREGA,
-  inject: [CONFIG],
-  useFactory: (config: ConfiguracaoApp) =>
+  inject: [CONFIG, REPOSITORIO, EMAIL],
+  useFactory: (config: ConfiguracaoApp, repo: Repositorio, email: typeof emailTeste) =>
     config.authStore === 'memory'
       ? [pushTeste, emailNotificacaoTeste]
-      : [new CanalEntregaNoop('push'), new CanalEntregaNoop('email')],
+      : [new CanalPush(repo, criarPushProvider()), new CanalEmail(repo, email)],
 };
 
 const llmProvider: FactoryProvider = {

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Inject, Param, Post, Put, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Put, Query, Req } from '@nestjs/common';
 import { preferenciasNotificacaoSchema } from '@scv/contracts';
 
 import type { ConfiguracaoApp } from '../configuracao';
@@ -25,6 +25,25 @@ export class NotificacoesController {
   @Get('notificacoes')
   listar(@Req() req: RequisicaoComSessao, @Query() consulta: Record<string, unknown>) {
     return this.notificacoes.listar(req.sessao, consulta);
+  }
+
+  @Post('dispositivos-push')
+  registrarDispositivo(@Req() req: RequisicaoComSessao, @Body() body: { token?: string; plataforma?: 'IOS' | 'ANDROID' | 'WEB' }) {
+    if (!body.token || !body.plataforma) throw new ErroAplicacao('DADOS_INVALIDOS', 400, 'token e plataforma são obrigatórios');
+    return this.notificacoes.registrarDispositivo(req.sessao, body.token, body.plataforma);
+  }
+
+  @Delete('dispositivos-push/:token')
+  removerDispositivo(@Req() req: RequisicaoComSessao, @Param('token') token: string) { return this.notificacoes.removerDispositivo(req.sessao, token); }
+
+  @Publico()
+  @Post('interno/dispositivos-push/limpeza')
+  limparDispositivos(@Req() req: RequisicaoComSessao) {
+    const token = req.headers['x-internal-token'];
+    if (!this.config.internalToken || token !== this.config.internalToken) throw new ErroAplicacao('NAO_AUTENTICADO', 401, 'token interno inválido');
+    const dias = Number(process.env.PUSH_TOKEN_RETENCAO_DIAS ?? 90);
+    if (!Number.isInteger(dias) || dias < 1) throw new ErroAplicacao('DADOS_INVALIDOS', 400, 'PUSH_TOKEN_RETENCAO_DIAS inválido');
+    return this.notificacoes.limparDispositivosInativos(dias);
   }
 
   @Get('notificacoes/preferencias')
