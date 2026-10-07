@@ -44,7 +44,7 @@ export class CandidaturasService {
     const candidatura = await this.maquina.criar(
       { empresaId: vaga.empresaId, vagaId, candidatoId: candidato.id, origem: 'DIRETA' },
       { tipo: 'candidatarDireta', vagaAceitaInscricoes: true },
-      { autorId: candidato.id },
+      { autorId: sessao.usuario.id },
       { empresaId: vaga.empresaId },
     );
     for (const entrada of entradas) {
@@ -158,7 +158,7 @@ export class CandidaturasService {
     const candidatura = await this.maquina.aplicar(
       id,
       { tipo: 'aceitarConvite', vagaAceitaInscricoes: true },
-      { autorId: candidato.id },
+      { autorId: sessao.usuario.id },
       { empresaId: atual.empresaId },
     );
     for (const entrada of entradas)
@@ -190,7 +190,7 @@ export class CandidaturasService {
     const candidatura = await this.maquina.aplicar(
       id,
       { tipo: 'recusarConvite' },
-      { autorId: candidato.id },
+      { autorId: sessao.usuario.id },
       { empresaId: atual.empresaId },
     );
     const sugestao = (
