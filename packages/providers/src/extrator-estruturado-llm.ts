@@ -1,8 +1,10 @@
 import {
+  comporResumoCurriculo,
   dadosCurriculoValidos,
   habilidadesCitadasNoTexto,
   lerDadosCurriculo,
   normalizarNomeHabilidade,
+  resumoDeTextoLivre,
   schemaDadosCurriculo,
   type DadosCurriculo,
   type ItemCatalogo,
@@ -57,5 +59,6 @@ function completarCatalogo(dados: DadosCurriculo, texto: string, catalogo: ItemC
     vistas.add(chave);
     dados.habilidades.push({ nome: citada.nome, nivel: 3 });
   }
+  if (!dados.resumo) dados.resumo = comporResumoCurriculo(dados) || resumoDeTextoLivre(texto);
   return dados;
 }

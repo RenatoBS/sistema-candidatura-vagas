@@ -17,6 +17,8 @@ Currículo do candidato com extração nativa (PDF com camada de texto e DOCX) e
 
 A interface `ExtratorEstruturadoCurriculo` vive em `packages/providers`. O padrão em dev e teste é `ExtratorEstruturadoMock` (determinístico: linhas `resumo:`, `experiencia:`, `formacao:`, `idioma:`, `habilidade:` e nomes do catálogo).
 
+Para currículos reais (sem esses prefixos), o mock também lê as seções por título (Resumo/Perfil/Objetivo, Experiência, Formação, Idiomas, Habilidades/Competências) em `packages/domain/src/resumo-curriculo.ts`. Sem seção de resumo, o resumo é composto dos dados extraídos (cargo mais recente, tempo de experiência, formação, principais habilidades e idiomas). O nome da pessoa e os contatos nunca viram resumo.
+
 `EXTRATOR_CURRICULO=llm` seleciona `ExtratorEstruturadoLlm`, que chama o `LlmProvider` de `@scv/llm` com `schemaDadosCurriculo` e só grava a saída se `dadosCurriculoValidos` aceitar. O provedor do modelo continua `LLM_PROVIDER` (`mock` por padrão; nenhum teste chama API real).
 
 ## Antivírus

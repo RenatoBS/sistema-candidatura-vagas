@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const VERSAO_PROMPT_SUGERIR = 'sugerir-perguntas/v1';
-export const VERSAO_PROMPT_CURRICULO = 'extrair-curriculo/v1';
+export const VERSAO_PROMPT_CURRICULO = 'extrair-curriculo/v2';
 
 export function lerPrompt(relativo: string): string {
   const nome = relativo.endsWith('.md') ? relativo : `${relativo}.md`;
