@@ -68,6 +68,7 @@ import { CandidatoController } from './http/candidatos.controller';
 import { EmpresasController } from './http/empresas.controller';
 import { MatchController } from './http/match.controller';
 import { NotificacoesController } from './http/notificacoes.controller';
+import { RankingController } from './http/ranking.controller';
 import { TriagemController } from './http/triagem.controller';
 import { VagasController } from './http/vagas.controller';
 import { VozController } from './http/voz.controller';
@@ -77,6 +78,7 @@ import { MembrosService } from './membros/membros.service';
 import { CanalEmail, CanalPush } from './notificacoes/canais';
 import type { CanalEntrega } from './notificacoes/canal-entrega';
 import { NotificacoesService } from './notificacoes/notificacoes.service';
+import { RankingService } from './ranking/ranking.service';
 import { RepositorioPrisma } from './repositorio/prisma';
 import type { Repositorio } from './repositorio/tipos';
 import {
@@ -301,6 +303,7 @@ const whatsappClienteProvider: FactoryProvider = {
     CandidatoController,
     VagasController,
     VozController,
+    RankingController,
     MatchController,
     NotificacoesController,
   ],
@@ -333,6 +336,7 @@ const whatsappClienteProvider: FactoryProvider = {
     TriagemInatividadeService,
     TriagemConsultaService,
     VozService,
+    RankingService,
     embeddingsProvider,
     canaisEntregaProvider,
     llmProvider,

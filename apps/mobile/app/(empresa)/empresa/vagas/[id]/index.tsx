@@ -80,6 +80,9 @@ export default function VagaEmpresaScreen() {
         <Link href={`/empresa/vagas/${id}/voz`} style={styles.link}>
           {t('vaga.voz')}
         </Link>
+        <Link href={`/empresa/vagas/${id}/ranking`} style={styles.link}>
+          {t('vaga.ranking')}
+        </Link>
       </View>
       <Text style={styles.texto}>
         {t('vaga.status')}: {dados?.status ?? '—'}

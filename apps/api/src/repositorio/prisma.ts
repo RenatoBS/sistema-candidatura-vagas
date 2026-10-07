@@ -31,6 +31,7 @@ import type {
   Repositorio,
   RespostaSensivel,
   SolicitacaoLgpdRegistro,
+  ScoreRegistro,
   TokenRegistro,
   UsuarioRegistro,
   VerificacaoRegistro,
@@ -1103,6 +1104,62 @@ export class RepositorioPrisma implements Repositorio {
 
   contarSessoesAtivas(ctx: ContextoTenant) {
     return this.entrevistasStore.contarAtivas(ctx);
+  }
+
+  async salvarScore(dados: ScoreRegistro, ctx: ContextoTenant): Promise<ScoreRegistro> {
+    const salva = await this.comTenant(ctx, async (tx) => {
+      const existente = await tx.score.findFirst({ where: { candidaturaId: dados.candidaturaId } });
+      const data = {
+        scorePerfil: dados.scorePerfil,
+        scoreHabilidades: dados.scoreHabilidades,
+        scoreCurriculo: dados.scoreCurriculo,
+        scoreLinkedin: dados.scoreLinkedin,
+        scoreTriagem: dados.scoreTriagem,
+        scoreEntrevista: dados.scoreEntrevista,
+        scoreFinal: dados.scoreFinal,
+        completude: dados.completude,
+        explicacao: json(dados.explicacao),
+        versaoAlgoritmo: dados.versaoAlgoritmo,
+      };
+      if (existente) return tx.score.update({ where: { id: existente.id }, data });
+      return tx.score.create({ data: { ...data, id: dados.id, candidaturaId: dados.candidaturaId, criadoEm: dados.criadoEm } });
+    });
+    return this.scoreDe(salva);
+  }
+
+  async buscarScore(candidaturaId: string, ctx: ContextoTenant): Promise<ScoreRegistro | null> {
+    const row = await this.comTenant(ctx, (tx) => tx.score.findFirst({ where: { candidaturaId } }));
+    return row ? this.scoreDe(row) : null;
+  }
+
+  async listarScores(ctx: ContextoTenant): Promise<ScoreRegistro[]> {
+    const rows = await this.comTenant(ctx, (tx) => tx.score.findMany());
+    return rows.map((row) => this.scoreDe(row));
+  }
+
+  private scoreDe(row: {
+    id: string;
+    candidaturaId: string;
+    scorePerfil: number | null;
+    scoreHabilidades: number | null;
+    scoreCurriculo: number | null;
+    scoreLinkedin: number | null;
+    scoreTriagem: number | null;
+    scoreEntrevista: number | null;
+    scoreFinal: number | null;
+    completude: number | null;
+    explicacao: Prisma.JsonValue;
+    versaoAlgoritmo: number;
+    criadoEm: Date;
+    atualizadoEm: Date;
+  }): ScoreRegistro {
+    return {
+      ...row,
+      explicacao:
+        row.explicacao && typeof row.explicacao === 'object' && !Array.isArray(row.explicacao)
+          ? (row.explicacao as Record<string, unknown>)
+          : {},
+    };
   }
 
   private usuario(usuario: {

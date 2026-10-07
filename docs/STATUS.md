@@ -1,8 +1,8 @@
 # Status do Projeto — Sistema de Candidatura a Vagas
 
 **Última atualização:** 2026-10-07  
-**Branch ativa:** `feat/f8-entrevista-voz`  
-**PR:** Fase 7 mergeada no #12. Fase 8 em `feat/f8-entrevista-voz`.
+**Branch ativa:** `feat/f9-ranqueamento`  
+**PR:** Fases 7 e 8 na `main` (#12, #13). Fase 9 em `feat/f9-ranqueamento`.
 
 ## Status geral
 
@@ -11,7 +11,8 @@
 🟢 **Fases 1–5 concluídas** na `main` — Fases 3, 4 e 5 mergeadas nos PRs [#8](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/8), [#10](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/10) e [#9](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/9).  
 🟢 **Fase 6 concluída** na `main` (PR [#11](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/11)). ADR 0005 está provisório, aguardando o Renato.  
 🟢 **Fase 7 concluída** na `main` (PR [#12](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/12)). Ficam com o Renato: F7-01, F7-02 (decisão final) e F7-15. ADR 0006 continua provisório.  
-🟢 **Fase 8 implementada** na branch `feat/f8-entrevista-voz` — roteiro, sessão falsa, reconexão, exceção e telas. F8-15 fica com o Renato. ADR 0007 é provisório. Fases 9 e 10 seguem em [plano-restante.md](plano-restante.md).  
+🟢 **Fase 8 concluída** na `main` (PR [#13](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/13)). F8-15 fica com o Renato. ADR 0007 é provisório.  
+🟢 **Fase 9 implementada** na branch `feat/f9-ranqueamento`. Q15 provisório no ADR 0008. Q16 e a aprovação de F9-01 ficam com o Renato.  
 🟢 **POC 8.1 concluída** na `main` — latência de voz STT→LLM→TTS.
 
 ## Decisões do Renato (registro)
@@ -199,6 +200,23 @@ Decisões provisórias: [ADR 0007](adr/0007-entrevista-voz.md). Guia: [fase-8-en
 | F8-14 | Exceção manual auditada e runbook local                        |         ✅ Feito         | Cursor      |
 | F8-15 | Provedores e chaves em staging                                 |   ⏸️ Pendente (pulada)   | Renato      |
 
+## Checklist Fase 9
+
+Decisões provisórias: [ADR 0008](adr/0008-ranqueamento.md). Guia: [fase-9-ranqueamento.md](fase-9-ranqueamento.md).
+
+| ID    | Tarefa                                              |          Status          | Responsável |
+| ----- | --------------------------------------------------- | :----------------------: | ----------- |
+| F9-01 | Pesos e limiar (Q15); Q16                          | 🟡 Provisório (ADR 0008) | Renato      |
+| F9-02 | Seis componentes de score                           |         ✅ Feito         | Cursor      |
+| F9-03 | Ausência, renormalização e completude               |         ✅ Feito         | Cursor      |
+| F9-04 | Pesos por vaga e tela                               |         ✅ Feito         | Cursor      |
+| F9-05 | Recálculo com debounce e versão                     |         ✅ Feito         | Cursor      |
+| F9-06 | Explicação e revisão humana                         |         ✅ Feito         | Cursor      |
+| F9-07 | Ranking invisível ao candidato                      |         ✅ Feito         | Cursor      |
+| F9-08 | Tela de ranking                                     |         ✅ Feito         | Cursor      |
+| F9-09 | Relatório de viés                                   |         ✅ Feito         | Cursor      |
+| F9-10 | Prompt sem atributos sensíveis                      |         ✅ Feito         | Cursor      |
+
 ## Documentos de referência
 
 - [Plano Técnico e de Produto](plano-sistema.md)
@@ -210,10 +228,12 @@ Decisões provisórias: [ADR 0007](adr/0007-entrevista-voz.md). Guia: [fase-8-en
 - [ADR 0005 — Candidatura, match e notificações (provisório)](adr/0005-candidatura-match-notificacoes.md)
 - [ADR 0006 — Entrevista WhatsApp (provisório)](adr/0006-entrevista-whatsapp.md)
 - [ADR 0007 — Entrevista por voz (provisório)](adr/0007-entrevista-voz.md)
+- [ADR 0008 — Ranqueamento (provisório)](adr/0008-ranqueamento.md)
 - [Plano restante (Fases 7–10, handoff)](plano-restante.md)
 - [Guia da Fase 6](fase-6-candidatura-notificacoes.md)
 - [Guia da Fase 7](fase-7-entrevista-whatsapp.md)
 - [Guia da Fase 8](fase-8-entrevista-voz.md)
+- [Guia da Fase 9](fase-9-ranqueamento.md)
 - [Diagrama ER Fase 2](diagrama-er-fase2.md)
 - [Proteção da branch main](protecao-branch-main.md)
 - [AGENTS.md](../AGENTS.md)

@@ -158,7 +158,8 @@
     "ate": "Inscrições até",
     "detalhe": "Detalhe da vaga",
     "triagens": "Triagens desta vaga",
-    "voz": "Entrevistas por voz"
+    "voz": "Entrevistas por voz",
+    "ranking": "Ranking da vaga"
   },
   "triagem": {
     "titulo": "Triagens",
@@ -188,5 +189,13 @@
     "motivo": "Motivo do acesso à gravação",
     "transcricao": "Transcrição",
     "vazia": "Nenhuma entrevista por voz."
+  },
+  "ranking": {
+    "titulo": "Ranking",
+    "vazio": "Nenhum score calculado.",
+    "completude": "Completude",
+    "pesos": "Pesos (somam 100)",
+    "salvar": "Salvar pesos",
+    "explicacao": "Explicação"
   }
 }

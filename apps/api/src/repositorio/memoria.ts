@@ -26,6 +26,7 @@ import type {
   NotificacaoNova,
   PerfilCandidato,
   QuedaInstanciaRegistro,
+  ScoreRegistro,
   PreferenciaNotificacaoRegistro,
   RefreshRegistro,
   Repositorio,
@@ -116,6 +117,7 @@ export class RepositorioMemoria implements Repositorio {
   respostas = new Map<string, RespostaSensivel>();
   avaliacoes = new Map<string, AvaliacaoRegistro>();
   quedas = new Map<string, QuedaInstanciaRegistro>();
+  scores = new Map<string, ScoreRegistro>();
   readonly entrevistasStore = new EntrevistasMemoria();
   readonly vagasStore = new VagasMemoria();
   readonly candidaturasStore = new CandidaturasMemoria();
@@ -151,6 +153,7 @@ export class RepositorioMemoria implements Repositorio {
     this.respostas.clear();
     this.avaliacoes.clear();
     this.quedas.clear();
+    this.scores.clear();
     this.entrevistasStore.limpar();
     this.vagasStore.limpar();
     this.candidaturasStore.limpar();
@@ -1000,6 +1003,30 @@ export class RepositorioMemoria implements Repositorio {
 
   contarSessoesAtivas(ctx: ContextoTenant) {
     return this.entrevistasStore.contarAtivas(ctx);
+  }
+
+  async salvarScore(dados: ScoreRegistro, ctx: ContextoTenant): Promise<ScoreRegistro> {
+    const candidatura = await this.buscarCandidatura(dados.candidaturaId, ctx);
+    if (!candidatura) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'candidatura não encontrada');
+    const atual = [...this.scores.values()].find((item) => item.candidaturaId === dados.candidaturaId);
+    const salva = { ...dados, id: atual?.id ?? dados.id, explicacao: { ...dados.explicacao } };
+    this.scores.set(salva.candidaturaId, salva);
+    return { ...salva, explicacao: { ...salva.explicacao } };
+  }
+
+  async buscarScore(candidaturaId: string, ctx: ContextoTenant): Promise<ScoreRegistro | null> {
+    const candidatura = await this.buscarCandidatura(candidaturaId, ctx);
+    const score = this.scores.get(candidaturaId);
+    if (!candidatura || !score) return null;
+    return { ...score, explicacao: { ...score.explicacao } };
+  }
+
+  async listarScores(ctx: ContextoTenant): Promise<ScoreRegistro[]> {
+    const itens: ScoreRegistro[] = [];
+    for (const score of this.scores.values()) {
+      if (await this.buscarCandidatura(score.candidaturaId, ctx)) itens.push({ ...score, explicacao: { ...score.explicacao } });
+    }
+    return itens;
   }
 
   private instanciaById(id: string): InstanciaRegistro | null {

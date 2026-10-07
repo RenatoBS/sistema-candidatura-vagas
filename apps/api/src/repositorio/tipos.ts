@@ -311,6 +311,23 @@ export interface RespostaSensivel {
   criadoEm?: Date;
 }
 
+export interface ScoreRegistro {
+  id: string;
+  candidaturaId: string;
+  scorePerfil: number | null;
+  scoreHabilidades: number | null;
+  scoreCurriculo: number | null;
+  scoreLinkedin: number | null;
+  scoreTriagem: number | null;
+  scoreEntrevista: number | null;
+  scoreFinal: number | null;
+  completude: number | null;
+  explicacao: Record<string, unknown>;
+  versaoAlgoritmo: number;
+  criadoEm: Date;
+  atualizadoEm: Date;
+}
+
 export interface AvaliacaoRegistro {
   id: string;
   respostaId: string;
@@ -453,6 +470,9 @@ export interface Repositorio {
   ): Promise<SessaoVozRegistro | null>;
   listarSessoesEntrevista(entrevistaId: string, ctx: ContextoTenant): Promise<SessaoVozRegistro[]>;
   contarSessoesAtivas(ctx: ContextoTenant): Promise<number>;
+  salvarScore(dados: ScoreRegistro, ctx: ContextoTenant): Promise<ScoreRegistro>;
+  buscarScore(candidaturaId: string, ctx: ContextoTenant): Promise<ScoreRegistro | null>;
+  listarScores(ctx: ContextoTenant): Promise<ScoreRegistro[]>;
   marcarRespostasParciais(entrevistaId: string, ctx: ContextoTenant): Promise<void>;
   registrarEventoWhatsappEntrada(
     registro: EventoWhatsappEntradaRegistro,
