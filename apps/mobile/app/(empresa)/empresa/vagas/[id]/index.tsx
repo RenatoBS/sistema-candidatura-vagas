@@ -99,7 +99,7 @@ export default function VagaEmpresaScreen() {
       </Text>
       {editavel && semProcesso && dados ? (
         <Button
-          label={t('vaga.processo')}
+          label={process.env.EXPO_PUBLIC_LEGENDAS_DEMO === 'true' ? t('vaga.processoCurto') : t('vaga.processo')}
           desabilitado={ocupado}
           onPress={() => void agir(`/vagas/${id}/processo`, 'PUT', processoPadrao())}
         />
