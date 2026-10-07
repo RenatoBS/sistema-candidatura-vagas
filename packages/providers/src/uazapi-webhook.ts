@@ -43,8 +43,8 @@ export function normalizarWebhookUazapi(payload: unknown): MensagemWhatsappEntra
     numeroRemetente: sender.replace(/\D/g, ''),
     tipo,
     texto:
-      kind.includes('extended') && str(content.text)
-        ? str(content.text)
+      kind.includes('extended') && (str(content.text) ?? str(message.content))
+        ? (str(content.text) ?? str(message.content))
         : (str(message.text) ?? str(message.content) ?? str(root.text)),
     botaoId: str(message.buttonOrListid) ?? str(root.buttonOrListid),
     mimetype: str(content.mimetype) ?? str(message.mediaType),
