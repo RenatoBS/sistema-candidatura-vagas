@@ -9,7 +9,9 @@ export function duracaoWav(wav: Buffer): number {
   const bits = wav.readUInt16LE(34);
   const inicio = wav.indexOf('data', 36, 'ascii');
   if (inicio < 0 || !canais || !taxa || !bits) return 0;
-  return wav.readUInt32LE(inicio + 4) / (taxa * canais * (bits / 8));
+  const declarado = wav.readUInt32LE(inicio + 4);
+  const tamanho = declarado > 0 ? declarado : wav.length - inicio - 8;
+  return tamanho / (taxa * canais * (bits / 8));
 }
 export class ConversorAudioFake implements ConversorAudio {
   async converter(
