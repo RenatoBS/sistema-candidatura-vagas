@@ -46,7 +46,7 @@ export class WebhookUazapiService {
         empresaId: instancia.empresaId,
         instanciaWhatsappId: instancia.id,
         mensagemIdProvedor: mensagem.mensagemIdProvedor,
-        tipo: mensagem.tipo === 'BOTAO' ? 'MIDIA' : mensagem.tipo,
+        tipo: mensagem.tipo,
         payloadNormalizado: mensagem as unknown as Record<string, unknown>,
         status: 'RECEBIDO',
         criadoEm: new Date(),

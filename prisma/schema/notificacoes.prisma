@@ -29,15 +29,15 @@ enum PlataformaPush {
 }
 
 model Notificacao {
-  id         String          @id @default(uuid()) @db.Uuid
-  usuarioId  String          @db.Uuid
-  empresaId  String?         @db.Uuid
-  tipo       TipoNotificacao
-  chaveDedup String          @unique
-  dados      Json            @default("{}")
-  agrupadas  Int             @default(1)
-  lidaEm     DateTime?       @db.Timestamptz
-  criadoEm   DateTime        @default(now()) @db.Timestamptz
+  id          String          @id @default(uuid()) @db.Uuid
+  usuarioId   String          @db.Uuid
+  empresaId   String?         @db.Uuid
+  tipo        TipoNotificacao
+  chaveDedup  String          @unique
+  dados       Json            @default("{}")
+  agrupadas   Int             @default(1)
+  lidaEm      DateTime?       @db.Timestamptz
+  criadoEm    DateTime        @default(now()) @db.Timestamptz
 
   usuario Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   empresa Empresa? @relation(fields: [empresaId], references: [id], onDelete: SetNull)
@@ -67,12 +67,12 @@ model PreferenciaNotificacao {
 }
 
 model DispositivoPush {
-  id          String         @id @default(uuid()) @db.Uuid
-  usuarioId   String         @db.Uuid
-  token       String         @unique
-  plataforma  PlataformaPush
-  ultimoUsoEm DateTime?      @db.Timestamptz
-  criadoEm    DateTime       @default(now()) @db.Timestamptz
+  id           String         @id @default(uuid()) @db.Uuid
+  usuarioId    String         @db.Uuid
+  token        String         @unique
+  plataforma   PlataformaPush
+  ultimoUsoEm  DateTime?      @db.Timestamptz
+  criadoEm     DateTime       @default(now()) @db.Timestamptz
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
@@ -81,15 +81,15 @@ model DispositivoPush {
 }
 
 model SugestaoMatch {
-  id              String              @id @default(uuid()) @db.Uuid
-  vagaId          String              @db.Uuid
-  candidatoId     String              @db.Uuid
+  id              String            @id @default(uuid()) @db.Uuid
+  vagaId          String            @db.Uuid
+  candidatoId     String            @db.Uuid
   compatibilidade Float
-  explicacao      Json                @default("{}")
+  explicacao      Json              @default("{}")
   status          StatusSugestaoMatch @default(PENDENTE)
-  notificadoEm    DateTime?           @db.Timestamptz
-  criadoEm        DateTime            @default(now()) @db.Timestamptz
-  atualizadoEm    DateTime            @updatedAt @db.Timestamptz
+  notificadoEm    DateTime?         @db.Timestamptz
+  criadoEm        DateTime          @default(now()) @db.Timestamptz
+  atualizadoEm    DateTime          @updatedAt @db.Timestamptz
 
   vaga      Vaga      @relation(fields: [vagaId], references: [id], onDelete: Cascade)
   candidato Candidato @relation(fields: [candidatoId], references: [id], onDelete: Cascade)

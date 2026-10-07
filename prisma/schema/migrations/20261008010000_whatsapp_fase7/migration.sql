@@ -3,7 +3,7 @@ ALTER TABLE respostas ADD COLUMN "revisaoHumanaNecessaria" BOOLEAN NOT NULL DEFA
 ALTER TABLE respostas ADD COLUMN "mensagemIdProvedor" TEXT;
 
 CREATE TABLE "eventos_whatsapp_entrada" (
-  "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+  "id" UUID NOT NULL,
   "empresaId" UUID NOT NULL,
   "instanciaWhatsappId" UUID NOT NULL,
   "mensagemIdProvedor" TEXT NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE "eventos_whatsapp_entrada" (
   "status" "StatusEventoWhatsapp" NOT NULL DEFAULT 'RECEBIDO',
   "criadoEm" TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT "eventos_whatsapp_entrada_pkey" PRIMARY KEY ("id"),
-  CONSTRAINT "eventos_whatsapp_entrada_instanciaWhatsappId_mensagemIdProvedor_key" UNIQUE ("instanciaWhatsappId", "mensagemIdProvedor"),
+  CONSTRAINT "eventos_whatsapp_entrada_instanciaWhatsappId_mensagemIdProv_key" UNIQUE ("instanciaWhatsappId", "mensagemIdProvedor"),
   CONSTRAINT "eventos_whatsapp_entrada_empresaId_fkey" FOREIGN KEY ("empresaId") REFERENCES "empresas"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "eventos_whatsapp_entrada_instanciaWhatsappId_fkey" FOREIGN KEY ("instanciaWhatsappId") REFERENCES "instancias_whatsapp"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );

@@ -67,11 +67,9 @@ export class TranscricaoService {
           resultado.confianca < Number(process.env.STT_LIMIAR_CONFIANCA ?? 0.6),
       });
     } catch (erro) {
-      await this.repo.guardarResposta({
-        ...existente,
-        statusTranscricao: 'FALHA',
-        revisaoHumanaNecessaria: true,
-      });
+      // Volta para PENDENTE: o worker retenta (attempts/backoff) e só marca FALHA
+      // pela rota interna `.../falha` quando as tentativas se esgotam.
+      await this.repo.guardarResposta({ ...existente, statusTranscricao: 'PENDENTE' });
       throw erro;
     }
     return { status: 'concluida' };
