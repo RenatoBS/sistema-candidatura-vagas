@@ -1,3 +1,4 @@
+import type { NotificacoesResponse } from '@scv/contracts';
 import { Link } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
@@ -24,6 +25,9 @@ export default function EmpresaHome() {
     () => api<EmpresaResumo>(`/empresas/${empresaId}`, {}, accessToken),
     empresaId,
   );
+  const notificacoes = useConsulta<NotificacoesResponse>(['notificacoes'], () =>
+    api('/notificacoes', {}, accessToken),
+  );
 
   return (
     <View style={styles.tela}>
@@ -34,6 +38,10 @@ export default function EmpresaHome() {
       <Link href="/empresa/verificacao">{t('empresa.status')}</Link>
       <Link href="/empresa/whatsapp">{t('empresa.whatsapp')}</Link>
       <Link href="/empresa/vagas">{t('empresa.vagas')}</Link>
+      <Link href="/empresa/notificacoes">
+        Central de notificações ({notificacoes.data?.naoLidas ?? 0} não lidas)
+      </Link>
+      <Link href="/empresa/notificacoes-preferencias">Preferências de notificações</Link>
       {podeMembros ? <Link href="/empresa/membros">{t('empresa.membros')}</Link> : null}
       <TrocaVisao />
     </View>

@@ -1,6 +1,9 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 
 import { ErroAplicacao } from '../erros';
+import { CandidaturasPrisma } from './candidaturas-prisma';
+import { MatchPrisma } from './match-prisma';
+import { NotificacoesPrisma } from './notificacoes-prisma';
 import type {
   AuditoriaRegistro,
   CandidatoRegistro,
@@ -10,12 +13,15 @@ import type {
   ConviteRegistro,
   CurriculoRegistro,
   EmpresaRegistro,
+  FiltroNotificacoes,
   HabilidadeCatalogo,
   HabilidadeDoCandidato,
   InstanciaRegistro,
   LinhaHabilidade,
   MembroRegistro,
+  NotificacaoNova,
   PerfilCandidato,
+  PreferenciaNotificacaoRegistro,
   RefreshRegistro,
   Repositorio,
   RespostaSensivel,
@@ -49,9 +55,15 @@ function objetoOuNulo(valor: Prisma.JsonValue | null): Record<string, unknown> |
 
 export class RepositorioPrisma implements Repositorio {
   private readonly vagasStore: VagasPrisma;
+  private readonly candidaturasStore: CandidaturasPrisma;
+  private readonly matchStore: MatchPrisma;
+  private readonly notificacoesStore: NotificacoesPrisma;
 
   constructor(private readonly prisma = new PrismaClient()) {
     this.vagasStore = new VagasPrisma(this.prisma, (ctx, fn) => this.comTenant(ctx, fn));
+    this.candidaturasStore = new CandidaturasPrisma((ctx, fn) => this.comTenant(ctx, fn));
+    this.matchStore = new MatchPrisma(this.prisma, (ctx, fn) => this.comTenant(ctx, fn));
+    this.notificacoesStore = new NotificacoesPrisma((ctx, fn) => this.comTenant(ctx, fn));
   }
 
   private async comTenant<T>(ctx: ContextoTenant, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
@@ -87,6 +99,19 @@ export class RepositorioPrisma implements Repositorio {
   async buscarUsuarioPorId(id: string): Promise<UsuarioRegistro | null> {
     const usuario = await this.prisma.usuario.findUnique({ where: { id } });
     return usuario ? this.usuario(usuario) : null;
+  }
+
+  async registrarDispositivoPush(registro: { usuarioId: string; token: string; plataforma: 'IOS' | 'ANDROID' | 'WEB'; ultimoUsoEm: Date }): Promise<void> {
+    await this.prisma.dispositivoPush.upsert({ where: { token: registro.token }, create: registro, update: { usuarioId: registro.usuarioId, plataforma: registro.plataforma, ultimoUsoEm: registro.ultimoUsoEm } });
+  }
+  async removerDispositivoPush(token: string, usuarioId: string): Promise<boolean> {
+    const r = await this.prisma.dispositivoPush.deleteMany({ where: { token, usuarioId } }); return r.count > 0;
+  }
+  async listarDispositivosPush(usuarioId: string) { return this.prisma.dispositivoPush.findMany({ where: { usuarioId }, select: { token: true, plataforma: true } }); }
+  async removerDispositivosPush(tokens: string[]): Promise<void> { if (tokens.length) await this.prisma.dispositivoPush.deleteMany({ where: { token: { in: tokens } } }); }
+  async removerDispositivosPushInativos(antesDe: Date): Promise<number> {
+    const resultado = await this.prisma.dispositivoPush.deleteMany({ where: { ultimoUsoEm: { lt: antesDe } } });
+    return resultado.count;
   }
 
   async atualizarUsuario(id: string, patch: Partial<UsuarioRegistro>): Promise<UsuarioRegistro> {
@@ -265,6 +290,11 @@ export class RepositorioPrisma implements Repositorio {
     return candidato ? { id: candidato.id, usuarioId: candidato.usuarioId, nome: candidato.nome } : null;
   }
 
+  async buscarCandidatoPorId(id: string): Promise<CandidatoRegistro | null> {
+    const item = await this.prisma.candidato.findUnique({ where: { id } });
+    return item ? { id: item.id, usuarioId: item.usuarioId, nome: item.nome } : null;
+  }
+
   async obterPerfil(usuarioId: string): Promise<PerfilCandidato | null> {
     const candidato = await this.prisma.candidato.findUnique({ where: { usuarioId } });
     return candidato ? this.perfil(candidato) : null;
@@ -392,6 +422,7 @@ export class RepositorioPrisma implements Repositorio {
         concedido: registro.concedido,
         versaoTermo: registro.versaoTermo,
         criadoEm: registro.criadoEm,
+        candidaturaId: registro.candidaturaId ?? null,
       },
     });
     return {
@@ -401,6 +432,7 @@ export class RepositorioPrisma implements Repositorio {
       concedido: criado.concedido,
       versaoTermo: criado.versaoTermo,
       criadoEm: criado.criadoEm,
+      candidaturaId: criado.candidaturaId,
     };
   }
 
@@ -607,6 +639,98 @@ export class RepositorioPrisma implements Repositorio {
 
   listarPausasParaAlerta(limite: Date, ctx: ContextoTenant) {
     return this.vagasStore.listarPausasParaAlerta(limite, ctx);
+  }
+
+  criarCandidatura(dados: Parameters<CandidaturasPrisma['criarCandidatura']>[0], historico: Parameters<CandidaturasPrisma['criarCandidatura']>[1], ctx: ContextoTenant) {
+    return this.candidaturasStore.criarCandidatura(dados, historico, ctx);
+  }
+
+  buscarCandidatura(id: string, ctx: ContextoTenant) {
+    return this.candidaturasStore.buscarCandidatura(id, ctx);
+  }
+
+  listarCandidaturasVaga(vagaId: string, ctx: ContextoTenant) {
+    return this.candidaturasStore.listarCandidaturasVaga(vagaId, ctx);
+  }
+
+  listarCandidaturasCandidato(candidatoId: string, ctx: ContextoTenant) {
+    return this.candidaturasStore.listarCandidaturasCandidato(candidatoId, ctx);
+  }
+
+  transicionarCandidatura(transicao: Parameters<CandidaturasPrisma['transicionarCandidatura']>[0], ctx: ContextoTenant) {
+    return this.candidaturasStore.transicionarCandidatura(transicao, ctx);
+  }
+
+  listarHistoricoStatus(candidaturaId: string, ctx: ContextoTenant) {
+    return this.candidaturasStore.listarHistoricoStatus(candidaturaId, ctx);
+  }
+
+  salvarEmbeddingVaga(vagaId: string, vetor: number[], ctx: ContextoTenant) {
+    return this.matchStore.salvarEmbeddingVaga(vagaId, vetor, ctx);
+  }
+
+  salvarEmbeddingCandidato(candidatoId: string, vetor: number[]) {
+    return this.matchStore.salvarEmbeddingCandidato(candidatoId, vetor);
+  }
+
+  buscarCandidatosSimilares(vagaId: string, limite: number, ctx: ContextoTenant) {
+    return this.matchStore.buscarCandidatosSimilares(vagaId, limite, ctx);
+  }
+
+  buscarVagasSimilares(candidatoId: string, agora: Date, limite: number) {
+    return this.matchStore.buscarVagasSimilares(candidatoId, agora, limite);
+  }
+
+  registrarSugestao(entrada: Parameters<MatchPrisma['registrarSugestao']>[0], ctx: ContextoTenant) {
+    return this.matchStore.registrarSugestao(entrada, ctx);
+  }
+
+  listarSugestoesVaga(vagaId: string, ctx: ContextoTenant) {
+    return this.matchStore.listarSugestoesVaga(vagaId, ctx);
+  }
+
+  listarSugestoesCandidato(candidatoId: string, ctx: ContextoTenant) {
+    return this.matchStore.listarSugestoesCandidato(candidatoId, ctx);
+  }
+
+  buscarSugestao(id: string, ctx: ContextoTenant) {
+    return this.notificacoesStore.buscarSugestao(id, ctx);
+  }
+
+  atualizarStatusSugestao(id: string, status: Parameters<MatchPrisma['atualizarStatusSugestao']>[1], ctx: ContextoTenant) {
+    return this.matchStore.atualizarStatusSugestao(id, status, ctx);
+  }
+
+  marcarSugestaoNotificada(id: string, quando: Date, ctx: ContextoTenant) {
+    return this.notificacoesStore.marcarSugestaoNotificada(id, quando, ctx);
+  }
+
+  inserirNotificacaoUnica(dados: NotificacaoNova, ctx: ContextoTenant) {
+    return this.notificacoesStore.inserirNotificacaoUnica(dados, ctx);
+  }
+
+  agruparNotificacao(dados: NotificacaoNova, ctx: ContextoTenant) {
+    return this.notificacoesStore.agruparNotificacao(dados, ctx);
+  }
+
+  listarNotificacoes(filtro: FiltroNotificacoes, ctx: ContextoTenant) {
+    return this.notificacoesStore.listarNotificacoes(filtro, ctx);
+  }
+
+  marcarNotificacaoLida(id: string, usuarioId: string, quando: Date, ctx: ContextoTenant) {
+    return this.notificacoesStore.marcarNotificacaoLida(id, usuarioId, quando, ctx);
+  }
+
+  marcarTodasLidas(usuarioId: string, empresaId: string | undefined, quando: Date, ctx: ContextoTenant) {
+    return this.notificacoesStore.marcarTodasLidas(usuarioId, empresaId, quando, ctx);
+  }
+
+  listarPreferencias(usuarioId: string, empresaId: string, ctx: ContextoTenant) {
+    return this.notificacoesStore.listarPreferencias(usuarioId, empresaId, ctx);
+  }
+
+  salvarPreferencia(preferencia: PreferenciaNotificacaoRegistro, ctx: ContextoTenant) {
+    return this.notificacoesStore.salvarPreferencia(preferencia, ctx);
   }
 
   async buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null> {

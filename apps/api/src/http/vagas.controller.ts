@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Inject, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
 import {
+  candidaturaDiretaSchema,
   atualizarVagaSchema,
   criarPerguntaSchema,
   criarVagaSchema,
@@ -10,6 +11,7 @@ import {
   vincularPerguntaSchema,
 } from '@scv/contracts';
 
+import { CandidaturasService } from '../candidaturas/candidaturas.service';
 import type { ConfiguracaoApp } from '../configuracao';
 import { ErroAplicacao } from '../erros';
 import type { SessaoRequest } from '../sessao';
@@ -28,6 +30,7 @@ export class VagasController {
   constructor(
     @Inject(VagasService) private readonly vagas: VagasService,
     @Inject(CONFIG) private readonly config: ConfiguracaoApp,
+    @Inject(CandidaturasService) private readonly candidaturas: CandidaturasService,
   ) {}
 
   @Publico()
@@ -199,9 +202,14 @@ export class VagasController {
 
   @Post('vagas-publicas/:vagaId/candidaturas')
   @Exige('candidatar')
-  inscricao(@Req() req: RequisicaoComSessao, @Param('vagaId') vagaId: string) {
-    return this.vagas.verificarInscricao(req.sessao, vagaId);
+  inscricao(@Req() req: RequisicaoComSessao, @Param('vagaId') vagaId: string, @Body() body: unknown) {
+    if (body === undefined || body === null) return this.vagas.verificarInscricao(req.sessao, vagaId);
+    return this.candidaturas.criar(req.sessao, vagaId, validar(candidaturaDiretaSchema, body).consentimentos);
   }
+
+  @Get('vagas/:vagaId/candidaturas')
+  @Exige('criar_vaga')
+  candidaturasDaVaga(@Req() req: RequisicaoComSessao, @Param('vagaId') vagaId: string) { return this.candidaturas.daVaga(req.sessao, vagaId); }
 
   @Publico()
   @Post('interno/vagas/reconciliar')

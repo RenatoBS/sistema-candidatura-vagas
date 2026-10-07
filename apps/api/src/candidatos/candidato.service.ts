@@ -25,6 +25,7 @@ import type { Armazenamento, Antivirus } from '@scv/providers';
 import type { Relogio } from '../auth/auth.service';
 import { ErroAplicacao } from '../erros';
 import type { FilaCurriculo } from '../fila/fila-curriculo';
+import type { FilaMatch } from '../fila/fila-match';
 import type {
   CurriculoRegistro,
   PerfilCandidato,
@@ -42,7 +43,10 @@ function semRanking(perfil: Record<string, unknown>): Record<string, unknown> {
 }
 
 export class PerfilService {
-  constructor(private readonly repo: Repositorio) {}
+  constructor(
+    private readonly repo: Repositorio,
+    private readonly filaMatch: FilaMatch,
+  ) {}
 
   async obter(usuarioId: string) {
     return this.dto(await this.exigir(usuarioId));
@@ -75,6 +79,8 @@ export class PerfilService {
       visivelParaMatch: entrada.visivelParaMatch ?? atual.visivelParaMatch,
       perfil: semRanking({ ...atual.perfil, ...(entrada.perfil ?? {}) }),
     });
+    const entrouNoMatch = salvo.visivelParaMatch && !atual.visivelParaMatch;
+    if (entrouNoMatch || (salvo.visivelParaMatch && entrada.perfil)) await this.filaMatch.enfileirarEmbeddingCandidato(salvo.id);
     return this.dto(salvo);
   }
 
@@ -108,6 +114,7 @@ export class PerfilService {
       })),
     );
     await this.repo.definirHabilidades(perfil.id, proximas);
+    if (perfil.visivelParaMatch) await this.filaMatch.enfileirarEmbeddingCandidato(perfil.id);
     return this.listarHabilidades(usuarioId);
   }
 
@@ -137,6 +144,7 @@ export class CurriculoService {
     private readonly antivirus: Antivirus,
     private readonly fila: FilaCurriculo,
     private readonly relogio: Relogio,
+    private readonly filaMatch: FilaMatch,
   ) {}
 
   async criarUpload(usuarioId: string, mimeType: string, tamanhoBytes: number, baseApi: string) {
@@ -241,6 +249,7 @@ export class CurriculoService {
         habilidadesNaoMapeadas: normalizadas.naoMapeadas,
       },
     });
+    if (perfil.visivelParaMatch) await this.filaMatch.enfileirarEmbeddingCandidato(perfil.id);
     return this.dto(atualizado);
   }
 

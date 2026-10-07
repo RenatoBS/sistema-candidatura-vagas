@@ -47,7 +47,7 @@ model Candidato {
   whatsappVerificado Boolean  @default(false)
   linkedinUrl        String?
   perfil             Json     @default("{}")
-  visivelParaMatch   Boolean  @default(true)
+  visivelParaMatch   Boolean  @default(false)
   embedding          Unsupported("vector(1536)")?
   criadoEm           DateTime @default(now()) @db.Timestamptz
   atualizadoEm       DateTime @updatedAt @db.Timestamptz

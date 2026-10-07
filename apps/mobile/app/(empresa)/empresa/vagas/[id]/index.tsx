@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { Link, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -67,6 +67,14 @@ export default function VagaEmpresaScreen() {
     <ScrollView style={styles.tela} contentContainerStyle={styles.conteudo}>
       <Text style={styles.titulo}>{dados?.titulo ?? t('vaga.detalhe')}</Text>
       {erro ? <Banner tipo="erro" texto={erro} /> : null}
+      <View style={styles.bloco}>
+        <Link href={`/empresa/vagas/${id}/candidatos`} style={styles.link}>
+          Ver candidatos da vaga
+        </Link>
+        <Link href={`/empresa/vagas/${id}/sugestoes`} style={styles.link}>
+          Ver sugestões de match
+        </Link>
+      </View>
       <Text style={styles.texto}>
         {t('vaga.status')}: {dados?.status ?? '—'}
       </Text>
@@ -138,4 +146,5 @@ const styles = StyleSheet.create({
   titulo: { fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
   texto: { color: colors.text },
   bloco: { gap: spacing.sm, marginTop: spacing.sm },
+  link: { color: colors.primary, fontSize: 16 },
 });

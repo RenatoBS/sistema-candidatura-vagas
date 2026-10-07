@@ -2,7 +2,7 @@
   "name": "@scv/providers",
   "version": "0.3.0",
   "private": true,
-  "description": "Interfaces e adapters: WhatsappProvider, SttProvider, OcrProvider. LlmProvider vive em @scv/llm.",
+  "description": "Interfaces e adapters: WhatsappProvider, SttProvider, OcrProvider, EmbeddingProvider. LlmProvider vive em @scv/llm.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {

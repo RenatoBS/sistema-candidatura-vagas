@@ -96,5 +96,6 @@ model SugestaoMatch {
 
   @@unique([vagaId, candidatoId])
   @@index([vagaId, status])
+  @@index([candidatoId])
   @@map("sugestoes_match")
 }

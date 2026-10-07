@@ -28,8 +28,10 @@ import { sugerirPerguntas, type LlmProvider } from '@scv/llm';
 
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import type { Relogio } from '../auth/auth.service';
+import type { CandidaturaStateMachine, ResumoEfeitoVaga } from '../candidaturas/candidatura-state-machine';
 import type { ConfiguracaoApp } from '../configuracao';
 import { ErroAplicacao } from '../erros';
+import type { FilaMatch } from '../fila/fila-match';
 import type { FilaVagas } from '../fila/fila-vagas';
 import type {
   ContextoTenant,
@@ -53,6 +55,13 @@ const MENSAGENS: Record<ErroTransicaoVaga, string> = {
   TRANSICAO_INVALIDA: 'transição inválida',
 };
 
+const MOTIVO_EVENTO: Record<TipoEventoVaga, string> = {
+  VagaPausada: 'vaga pausada',
+  VagaRetomada: 'vaga retomada',
+  VagaFechada: 'vaga fechada',
+  AlertaPausaLonga: 'alerta de pausa longa',
+};
+
 export class VagasService {
   constructor(
     private readonly repo: Repositorio,
@@ -61,6 +70,8 @@ export class VagasService {
     private readonly llm: LlmProvider,
     private readonly config: ConfiguracaoApp,
     private readonly relogio: Relogio,
+    private readonly candidaturas: CandidaturaStateMachine,
+    private readonly filaMatch: FilaMatch,
   ) {}
 
   listarCatalogo(): Promise<Array<{ id: string; nome: string; categoria: string }>> {
@@ -391,6 +402,8 @@ export class VagasService {
     const salva = await this.aplicar(vagaId, resultado, ctx);
     await this.auditar(alinhada, empresaId, vagaId, 'VAGA_PUBLICADA', null, ctx);
     await this.fila.agendarEncerramento(vagaId, salva.prazoInscricoes ?? agora);
+    // O job de embedding enfileira o match vaga → candidatos ao terminar.
+    await this.filaMatch.enfileirarEmbeddingVaga(vagaId);
     return this.detalhe(vagaId, ctx);
   }
 
@@ -402,6 +415,7 @@ export class VagasService {
     const salva = await this.aplicar(vagaId, resultado, ctx);
     await this.auditar(alinhada, empresaId, vagaId, 'VAGA_PRORROGADA', null, ctx);
     if (salva.prazoInscricoes) await this.fila.agendarEncerramento(vagaId, salva.prazoInscricoes);
+    if (vaga.status !== 'PUBLICADA' && salva.status === 'PUBLICADA') await this.filaMatch.enfileirarEmbeddingVaga(vagaId);
     return this.detalhe(vagaId, ctx);
   }
 
@@ -422,7 +436,10 @@ export class VagasService {
     const salva = await this.aplicar(vagaId, resultado, ctx);
     if (resultado.ok && resultado.evento) await this.emitir(vaga, resultado.evento, ctx);
     await this.auditar(alinhada, empresaId, vagaId, 'VAGA_RETOMADA', null, ctx);
-    if (salva.status === 'PUBLICADA' && salva.prazoInscricoes) await this.fila.agendarEncerramento(vagaId, salva.prazoInscricoes);
+    if (salva.status === 'PUBLICADA' && salva.prazoInscricoes) {
+      await this.fila.agendarEncerramento(vagaId, salva.prazoInscricoes);
+      await this.filaMatch.enfileirarEmbeddingVaga(vagaId);
+    }
     if (salva.status === 'INSCRICOES_ENCERRADAS') await this.fila.cancelarEncerramento(vagaId);
     return this.detalhe(vagaId, ctx);
   }
@@ -530,8 +547,29 @@ export class VagasService {
     const ctx: ContextoTenant = { sistema: true };
     const evento = await this.repo.buscarEventoVaga(eventoId, ctx);
     if (!evento) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'evento não encontrado');
-    if (!evento.consumidoEm) await this.repo.marcarEventoConsumido(eventoId, this.relogio.agora(), ctx);
-    return { id: evento.id, tipo: evento.tipo, payload: evento.payload, consumido: true };
+    let candidaturas: ResumoEfeitoVaga = { aplicadas: 0, ignoradas: 0 };
+    if (!evento.consumidoEm) {
+      // Reprocessar após falha parcial é seguro: candidaturas já movidas são ignoradas.
+      candidaturas = await this.aplicarEfeitosCandidatura(evento);
+      await this.repo.marcarEventoConsumido(eventoId, this.relogio.agora(), ctx);
+    }
+    return { id: evento.id, tipo: evento.tipo, payload: evento.payload, consumido: true, candidaturas };
+  }
+
+  /** Candidaturas não têm bypass de sistema no RLS: aplica no contexto da empresa dona da vaga. */
+  private async aplicarEfeitosCandidatura(evento: EventoVagaRegistro): Promise<ResumoEfeitoVaga> {
+    const resumo: ResumoEfeitoVaga = { aplicadas: 0, ignoradas: 0 };
+    if (!Object.hasOwn(EFEITOS_EVENTO_VAGA, evento.tipo)) return resumo;
+    const tipo = evento.tipo as TipoEventoVaga;
+    const detalhe = typeof evento.payload.motivo === 'string' && evento.payload.motivo ? `: ${evento.payload.motivo}` : '';
+    const autoria = { autorId: null, motivo: `${MOTIVO_EVENTO[tipo]}${detalhe}` };
+    const ctx: ContextoTenant = { empresaId: evento.empresaId };
+    for (const efeito of EFEITOS_EVENTO_VAGA[tipo]) {
+      const parcial = await this.candidaturas.aplicarEfeitoVaga(evento.vagaId, efeito, autoria, ctx);
+      resumo.aplicadas += parcial.aplicadas;
+      resumo.ignoradas += parcial.ignoradas;
+    }
+    return resumo;
   }
 
   private async alertar(vaga: VagaRegistro, ctx: ContextoTenant): Promise<void> {
@@ -559,6 +597,10 @@ export class VagasService {
     const resultado = transicionarVaga(this.estado(vaga), { tipo: 'expirar' }, this.relogio.agora());
     if (!resultado.ok) return;
     await this.repo.atualizarVaga(vaga.id, { ...this.patchEstado(resultado.estado), atualizadoEm: this.relogio.agora() }, ctx);
+    await this.candidaturas.expirarConvites(vaga.id, { empresaId: vaga.empresaId });
+    for (const sugestao of await this.repo.listarSugestoesVaga(vaga.id, { empresaId: vaga.empresaId })) {
+      if (sugestao.status === 'CONVIDADA') await this.repo.atualizarStatusSugestao(sugestao.id, 'EXPIRADA', { empresaId: vaga.empresaId });
+    }
     await this.fila.cancelarEncerramento(vaga.id);
   }
 
@@ -569,7 +611,15 @@ export class VagasService {
     }
     const salva = await this.repo.atualizarVaga(vagaId, { ...this.patchEstado(resultado.estado), atualizadoEm: this.relogio.agora() }, ctx);
     if (!salva) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'vaga não encontrada');
+    if (resultado.estado.status === 'FECHADA') await this.expirarConvitesDaVaga(salva);
     return salva;
+  }
+
+  private async expirarConvitesDaVaga(vaga: VagaRegistro): Promise<void> {
+    await this.candidaturas.expirarConvites(vaga.id, { empresaId: vaga.empresaId });
+    for (const sugestao of await this.repo.listarSugestoesVaga(vaga.id, { empresaId: vaga.empresaId })) {
+      if (sugestao.status === 'CONVIDADA') await this.repo.atualizarStatusSugestao(sugestao.id, 'EXPIRADA', { empresaId: vaga.empresaId });
+    }
   }
 
   private async emitir(vaga: VagaRegistro, tipo: TipoEventoVaga, ctx: ContextoTenant, motivo?: string): Promise<EventoVagaRegistro> {

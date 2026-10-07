@@ -3,8 +3,25 @@
  * Auth, papéis, verificação de empresa e CNPJ local entram na Fase 3.
  */
 
-export const DOMAIN_PACKAGE_VERSION = '0.4.0';
+export const DOMAIN_PACKAGE_VERSION = '0.6.0';
 
+export {
+  candidaturaTerminal,
+  COMANDO_POR_EFEITO_VAGA,
+  criarCandidatura,
+  ESTADOS_TERMINAIS_CANDIDATURA,
+  rotuloAmigavel,
+  STATUS_CANDIDATURA,
+  transicionarCandidatura,
+  type ComandoCandidatura,
+  type ComandoCriacaoCandidatura,
+  type ComandoEfeitoVaga,
+  type ErroTransicaoCandidatura,
+  type EstadoCandidatura,
+  type ResultadoTransicaoCandidatura,
+  type StatusCandidatura,
+  type TipoComandoCandidatura,
+} from './candidatura';
 export {
   cnpjDigitosValidos,
   normalizarRazaoSocial,
@@ -78,6 +95,41 @@ export {
 } from './habilidades';
 export { contemRanking, emailAnonimizado, NOME_TITULAR_EXCLUIDO } from './lgpd';
 export { interpretarLinkedinUrl, type LeituraLinkedin } from './linkedin';
+export {
+  atendeObrigatorias,
+  calcularCompatibilidade,
+  DIMENSOES_EMBEDDING,
+  LIMIAR_MATCH_FORTE_PADRAO,
+  limiarMatchValido,
+  matchForte,
+  similaridadeCosseno,
+  textoEmbeddingCandidato,
+  textoEmbeddingVaga,
+  vagaElegivelParaMatch,
+  VERSAO_MATCH,
+  type ExplicacaoMatch,
+  type HabilidadeCandidatoMatch,
+  type HabilidadeExigidaMatch,
+  type ResultadoMatch,
+} from './match';
+export {
+  agrupavel,
+  algumCanal,
+  canaisEfetivos,
+  chaveDedup,
+  decidirAgrupamento,
+  inicioJanela,
+  JANELA_AGRUPAMENTO_MINUTOS_PADRAO,
+  limiarPreferenciaValido,
+  MINIMO_RESUMO_PADRAO,
+  PREFERENCIA_PADRAO,
+  vagaNotificavel,
+  type CanaisNotificacao,
+  type DecisaoAgrupamento,
+  type EntradaChaveDedup,
+  type PreferenciaCanais,
+  type TipoNotificacaoEmpresa,
+} from './notificacao';
 export {
   baixaConfiancaOcr,
   classificarPaginas,

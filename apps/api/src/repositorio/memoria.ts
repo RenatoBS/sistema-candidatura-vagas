@@ -1,6 +1,9 @@
 import { CATALOGO_BASE } from '@scv/domain';
 
 import { ErroAplicacao } from '../erros';
+import { CandidaturasMemoria } from './candidaturas-memoria';
+import { MatchMemoria } from './match-memoria';
+import { NotificacoesMemoria } from './notificacoes-memoria';
 import type {
   AuditoriaRegistro,
   CandidatoRegistro,
@@ -10,12 +13,15 @@ import type {
   ConviteRegistro,
   CurriculoRegistro,
   EmpresaRegistro,
+  FiltroNotificacoes,
   HabilidadeCatalogo,
   HabilidadeDoCandidato,
   InstanciaRegistro,
   LinhaHabilidade,
   MembroRegistro,
+  NotificacaoNova,
   PerfilCandidato,
+  PreferenciaNotificacaoRegistro,
   RefreshRegistro,
   Repositorio,
   RespostaSensivel,
@@ -41,7 +47,8 @@ function perfilInicial(candidato: CandidatoRegistro): PerfilCandidato {
     whatsappVerificado: false,
     linkedinUrl: null,
     perfil: {},
-    visivelParaMatch: true,
+    // Q17 (provisória): opt-in, igual ao padrão da coluna no banco.
+    visivelParaMatch: false,
   };
 }
 
@@ -52,6 +59,7 @@ function visivel(ctx: ContextoTenant | undefined, empresaId: string | null): boo
 }
 
 export class RepositorioMemoria implements Repositorio {
+  dispositivosPush = new Map<string, { usuarioId: string; token: string; plataforma: 'IOS' | 'ANDROID' | 'WEB'; ultimoUsoEm: Date }>();
   usuarios = new Map<string, UsuarioRegistro>();
   refresh = new Map<string, RefreshRegistro>();
   tokens = new Map<string, TokenRegistro>();
@@ -61,6 +69,19 @@ export class RepositorioMemoria implements Repositorio {
   membros = new Map<string, MembroRegistro>();
   convites = new Map<string, ConviteRegistro>();
   candidatos = new Map<string, PerfilCandidato>();
+  async registrarDispositivoPush(registro: { usuarioId: string; token: string; plataforma: 'IOS' | 'ANDROID' | 'WEB'; ultimoUsoEm: Date }): Promise<void> {
+    this.dispositivosPush.set(registro.token, registro);
+  }
+  async removerDispositivoPush(token: string, usuarioId: string): Promise<boolean> {
+    const atual = this.dispositivosPush.get(token); if (!atual || atual.usuarioId !== usuarioId) return false; return this.dispositivosPush.delete(token);
+  }
+  async listarDispositivosPush(usuarioId: string) { return [...this.dispositivosPush.values()].filter((d) => d.usuarioId === usuarioId); }
+  async removerDispositivosPush(tokens: string[]): Promise<void> { for (const token of tokens) this.dispositivosPush.delete(token); }
+  async removerDispositivosPushInativos(antesDe: Date): Promise<number> {
+    let removidos = 0;
+    for (const [token, dispositivo] of this.dispositivosPush) if (dispositivo.ultimoUsoEm < antesDe) { this.dispositivosPush.delete(token); removidos += 1; }
+    return removidos;
+  }
   linhasHabilidade: { candidatoId: string; linha: LinhaHabilidade }[] = [];
   curriculos = new Map<string, CurriculoRegistro>();
   consentimentos: ConsentimentoRegistro[] = [];
@@ -69,6 +90,17 @@ export class RepositorioMemoria implements Repositorio {
   instancias = new Map<string, InstanciaRegistro>();
   respostas = new Map<string, RespostaSensivel>();
   readonly vagasStore = new VagasMemoria();
+  readonly candidaturasStore = new CandidaturasMemoria();
+  readonly matchStore = new MatchMemoria({
+    candidatos: () => this.candidatos.values(),
+    habilidadesCandidato: (candidatoId) => this.listarHabilidades(candidatoId),
+    vagas: () => this.vagasStore.vagas.values(),
+    habilidadesVaga: (vagaId) => this.vagasStore.habilidadesVaga.filter((item) => item.vagaId === vagaId),
+  });
+  readonly notificacoesStore = new NotificacoesMemoria({
+    sugestoes: this.matchStore.sugestoes,
+    empresaDaVaga: (vagaId) => this.vagasStore.vagas.get(vagaId)?.empresaId ?? null,
+  });
 
   limpar(): void {
     this.usuarios.clear();
@@ -88,6 +120,9 @@ export class RepositorioMemoria implements Repositorio {
     this.instancias.clear();
     this.respostas.clear();
     this.vagasStore.limpar();
+    this.candidaturasStore.limpar();
+    this.matchStore.limpar();
+    this.notificacoesStore.limpar();
   }
 
   async criarUsuario(dados: UsuarioRegistro): Promise<UsuarioRegistro> {
@@ -320,6 +355,12 @@ export class RepositorioMemoria implements Repositorio {
     return candidato ? { id: candidato.id, usuarioId: candidato.usuarioId, nome: candidato.nome } : null;
   }
 
+  async buscarCandidatoPorId(id: string): Promise<CandidatoRegistro | null> {
+    // `candidatos` é indexado por usuarioId.
+    const item = [...this.candidatos.values()].find((candidato) => candidato.id === id);
+    return item ? { id: item.id, usuarioId: item.usuarioId, nome: item.nome } : null;
+  }
+
   async obterPerfil(usuarioId: string): Promise<PerfilCandidato | null> {
     const perfil = this.candidatos.get(usuarioId);
     return perfil ? { ...perfil, perfil: { ...perfil.perfil } } : null;
@@ -470,11 +511,17 @@ export class RepositorioMemoria implements Repositorio {
     return this.vagasStore.pausarPublicadas(empresaId, quando, ctx);
   }
 
-  garantirHabilidade(nome: string, categoria?: string) {
+  /** Mesmo catálogo do perfil do candidato, como na tabela única do Prisma. */
+  async garantirHabilidade(nome: string, categoria?: string): Promise<HabilidadeCatalogo> {
+    const chave = nome.trim().toLowerCase();
+    const doCatalogo = CATALOGO_MEMORIA.find((item) => item.nome.toLowerCase() === chave);
+    if (doCatalogo) return { ...doCatalogo, sinonimos: [...doCatalogo.sinonimos] };
     return this.vagasStore.garantirHabilidade(nome, categoria);
   }
 
-  buscarHabilidade(id: string) {
+  async buscarHabilidade(id: string): Promise<HabilidadeCatalogo | null> {
+    const doCatalogo = CATALOGO_MEMORIA.find((item) => item.id === id);
+    if (doCatalogo) return { ...doCatalogo, sinonimos: [...doCatalogo.sinonimos] };
     return this.vagasStore.buscarHabilidade(id);
   }
 
@@ -584,6 +631,98 @@ export class RepositorioMemoria implements Repositorio {
 
   listarPausasParaAlerta(limite: Date, ctx: ContextoTenant) {
     return this.vagasStore.listarPausasParaAlerta(limite, ctx);
+  }
+
+  criarCandidatura(dados: Parameters<CandidaturasMemoria['criarCandidatura']>[0], historico: Parameters<CandidaturasMemoria['criarCandidatura']>[1], ctx: ContextoTenant) {
+    return this.candidaturasStore.criarCandidatura(dados, historico, ctx);
+  }
+
+  buscarCandidatura(id: string, ctx: ContextoTenant) {
+    return this.candidaturasStore.buscarCandidatura(id, ctx);
+  }
+
+  listarCandidaturasVaga(vagaId: string, ctx: ContextoTenant) {
+    return this.candidaturasStore.listarCandidaturasVaga(vagaId, ctx);
+  }
+
+  listarCandidaturasCandidato(candidatoId: string, ctx: ContextoTenant) {
+    return this.candidaturasStore.listarCandidaturasCandidato(candidatoId, ctx);
+  }
+
+  transicionarCandidatura(transicao: Parameters<CandidaturasMemoria['transicionarCandidatura']>[0], ctx: ContextoTenant) {
+    return this.candidaturasStore.transicionarCandidatura(transicao, ctx);
+  }
+
+  listarHistoricoStatus(candidaturaId: string, ctx: ContextoTenant) {
+    return this.candidaturasStore.listarHistoricoStatus(candidaturaId, ctx);
+  }
+
+  salvarEmbeddingVaga(vagaId: string, vetor: number[], ctx: ContextoTenant) {
+    return this.matchStore.salvarEmbeddingVaga(vagaId, vetor, ctx);
+  }
+
+  salvarEmbeddingCandidato(candidatoId: string, vetor: number[]) {
+    return this.matchStore.salvarEmbeddingCandidato(candidatoId, vetor);
+  }
+
+  buscarCandidatosSimilares(vagaId: string, limite: number, ctx: ContextoTenant) {
+    return this.matchStore.buscarCandidatosSimilares(vagaId, limite, ctx);
+  }
+
+  buscarVagasSimilares(candidatoId: string, agora: Date, limite: number) {
+    return this.matchStore.buscarVagasSimilares(candidatoId, agora, limite);
+  }
+
+  registrarSugestao(entrada: Parameters<MatchMemoria['registrarSugestao']>[0], ctx: ContextoTenant) {
+    return this.matchStore.registrarSugestao(entrada, ctx);
+  }
+
+  listarSugestoesVaga(vagaId: string, ctx: ContextoTenant) {
+    return this.matchStore.listarSugestoesVaga(vagaId, ctx);
+  }
+
+  listarSugestoesCandidato(candidatoId: string, ctx: ContextoTenant) {
+    return this.matchStore.listarSugestoesCandidato(candidatoId, ctx);
+  }
+
+  buscarSugestao(id: string, ctx: ContextoTenant) {
+    return this.notificacoesStore.buscarSugestao(id, ctx);
+  }
+
+  atualizarStatusSugestao(id: string, status: Parameters<MatchMemoria['atualizarStatusSugestao']>[1], ctx: ContextoTenant) {
+    return this.matchStore.atualizarStatusSugestao(id, status, ctx);
+  }
+
+  marcarSugestaoNotificada(id: string, quando: Date, ctx: ContextoTenant) {
+    return this.notificacoesStore.marcarSugestaoNotificada(id, quando, ctx);
+  }
+
+  inserirNotificacaoUnica(dados: NotificacaoNova, ctx: ContextoTenant) {
+    return this.notificacoesStore.inserirNotificacaoUnica(dados, ctx);
+  }
+
+  agruparNotificacao(dados: NotificacaoNova, ctx: ContextoTenant) {
+    return this.notificacoesStore.agruparNotificacao(dados, ctx);
+  }
+
+  listarNotificacoes(filtro: FiltroNotificacoes, ctx: ContextoTenant) {
+    return this.notificacoesStore.listarNotificacoes(filtro, ctx);
+  }
+
+  marcarNotificacaoLida(id: string, usuarioId: string, quando: Date, ctx: ContextoTenant) {
+    return this.notificacoesStore.marcarNotificacaoLida(id, usuarioId, quando, ctx);
+  }
+
+  marcarTodasLidas(usuarioId: string, empresaId: string | undefined, quando: Date, ctx: ContextoTenant) {
+    return this.notificacoesStore.marcarTodasLidas(usuarioId, empresaId, quando, ctx);
+  }
+
+  listarPreferencias(usuarioId: string, empresaId: string, ctx: ContextoTenant) {
+    return this.notificacoesStore.listarPreferencias(usuarioId, empresaId, ctx);
+  }
+
+  salvarPreferencia(preferencia: PreferenciaNotificacaoRegistro, ctx: ContextoTenant) {
+    return this.notificacoesStore.salvarPreferencia(preferencia, ctx);
   }
 
   async buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null> {

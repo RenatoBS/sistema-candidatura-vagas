@@ -1,4 +1,4 @@
-async function postInterno(
+export async function postInterno(
   caminho: string,
   fetchImpl: typeof fetch,
   env: NodeJS.ProcessEnv,

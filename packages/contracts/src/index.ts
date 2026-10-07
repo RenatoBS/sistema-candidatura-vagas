@@ -8,6 +8,8 @@ export {
   atualizarPerfilSchema,
   confirmarCurriculoSchema,
   consentimentoSchema,
+  candidaturaDiretaSchema,
+  conviteAceiteSchema,
   dadosExtraidosSchema,
   excluirDadosSchema,
   habilidadesCandidatoSchema,
@@ -45,7 +47,21 @@ export {
   motivoOpcionalSchema,
   motivoSchema,
 } from './empresas';
-export { openApi, openApiFase3, openApiFase4, type CaminhoApi } from './openapi';
+export type {
+  ExplicacaoMatchDto,
+  StatusSugestaoMatch,
+  SugestaoMatchDto,
+  SugestoesMatchVagaResponse,
+  VagaRecomendadaDto,
+  VagasRecomendadasResponse,
+} from './match';
+export {
+  preferenciasNotificacaoSchema,
+  TIPOS_NOTIFICACAO_EMPRESA,
+  type NotificacaoDto,
+  type NotificacoesResponse,
+} from './notificacoes';
+export { openApi, openApiFase3, openApiFase4, openApiFase6Match, type CaminhoApi } from './openapi';
 export {
   atualizarVagaSchema,
   criarPerguntaSchema,

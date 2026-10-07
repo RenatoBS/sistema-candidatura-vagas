@@ -20,6 +20,8 @@ export { ArmazenamentoMemoria, ArmazenamentoS3, criarArmazenamentoS3 } from './a
 export type { Armazenamento, PedidoUpload, UrlUpload } from './armazenamento';
 export { AntivirusClamAv, AntivirusMock, criarAntivirus } from './antivirus';
 export type { Antivirus, ResultadoAntivirus } from './antivirus';
+export { criarEmbeddingProvider, EmbeddingOpenAiCompativel, FakeEmbeddingProvider } from './embeddings';
+export type { AmbienteEmbedding, EmbeddingProvider, FetchEmbedding } from './embeddings';
 export { ExtratorEstruturadoMock } from './extrator-estruturado';
 export type { ExtratorEstruturadoCurriculo } from './extrator-estruturado';
 export { criarExtratorEstruturado, ExtratorEstruturadoLlm } from './extrator-estruturado-llm';
@@ -33,6 +35,8 @@ export type { FonteCnpjProvider, ResultadoFonteCnpj } from './cnpj';
 export { cifrar, decifrar } from './criptografia';
 export { criarEmailProvider, EmailLogProvider, EmailSmtpProvider } from './email';
 export type { EmailProvider, MensagemEmail } from './email';
+export { DeviceNotRegisteredError, ExpoPushProvider, MockPushProvider, criarPushProvider } from './push';
+export type { PushMessage, PushProvider } from './push';
 export { FakeUazapiInstancia, UazapiInstanciaCliente } from './uazapi-instancia';
 export type {
   ClienteInstanciaWhatsapp,

@@ -1,4 +1,4 @@
-import { politicaRevisaoValida, type PoliticaRevisaoManual } from '@scv/domain';
+import { LIMIAR_MATCH_FORTE_PADRAO, limiarMatchValido, politicaRevisaoValida, type PoliticaRevisaoManual } from '@scv/domain';
 
 export interface ConfiguracaoApp {
   jwtSecret: string;
@@ -16,6 +16,8 @@ export interface ConfiguracaoApp {
   reauthTtlSegundos: number;
   bcryptRounds: number;
   pausaMaxDias: number;
+  /** Compatibilidade mínima para a sugestão virar match forte (MATCH_LIMIAR_FORTE). */
+  matchLimiarForte: number;
 }
 
 export function lerConfiguracao(env: NodeJS.ProcessEnv = process.env): ConfiguracaoApp {
@@ -51,7 +53,15 @@ export function lerConfiguracao(env: NodeJS.ProcessEnv = process.env): Configura
     reauthTtlSegundos: 5 * 60,
     bcryptRounds: env.NODE_ENV === 'test' ? 4 : 10,
     pausaMaxDias: inteiroPositivo(env.PAUSA_MAX_DIAS, 30),
+    matchLimiarForte: limiarMatch(env.MATCH_LIMIAR_FORTE),
   };
+}
+
+function limiarMatch(valor: string | undefined): number {
+  if (!valor) return LIMIAR_MATCH_FORTE_PADRAO;
+  const numero = Number(valor);
+  if (!limiarMatchValido(numero)) throw new Error('MATCH_LIMIAR_FORTE deve ser um número em (0, 1]');
+  return numero;
 }
 
 function inteiroPositivo(valor: string | undefined, padrao: number): number {

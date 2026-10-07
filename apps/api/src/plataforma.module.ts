@@ -1,17 +1,30 @@
 import { type FactoryProvider, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { criarLlmProvider } from '@scv/llm';
-import { BrasilApiFonteCnpj, criarAntivirus, criarArmazenamentoS3, criarEmailProvider, UazapiInstanciaCliente } from '@scv/providers';
+import {
+  BrasilApiFonteCnpj,
+  criarAntivirus,
+  criarArmazenamentoS3,
+  criarEmailProvider,
+  criarEmbeddingProvider,
+  criarPushProvider,
+  UazapiInstanciaCliente,
+  type EmbeddingProvider,
+} from '@scv/providers';
 
 import {
   antivirusTeste,
   armazenamentoTeste,
   dnsTeste,
   emailTeste,
+  emailNotificacaoTeste,
+  embeddingsTeste,
   filaCnpjTeste,
   filaCurriculoTeste,
+  filaMatchTeste,
   filaVagasTeste,
   fonteCnpjTeste,
+  pushTeste,
   relogioTeste,
   repositorioTeste,
   whatsappTeste,
@@ -21,32 +34,44 @@ import { AuditoriaService } from './auditoria/auditoria.service';
 import { AuthService, relogioSistema, type Relogio } from './auth/auth.service';
 import { MfaService } from './auth/mfa.service';
 import { ConsentimentoService, CurriculoService, LgpdService, PerfilService } from './candidatos/candidato.service';
+import { CandidaturaStateMachine } from './candidaturas/candidatura-state-machine';
+import { CandidaturasService } from './candidaturas/candidaturas.service';
 import type { ConfiguracaoApp } from './configuracao';
 import { lerConfiguracao } from './configuracao';
 import { DnsNode } from './dns';
 import { EmpresasService } from './empresas/empresas.service';
 import { FilaCnpjBull } from './fila/fila-cnpj';
 import { FilaCurriculoBull } from './fila/fila-curriculo';
+import { FilaMatchBull, type FilaMatch } from './fila/fila-match';
 import { FilaVagasBull } from './fila/fila-vagas';
 import { AuditoriaController } from './http/auditoria.controller';
 import { AuthController } from './http/auth.controller';
 import { AuthGuard } from './http/auth.guard';
 import { CandidatoController } from './http/candidatos.controller';
 import { EmpresasController } from './http/empresas.controller';
+import { MatchController } from './http/match.controller';
+import { NotificacoesController } from './http/notificacoes.controller';
 import { VagasController } from './http/vagas.controller';
 import { WhatsappController } from './http/whatsapp.controller';
+import { MatchService } from './match/match.service';
 import { MembrosService } from './membros/membros.service';
+import { CanalEmail, CanalPush } from './notificacoes/canais';
+import type { CanalEntrega } from './notificacoes/canal-entrega';
+import { NotificacoesService } from './notificacoes/notificacoes.service';
 import { RepositorioPrisma } from './repositorio/prisma';
 import type { Repositorio } from './repositorio/tipos';
 import {
   ANTIVIRUS,
   ARMAZENAMENTO,
+  CANAIS_ENTREGA,
   CLIENTE_WHATSAPP,
   CONFIG,
   DNS,
   EMAIL,
+  EMBEDDINGS,
   FILA_CNPJ,
   FILA_CURRICULO,
+  FILA_MATCH,
   FILA_VAGAS,
   FONTE_CNPJ,
   LLM,
@@ -123,6 +148,28 @@ const filaVagasProvider: FactoryProvider = {
   useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? filaVagasTeste : new FilaVagasBull()),
 };
 
+const filaMatchProvider: FactoryProvider<FilaMatch> = {
+  provide: FILA_MATCH,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? filaMatchTeste : new FilaMatchBull()),
+};
+
+const embeddingsProvider: FactoryProvider<EmbeddingProvider> = {
+  provide: EMBEDDINGS,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? embeddingsTeste : criarEmbeddingProvider()),
+};
+
+/** Push (F6-07) e e-mail (F6-08) substituem os no-ops quando existirem. */
+const canaisEntregaProvider: FactoryProvider<CanalEntrega[]> = {
+  provide: CANAIS_ENTREGA,
+  inject: [CONFIG, REPOSITORIO, EMAIL],
+  useFactory: (config: ConfiguracaoApp, repo: Repositorio, email: typeof emailTeste) =>
+    config.authStore === 'memory'
+      ? [pushTeste, emailNotificacaoTeste]
+      : [new CanalPush(repo, criarPushProvider()), new CanalEmail(repo, email)],
+};
+
 const llmProvider: FactoryProvider = {
   provide: LLM,
   useFactory: () => criarLlmProvider(),
@@ -138,7 +185,16 @@ const whatsappClienteProvider: FactoryProvider = {
 };
 
 @Module({
-  controllers: [AuthController, EmpresasController, WhatsappController, AuditoriaController, CandidatoController, VagasController],
+  controllers: [
+    AuthController,
+    EmpresasController,
+    WhatsappController,
+    AuditoriaController,
+    CandidatoController,
+    VagasController,
+    MatchController,
+    NotificacoesController,
+  ],
   providers: [
     configProvider,
     relogioProvider,
@@ -147,6 +203,9 @@ const whatsappClienteProvider: FactoryProvider = {
     fonteProvider,
     filaProvider,
     filaVagasProvider,
+    filaMatchProvider,
+    embeddingsProvider,
+    canaisEntregaProvider,
     llmProvider,
     dnsProvider,
     whatsappClienteProvider,
@@ -206,19 +265,20 @@ const whatsappClienteProvider: FactoryProvider = {
     },
     {
       provide: PerfilService,
-      inject: [REPOSITORIO],
-      useFactory: (repo: Repositorio) => new PerfilService(repo),
+      inject: [REPOSITORIO, FILA_MATCH],
+      useFactory: (repo: Repositorio, filaMatch: FilaMatch) => new PerfilService(repo, filaMatch),
     },
     {
       provide: CurriculoService,
-      inject: [REPOSITORIO, ARMAZENAMENTO, ANTIVIRUS, FILA_CURRICULO, RELOGIO],
+      inject: [REPOSITORIO, ARMAZENAMENTO, ANTIVIRUS, FILA_CURRICULO, RELOGIO, FILA_MATCH],
       useFactory: (
         repo: Repositorio,
         armazenamento: typeof armazenamentoTeste,
         antivirus: typeof antivirusTeste,
         fila: typeof filaCurriculoTeste,
         relogio: typeof relogioSistema,
-      ) => new CurriculoService(repo, armazenamento, antivirus, fila, relogio),
+        filaMatch: FilaMatch,
+      ) => new CurriculoService(repo, armazenamento, antivirus, fila, relogio, filaMatch),
     },
     {
       provide: ConsentimentoService,
@@ -237,8 +297,25 @@ const whatsappClienteProvider: FactoryProvider = {
       useFactory: (repo: Repositorio, auditoria: AuditoriaService) => new AcessoSensivelService(repo, auditoria),
     },
     {
+      provide: CandidaturaStateMachine,
+      inject: [REPOSITORIO, RELOGIO],
+      useFactory: (repo: Repositorio, relogio: Relogio) => new CandidaturaStateMachine(repo, relogio),
+    },
+    {
+      provide: NotificacoesService,
+      inject: [REPOSITORIO, CANAIS_ENTREGA, CONFIG, RELOGIO],
+      useFactory: (repo: Repositorio, canais: CanalEntrega[], config: ConfiguracaoApp, relogio: Relogio) =>
+        new NotificacoesService(repo, canais, config, relogio),
+    },
+    {
+      provide: CandidaturasService,
+      inject: [REPOSITORIO, CandidaturaStateMachine, RELOGIO, NotificacoesService],
+      useFactory: (repo: Repositorio, maquina: CandidaturaStateMachine, relogio: Relogio, notificacoes: NotificacoesService) =>
+        new CandidaturasService(repo, maquina, relogio, notificacoes),
+    },
+    {
       provide: VagasService,
-      inject: [REPOSITORIO, AuditoriaService, FILA_VAGAS, LLM, CONFIG, RELOGIO],
+      inject: [REPOSITORIO, AuditoriaService, FILA_VAGAS, LLM, CONFIG, RELOGIO, CandidaturaStateMachine, FILA_MATCH],
       useFactory: (
         repo: Repositorio,
         auditoria: AuditoriaService,
@@ -246,7 +323,20 @@ const whatsappClienteProvider: FactoryProvider = {
         llm: ReturnType<typeof criarLlmProvider>,
         config: ConfiguracaoApp,
         relogio: Relogio,
-      ) => new VagasService(repo, auditoria, fila, llm, config, relogio),
+        candidaturas: CandidaturaStateMachine,
+        filaMatch: FilaMatch,
+      ) => new VagasService(repo, auditoria, fila, llm, config, relogio, candidaturas, filaMatch),
+    },
+    {
+      provide: MatchService,
+      inject: [REPOSITORIO, EMBEDDINGS, FILA_MATCH, CONFIG, RELOGIO],
+      useFactory: (
+        repo: Repositorio,
+        embeddings: EmbeddingProvider,
+        filaMatch: FilaMatch,
+        config: ConfiguracaoApp,
+        relogio: Relogio,
+      ) => new MatchService(repo, embeddings, filaMatch, config, relogio),
     },
     AuthGuard,
     { provide: APP_GUARD, useExisting: AuthGuard },

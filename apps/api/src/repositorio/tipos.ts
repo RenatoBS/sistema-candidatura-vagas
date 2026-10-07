@@ -1,6 +1,26 @@
 import type { PapelEmpresa, PapelGlobal, StatusEmpresa, Visao } from '@scv/domain';
 
 import type {
+  CandidaturaRegistro,
+  HistoricoStatusRegistro,
+  TransicaoCandidaturaRegistro,
+} from './candidaturas-tipos';
+import type {
+  CandidatoSimilar,
+  EntradaSugestaoMatch,
+  ResultadoSugestaoMatch,
+  SugestaoMatchRegistro,
+  VagaSimilar,
+} from './match-tipos';
+import type { StatusSugestaoMatch } from './match-tipos';
+import type {
+  FiltroNotificacoes,
+  NotificacaoNova,
+  NotificacaoRegistro,
+  PaginaNotificacoes,
+  PreferenciaNotificacaoRegistro,
+} from './notificacoes-tipos';
+import type {
   EtapaPerguntaRegistro,
   EtapaRegistro,
   EventoVagaRegistro,
@@ -11,6 +31,27 @@ import type {
   VagaRegistro,
 } from './vagas-tipos';
 
+export type {
+  CandidaturaRegistro,
+  HistoricoStatusRegistro,
+  OrigemCandidatura,
+  TransicaoCandidaturaRegistro,
+} from './candidaturas-tipos';
+export type {
+  CandidatoSimilar,
+  EntradaSugestaoMatch,
+  ResultadoSugestaoMatch,
+  StatusSugestaoMatch,
+  SugestaoMatchRegistro,
+  VagaSimilar,
+} from './match-tipos';
+export type {
+  FiltroNotificacoes,
+  NotificacaoNova,
+  NotificacaoRegistro,
+  PaginaNotificacoes,
+  PreferenciaNotificacaoRegistro,
+} from './notificacoes-tipos';
 export type {
   EtapaPerguntaRegistro,
   EtapaRegistro,
@@ -200,6 +241,7 @@ export interface ConsentimentoRegistro {
   concedido: boolean;
   versaoTermo: string;
   criadoEm: Date;
+  candidaturaId?: string | null;
 }
 
 export interface SolicitacaoLgpdRegistro {
@@ -251,6 +293,11 @@ export interface VinculoUsuario {
 }
 
 export interface Repositorio {
+  registrarDispositivoPush(registro: { usuarioId: string; token: string; plataforma: 'IOS' | 'ANDROID' | 'WEB'; ultimoUsoEm: Date }): Promise<void>;
+  removerDispositivoPush(token: string, usuarioId: string): Promise<boolean>;
+  listarDispositivosPush(usuarioId: string): Promise<Array<{ token: string; plataforma: string }>>;
+  removerDispositivosPush(tokens: string[]): Promise<void>;
+  removerDispositivosPushInativos(antesDe: Date): Promise<number>;
   criarUsuario(dados: UsuarioRegistro): Promise<UsuarioRegistro>;
   buscarUsuarioPorEmail(email: string): Promise<UsuarioRegistro | null>;
   buscarUsuarioPorId(id: string): Promise<UsuarioRegistro | null>;
@@ -299,6 +346,7 @@ export interface Repositorio {
   ): Promise<ConviteRegistro>;
   criarCandidato(candidato: CandidatoRegistro): Promise<CandidatoRegistro>;
   buscarCandidatoPorUsuario(usuarioId: string): Promise<CandidatoRegistro | null>;
+  buscarCandidatoPorId(id: string): Promise<CandidatoRegistro | null>;
   obterPerfil(usuarioId: string): Promise<PerfilCandidato | null>;
   salvarPerfil(perfil: PerfilCandidato): Promise<PerfilCandidato>;
   listarCatalogoHabilidades(): Promise<HabilidadeCatalogo[]>;
@@ -362,4 +410,42 @@ export interface Repositorio {
   listarEventosVaga(vagaId: string, ctx: ContextoTenant): Promise<EventoVagaRegistro[]>;
   listarPublicadasVencidas(agora: Date, ctx: ContextoTenant): Promise<VagaRegistro[]>;
   listarPausasParaAlerta(limite: Date, ctx: ContextoTenant): Promise<VagaRegistro[]>;
+  criarCandidatura(
+    dados: CandidaturaRegistro,
+    historico: HistoricoStatusRegistro,
+    ctx: ContextoTenant,
+  ): Promise<CandidaturaRegistro>;
+  buscarCandidatura(id: string, ctx: ContextoTenant): Promise<CandidaturaRegistro | null>;
+  listarCandidaturasVaga(vagaId: string, ctx: ContextoTenant): Promise<CandidaturaRegistro[]>;
+  listarCandidaturasCandidato(candidatoId: string, ctx: ContextoTenant): Promise<CandidaturaRegistro[]>;
+  /** `null` quando o estado esperado mudou (conflito otimista) ou a candidatura não é visível. */
+  transicionarCandidatura(
+    transicao: TransicaoCandidaturaRegistro,
+    ctx: ContextoTenant,
+  ): Promise<CandidaturaRegistro | null>;
+  listarHistoricoStatus(candidaturaId: string, ctx: ContextoTenant): Promise<HistoricoStatusRegistro[]>;
+  /** `false` quando a vaga não existe ou não é visível no contexto. */
+  salvarEmbeddingVaga(vagaId: string, vetor: number[], ctx: ContextoTenant): Promise<boolean>;
+  salvarEmbeddingCandidato(candidatoId: string, vetor: number[]): Promise<boolean>;
+  buscarCandidatosSimilares(vagaId: string, limite: number, ctx: ContextoTenant): Promise<CandidatoSimilar[]>;
+  buscarVagasSimilares(candidatoId: string, agora: Date, limite: number): Promise<VagaSimilar[]>;
+  registrarSugestao(entrada: EntradaSugestaoMatch, ctx: ContextoTenant): Promise<ResultadoSugestaoMatch | null>;
+  listarSugestoesVaga(vagaId: string, ctx: ContextoTenant): Promise<SugestaoMatchRegistro[]>;
+  listarSugestoesCandidato(candidatoId: string, ctx: ContextoTenant): Promise<SugestaoMatchRegistro[]>;
+  buscarSugestao(id: string, ctx: ContextoTenant): Promise<SugestaoMatchRegistro | null>;
+  atualizarStatusSugestao(id: string, status: StatusSugestaoMatch, ctx: ContextoTenant): Promise<SugestaoMatchRegistro | null>;
+  /** Grava `notificadoEm` só se ainda estiver vazio. */
+  marcarSugestaoNotificada(id: string, quando: Date, ctx: ContextoTenant): Promise<void>;
+  /** `null` quando a `chaveDedup` já existe (dedup) ou o contexto não permite. */
+  inserirNotificacaoUnica(dados: NotificacaoNova, ctx: ContextoTenant): Promise<NotificacaoRegistro | null>;
+  /** Upsert por `chaveDedup`: cria com `agrupadas = 1` ou incrementa, troca `dados` e volta a não lida. */
+  agruparNotificacao(dados: NotificacaoNova, ctx: ContextoTenant): Promise<NotificacaoRegistro | null>;
+  listarNotificacoes(filtro: FiltroNotificacoes, ctx: ContextoTenant): Promise<PaginaNotificacoes>;
+  marcarNotificacaoLida(id: string, usuarioId: string, quando: Date, ctx: ContextoTenant): Promise<NotificacaoRegistro | null>;
+  marcarTodasLidas(usuarioId: string, empresaId: string | undefined, quando: Date, ctx: ContextoTenant): Promise<number>;
+  listarPreferencias(usuarioId: string, empresaId: string, ctx: ContextoTenant): Promise<PreferenciaNotificacaoRegistro[]>;
+  salvarPreferencia(
+    preferencia: PreferenciaNotificacaoRegistro,
+    ctx: ContextoTenant,
+  ): Promise<PreferenciaNotificacaoRegistro | null>;
 }
