@@ -23,6 +23,15 @@ Para e-mail, use Mailpit em `localhost:1025` (`SMTP_HOST`/`SMTP_PORT`). Push usa
 
 Variáveis principais: `MATCH_LIMIAR_FORTE`, `EMBEDDING_PROVIDER`, `EMBEDDING_BASE_URL`, `EMBEDDING_API_KEY`, `PUSH_PROVIDER` e `EXPO_ACCESS_TOKEN`.
 
+## Validação
+
+Validação executada em 2026-10-06 no Postgres local `localhost:5433`:
+
+- `pnpm --filter @scv/api test`: 33 testes aprovados.
+- `pnpm --filter @scv/prisma db:migrate:deploy`: 7 migrações aplicadas com sucesso.
+- `pnpm --filter @scv/prisma test`: 11 testes aprovados.
+- Foi criada a extensão `vector`; para os testes RLS foi usado o banco descartável `scv_test` na mesma porta.
+
 ## Limitações
 
-Push em dispositivo real não foi validado e depende da F6-01 (APNs/FCM, sob responsabilidade do Renato). O caminho Prisma de alguns repositórios é exercitado apenas em memória pelos testes da API; a suíte Prisma deve ser rodada quando houver Postgres local disponível. A central in-app continua sendo a fonte de verdade mesmo quando push ou e-mail não estão configurados.
+Push em dispositivo real não foi validado e depende da F6-01 (APNs/FCM, sob responsabilidade do Renato). A validação Prisma foi feita no Postgres descartável local; ambientes de produção ainda exigem execução da CI com credenciais próprias. A central in-app continua sendo a fonte de verdade mesmo quando push ou e-mail não estão configurados.
