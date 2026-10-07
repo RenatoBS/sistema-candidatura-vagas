@@ -63,8 +63,7 @@ export class TranscricaoService {
         duracaoSegundos: Math.max(convertido.duracaoSegundos, resultado.duracaoSegundos),
         confiancaTranscricao: resultado.confianca,
         statusTranscricao: 'CONCLUIDA',
-        revisaoHumanaNecessaria:
-          resultado.confianca < Number(process.env.STT_LIMIAR_CONFIANCA ?? 0.6),
+        revisaoHumanaNecessaria: resultado.confianca < this.config.sttLimiarConfianca,
       });
     } catch (erro) {
       // Volta para PENDENTE: o worker retenta (attempts/backoff) e só marca FALHA

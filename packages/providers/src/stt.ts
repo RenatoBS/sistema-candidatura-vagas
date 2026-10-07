@@ -53,14 +53,26 @@ export class OpenAiWhisperStt implements SttProvider {
   }
 }
 export class FakeSttProvider implements SttProvider {
+  confianca = 1;
+  falhar = false;
+  chamadas = 0;
+
   constructor(private readonly texto = 'resposta de teste') {}
   async transcrever(entrada: { audio: Buffer }): Promise<ResultadoStt> {
+    this.chamadas += 1;
+    if (this.falhar) throw new Error('STT_FALHA_FAKE');
     return {
       texto: this.texto,
-      confianca: 1,
+      confianca: this.confianca,
       duracaoSegundos: Math.max(0, entrada.audio.length / 16000),
       modelo: 'fake',
     };
+  }
+
+  limpar(): void {
+    this.confianca = 1;
+    this.falhar = false;
+    this.chamadas = 0;
   }
 }
 export function criarSttProvider(env: NodeJS.ProcessEnv = process.env): SttProvider {

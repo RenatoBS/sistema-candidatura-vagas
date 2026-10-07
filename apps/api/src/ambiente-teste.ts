@@ -70,5 +70,6 @@ export function limparAmbienteTeste(): void {
   whatsappTeste.limpar();
   whatsappMensagensTeste.limpar();
   armazenamentoTeste.limpar();
+  sttTeste.limpar();
   relogioTeste.definir(null);
 }

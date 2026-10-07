@@ -15,6 +15,7 @@ export interface ConfiguracaoApp {
   uazapiWebhookSecret: string;
   internalToken: string;
   apiPublicUrl: string;
+  sttLimiarConfianca: number;
   accessTtlSegundos: number;
   accessAdminTtlSegundos: number;
   refreshTtlSegundos: number;
@@ -53,6 +54,7 @@ export function lerConfiguracao(env: NodeJS.ProcessEnv = process.env): Configura
     uazapiWebhookSecret: env.UAZAPI_WEBHOOK_SECRET ?? '',
     internalToken: env.INTERNAL_JOB_TOKEN ?? '',
     apiPublicUrl: env.API_PUBLIC_URL ?? 'http://localhost:3000',
+    sttLimiarConfianca: limiarConfianca(env.STT_LIMIAR_CONFIANCA),
     accessTtlSegundos: 15 * 60,
     accessAdminTtlSegundos: 5 * 60,
     refreshTtlSegundos: 14 * 24 * 60 * 60,
@@ -77,6 +79,15 @@ function inteiroPositivo(valor: string | undefined, padrao: number): number {
   const numero = Number(valor);
   if (!Number.isInteger(numero) || numero < 1 || numero > 365) {
     throw new Error('PAUSA_MAX_DIAS deve ser um inteiro entre 1 e 365');
+  }
+  return numero;
+}
+
+function limiarConfianca(valor: string | undefined): number {
+  if (!valor) return 0.6;
+  const numero = Number(valor);
+  if (!Number.isFinite(numero) || numero < 0 || numero > 1) {
+    throw new Error('STT_LIMIAR_CONFIANCA deve ser um número entre 0 e 1');
   }
   return numero;
 }
