@@ -93,8 +93,8 @@ import {
   REPOSITORIO,
 } from './tokens';
 import { VagasService } from './vagas/vagas.service';
-import { WhatsappService } from './whatsapp/whatsapp.service';
 import { WebhookUazapiService } from './whatsapp/webhook-uazapi.service';
+import { WhatsappService } from './whatsapp/whatsapp.service';
 
 const configProvider: FactoryProvider = {
   provide: CONFIG,
