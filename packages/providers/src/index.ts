@@ -13,9 +13,10 @@ export type {
   WhatsappProvider,
 } from './whatsapp';
 
-export interface SttProvider {
-  transcribe(audioUrl: string): Promise<{ text: string; confidence: number }>;
-}
+export { criarSttProvider, FakeSttProvider, OpenAiWhisperStt } from './stt';
+export type { ResultadoStt, SttProvider } from './stt';
+export { normalizarWebhookUazapi } from './uazapi-webhook';
+export type { MensagemWhatsappEntrada } from './uazapi-webhook';
 
 export type { LlmProvider, PedidoLlm, RespostaLlm } from '@scv/llm';
 
