@@ -46,7 +46,7 @@ export default function VagasEmpresaScreen() {
       <Cabecalho titulo={t('empresa.vagas')} subtitulo="Crie oportunidades e acompanhe cada etapa do processo." />
       {desconectada ? <Banner tipo="aviso" texto={t('whatsapp.banner')} /> : null}
       <Button label={t('vaga.nova')} onPress={() => router.push('/empresa/vagas/nova')} />
-      {!vagas.isLoading && !vagas.isError ? <View style={styles.secao}><Text style={styles.secaoTitulo}>Vagas publicadas</Text><Text style={styles.contador}>{lista.length} {lista.length === 1 ? 'vaga' : 'vagas'}</Text></View> : null}
+      {!vagas.isLoading && !vagas.isError ? <View style={styles.secao}><Text style={styles.secaoTitulo}>{t('empresa.suasVagas')}</Text><Text style={styles.contador}>{t('empresa.contadorVagas', { count: lista.length })}</Text></View> : null}
       {vagas.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
       {vagas.isError ? <EstadoVazio titulo={t('comum.erro')} /> : null}
       {!vagas.isLoading && !vagas.isError && lista.length === 0 ? <EstadoVazio titulo={t('vaga.vazia')} /> : null}

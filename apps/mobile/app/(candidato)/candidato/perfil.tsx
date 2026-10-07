@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { api, ErroApi } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
@@ -73,7 +73,12 @@ export default function PerfilCandidato() {
         <View style={styles.identidadeTexto}><Text style={styles.nome}>{nome || 'Seu perfil'}</Text><Text style={styles.descricao}>Dados visíveis somente quando você autorizar.</Text></View>
       </View>
       <View style={styles.formulario}>
-        <View style={styles.linhaSecao}><Text style={styles.secao}>Informações pessoais</Text><Text style={styles.atualizar} onPress={() => void carregar()}>{t('candidato.carregar')}</Text></View>
+        <View style={styles.linhaSecao}>
+          <Text style={styles.secao}>Informações pessoais</Text>
+          <Pressable accessibilityRole="button" hitSlop={12} onPress={() => void carregar()}>
+            <Text style={styles.atualizar}>{t('candidato.carregar')}</Text>
+          </Pressable>
+        </View>
         <Campo label={t('onboarding.nome')} value={nome} onChangeText={setNome} />
         <Campo label={t('candidato.whatsapp')} value={whatsapp} onChangeText={setWhatsapp} autoCapitalize="none" />
         <Campo label={t('candidato.linkedin')} value={linkedinUrl} onChangeText={setLinkedinUrl} autoCapitalize="none" />

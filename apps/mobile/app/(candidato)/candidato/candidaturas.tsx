@@ -37,7 +37,7 @@ export default function Candidaturas() {
       {q.isError ? <EstadoVazio titulo={t('candidato.candidaturasErro')} /> : null}
       {!q.isLoading && !q.isError && lista.length === 0 ? <EstadoVazio titulo={t('candidato.candidaturasVazias')} /> : null}
       {lista.length > 1 ? <Banner tipo="aviso" texto={t('candidato.variosProcessos')} /> : null}
-      {lista.length > 0 ? <View style={styles.secao}><Text style={styles.secaoTitulo}>Em andamento</Text><Text style={styles.contador}>{lista.length} processos</Text></View> : null}
+      {lista.length > 0 ? <View style={styles.secao}><Text style={styles.secaoTitulo}>{t('candidato.seusProcessos')}</Text><Text style={styles.contador}>{t('candidato.contadorProcessos', { count: lista.length })}</Text></View> : null}
       {lista.map((c) => (
         <Cartao key={c.id} onPress={() => router.push(`/candidato/candidaturas/${c.id}`)}>
           <Text style={estilos.tituloItem}>{c.vagaTitulo || c.vaga?.titulo || t('comum.vaga')}</Text>

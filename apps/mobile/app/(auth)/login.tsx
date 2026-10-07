@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { rotaInicial } from '@/auth/acesso';
@@ -44,13 +44,19 @@ export default function LoginScreen() {
       <View style={styles.formulario}>
         <Campo label={t('auth.email')} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
         <Campo label={t('auth.senha')} value={senha} onChangeText={setSenha} secureTextEntry autoCapitalize="none" />
-        <View style={styles.linkEsqueceu}><Text style={styles.link} onPress={() => router.push('/recuperar')}>{t('auth.recuperar')}</Text></View>
+        <View style={styles.linkEsqueceu}>
+          <Pressable accessibilityRole="link" hitSlop={12} onPress={() => router.push('/recuperar')}>
+            <Text style={styles.link}>{t('auth.recuperar')}</Text>
+          </Pressable>
+        </View>
         {erro ? <Banner tipo="erro" texto={erro} /> : null}
         <Button label={t('home.entrar')} onPress={() => void enviar()} />
       </View>
       <View style={styles.rodape}>
         <Text style={styles.conta}>Ainda não tem uma conta?</Text>
-        <Text style={styles.link} onPress={() => router.push('/cadastro')}>{t('home.cadastrar')}</Text>
+        <Pressable accessibilityRole="link" hitSlop={12} onPress={() => router.push('/cadastro')}>
+          <Text style={styles.link}>{t('home.cadastrar')}</Text>
+        </Pressable>
       </View>
     </Tela>
   );

@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
@@ -32,7 +32,18 @@ export default function EmpresaHome() {
     <Tela comAbas>
       <Cabecalho titulo={empresa.data?.nomeFantasia ?? t('empresa.titulo')} subtitulo="Gerencie sua presença e mantenha o recrutamento fluindo." />
       {empresa.isError ? <Banner tipo="erro" texto={t('comum.erroCarregar')} /> : null}
-      <View style={styles.status}><View><Text style={styles.statusRotulo}>{t('empresa.status')}</Text><Text style={styles.statusTexto}>{empresa.data?.statusVerificacao ?? '—'}</Text></View><Chip texto="Ver detalhes" tom="destaque" /></View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('comum.verDetalhes')}
+        onPress={() => router.push('/empresa/verificacao')}
+        style={({ pressed }) => [styles.status, pressed ? styles.statusPressionado : null]}
+      >
+        <View>
+          <Text style={styles.statusRotulo}>{t('empresa.status')}</Text>
+          <Text style={styles.statusTexto}>{empresa.data?.statusVerificacao ?? '—'}</Text>
+        </View>
+        <Chip texto={t('comum.verDetalhes')} tom="destaque" />
+      </Pressable>
       <Text style={styles.secao}>Sua empresa</Text>
       <ItemLista titulo={t('empresa.status')} detalhe="Acompanhe a validação do cadastro" icone="shield-checkmark-outline" onPress={() => router.push('/empresa/verificacao')} />
       <ItemLista titulo={t('empresa.whatsapp')} detalhe="Canal da triagem automática" icone="logo-whatsapp" onPress={() => router.push('/empresa/whatsapp')} />
@@ -46,6 +57,7 @@ export default function EmpresaHome() {
 
 const styles = StyleSheet.create({
   status: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 18, borderRadius: radius.lg, backgroundColor: colors.tealSoft },
+  statusPressionado: { opacity: 0.92 },
   statusRotulo: { ...tipo.legenda, color: colors.teal },
   statusTexto: { ...tipo.secao, color: colors.text, marginTop: 2 },
   secao: { ...tipo.destaque, color: colors.text, marginTop: 4 },

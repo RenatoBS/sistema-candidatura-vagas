@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { Button } from '@/design-system/Button';
@@ -33,7 +33,9 @@ export default function CadastroScreen() {
       </View>
       <View style={styles.rodape}>
         <Text style={styles.conta}>Já possui uma conta?</Text>
-        <Text style={styles.link} onPress={() => router.push('/login')}>{t('home.entrar')}</Text>
+        <Pressable accessibilityRole="link" hitSlop={12} onPress={() => router.push('/login')}>
+          <Text style={styles.link}>{t('home.entrar')}</Text>
+        </Pressable>
       </View>
     </Tela>
   );
