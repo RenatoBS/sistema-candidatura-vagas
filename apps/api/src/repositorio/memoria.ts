@@ -3,7 +3,7 @@ import { CATALOGO_BASE } from '@scv/domain';
 import { ErroAplicacao } from '../erros';
 import { CandidaturasMemoria } from './candidaturas-memoria';
 import { EntrevistasMemoria } from './entrevistas-memoria';
-import type { EntrevistaRegistro } from './entrevistas-tipos';
+import type { EntrevistaRegistro, SessaoVozRegistro } from './entrevistas-tipos';
 import { MatchMemoria } from './match-memoria';
 import { NotificacoesMemoria } from './notificacoes-memoria';
 import type {
@@ -980,6 +980,26 @@ export class RepositorioMemoria implements Repositorio {
 
   async marcarRespostasParciais(entrevistaId: string, ctx: ContextoTenant): Promise<void> {
     await this.entrevistasStore.marcarRespostasParciais(this, entrevistaId, ctx);
+  }
+
+  criarSessaoVoz(dados: SessaoVozRegistro, ctx: ContextoTenant) {
+    return this.entrevistasStore.criarSessao(dados, ctx);
+  }
+
+  buscarSessaoVoz(id: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.buscarSessao(id, ctx);
+  }
+
+  atualizarSessaoVoz(id: string, patch: Partial<SessaoVozRegistro>, ctx: ContextoTenant) {
+    return this.entrevistasStore.atualizarSessao(id, patch, ctx);
+  }
+
+  listarSessoesEntrevista(entrevistaId: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.listarSessoes(entrevistaId, ctx);
+  }
+
+  contarSessoesAtivas(ctx: ContextoTenant) {
+    return this.entrevistasStore.contarAtivas(ctx);
   }
 
   private instanciaById(id: string): InstanciaRegistro | null {

@@ -157,7 +157,8 @@
     "status": "Status",
     "ate": "Inscrições até",
     "detalhe": "Detalhe da vaga",
-    "triagens": "Triagens desta vaga"
+    "triagens": "Triagens desta vaga",
+    "voz": "Entrevistas por voz"
   },
   "triagem": {
     "titulo": "Triagens",
@@ -173,5 +174,19 @@
     "revisar": "Registrar revisão",
     "justificativa": "Justificativa",
     "origem": "Origem da nota"
+  },
+  "voz": {
+    "titulo": "Entrevista por voz",
+    "precheck": "Antes de começar: microfone, rede estável e consentimento de gravação.",
+    "tempo": "Tempo restante",
+    "aviso": "O tempo desta pergunta está acabando.",
+    "reconectar": "Conexão caiu. Tentando a mesma sessão.",
+    "encerrar": "Encerrar entrevista",
+    "confirmar": "Encerrar consome a tentativa. Confirmar?",
+    "confirmarSim": "Sim, encerrar",
+    "gravacao": "Ouvir gravação",
+    "motivo": "Motivo do acesso à gravação",
+    "transcricao": "Transcrição",
+    "vazia": "Nenhuma entrevista por voz."
   }
 }

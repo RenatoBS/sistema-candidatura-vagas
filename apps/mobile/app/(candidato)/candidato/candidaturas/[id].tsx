@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { Link, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
@@ -20,6 +20,11 @@ export default function Detalhe() {
       <Text style={s.x}>
         {q.data?.rotuloAmigavel ?? rotuloStatus(q.data?.status, q.data?.fase)}
       </Text>
+      {q.data?.status === 'ENTREVISTA_VOZ' || q.data?.status === 'TRIAGEM_CONCLUIDA' ? (
+        <Link href={`/candidato/voz/${id}`}>
+          <Text style={s.x}>Entrevista por voz</Text>
+        </Link>
+      ) : null}
     </View>
   );
 }

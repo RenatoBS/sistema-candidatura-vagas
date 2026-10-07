@@ -154,11 +154,44 @@ export const openApiFase7 = {
   },
 } as const;
 
+/** Rotas da entrevista por voz (Fase 8). */
+export const openApiFase8 = {
+  openapi: '3.0.3',
+  info: {
+    title: 'Sistema de Candidatura a Vagas',
+    version: '0.8.0',
+  },
+  paths: {
+    '/interno/voz/candidaturas/{candidaturaId}/preparar': { post: { operationId: 'jobPrepararVoz' } },
+    '/interno/voz/entrevistas/{entrevistaId}/aceitar': { post: { operationId: 'jobAceitarVoz' } },
+    '/interno/voz/sessoes/{sessaoId}/turno': { post: { operationId: 'jobTurnoVoz' } },
+    '/interno/voz/sessoes/{sessaoId}/expirar': { post: { operationId: 'jobExpirarVoz' } },
+    '/interno/voz/sessoes/{sessaoId}/desconectar': { post: { operationId: 'jobDesconectarVoz' } },
+    '/interno/voz/sessoes/{sessaoId}/reconectar': { post: { operationId: 'jobReconectarVoz' } },
+    '/interno/voz/sessoes/{sessaoId}/encerrar': { post: { operationId: 'jobEncerrarVoz' } },
+    '/interno/voz/entrevistas/{entrevistaId}/visao': { get: { operationId: 'jobVisaoVoz' } },
+    '/voz/candidaturas/{candidaturaId}/preparar': { post: { operationId: 'prepararVoz' } },
+    '/voz/entrevistas/{entrevistaId}/aceitar': { post: { operationId: 'aceitarVoz' } },
+    '/voz/sessoes/{sessaoId}/turno': { post: { operationId: 'turnoVoz' } },
+    '/voz/sessoes/{sessaoId}/desconectar': { post: { operationId: 'desconectarVoz' } },
+    '/voz/sessoes/{sessaoId}/reconectar': { post: { operationId: 'reconectarVoz' } },
+    '/voz/sessoes/{sessaoId}/encerrar': { post: { operationId: 'encerrarVoz' } },
+    '/voz/entrevistas/{entrevistaId}': { get: { operationId: 'visaoVoz' } },
+    '/empresas/{empresaId}/vagas/{vagaId}/voz': { get: { operationId: 'listarVoz' } },
+    '/empresas/{empresaId}/voz/{entrevistaId}': { get: { operationId: 'detalheVoz' } },
+    '/empresas/{empresaId}/voz/{entrevistaId}/gravacao': { get: { operationId: 'gravacaoVoz' } },
+    '/empresas/{empresaId}/voz/{entrevistaId}/excecao': { post: { operationId: 'excecaoVoz' } },
+    '/empresas/{empresaId}/voz/{entrevistaId}/respostas/{respostaId}/revisao': {
+      post: { operationId: 'revisarRespostaVoz' },
+    },
+  },
+} as const;
+
 export const openApi = {
   openapi: '3.0.3',
   info: {
     title: 'Sistema de Candidatura a Vagas',
-    version: '0.7.0',
+    version: '0.8.0',
   },
   paths: {
     ...openApiFase3.paths,
@@ -166,6 +199,7 @@ export const openApi = {
     ...openApiFase5.paths,
     ...openApiFase6Match.paths,
     ...openApiFase7.paths,
+    ...openApiFase8.paths,
   },
 } as const;
 

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { ErroAplicacao } from '../erros';
-import type { EntrevistaRegistro } from './entrevistas-tipos';
+import type { EntrevistaRegistro, SessaoVozRegistro } from './entrevistas-tipos';
 import type { ContextoTenant, Repositorio } from './tipos';
 
 function permitido(ctx: ContextoTenant, empresaId: string): boolean {
@@ -10,9 +10,11 @@ function permitido(ctx: ContextoTenant, empresaId: string): boolean {
 
 export class EntrevistasMemoria {
   entrevistas = new Map<string, EntrevistaRegistro>();
+  sessoes = new Map<string, SessaoVozRegistro>();
 
   limpar(): void {
     this.entrevistas.clear();
+    this.sessoes.clear();
   }
 
   async criar(dados: EntrevistaRegistro, ctx: ContextoTenant): Promise<EntrevistaRegistro> {
@@ -98,5 +100,48 @@ export class EntrevistasMemoria {
         tempoUsado: null,
       });
     }
+  }
+
+  async criarSessao(dados: SessaoVozRegistro, ctx: ContextoTenant): Promise<SessaoVozRegistro> {
+    const entrevista = await this.buscar(dados.entrevistaId, ctx);
+    if (!entrevista) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'entrevista não encontrada');
+    this.sessoes.set(dados.id, { ...dados });
+    return { ...dados };
+  }
+
+  async buscarSessao(id: string, ctx: ContextoTenant): Promise<SessaoVozRegistro | null> {
+    const sessao = this.sessoes.get(id);
+    if (!sessao) return null;
+    const entrevista = await this.buscar(sessao.entrevistaId, ctx);
+    return entrevista ? { ...sessao } : null;
+  }
+
+  async atualizarSessao(
+    id: string,
+    patch: Partial<SessaoVozRegistro>,
+    ctx: ContextoTenant,
+  ): Promise<SessaoVozRegistro | null> {
+    const atual = await this.buscarSessao(id, ctx);
+    if (!atual) return null;
+    const proxima = { ...atual, ...patch, id, atualizadoEm: patch.atualizadoEm ?? new Date() };
+    this.sessoes.set(id, proxima);
+    return { ...proxima };
+  }
+
+  async listarSessoes(entrevistaId: string, ctx: ContextoTenant): Promise<SessaoVozRegistro[]> {
+    const entrevista = await this.buscar(entrevistaId, ctx);
+    if (!entrevista) return [];
+    return [...this.sessoes.values()]
+      .filter((item) => item.entrevistaId === entrevistaId)
+      .map((item) => ({ ...item }));
+  }
+
+  async contarAtivas(ctx: ContextoTenant): Promise<number> {
+    let total = 0;
+    for (const sessao of this.sessoes.values()) {
+      if (sessao.status !== 'ATIVA' && sessao.status !== 'RECONECTANDO') continue;
+      if (await this.buscar(sessao.entrevistaId, ctx)) total += 1;
+    }
+    return total;
   }
 }

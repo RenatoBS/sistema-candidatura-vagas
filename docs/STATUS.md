@@ -1,8 +1,8 @@
 # Status do Projeto — Sistema de Candidatura a Vagas
 
 **Última atualização:** 2026-10-07  
-**Branch ativa:** `feat/f7-entrevista-whatsapp`  
-**PR:** #12 (Fase 7 implementada, aguardando CI para sair de draft)
+**Branch ativa:** `feat/f8-entrevista-voz`  
+**PR:** Fase 7 mergeada no #12. Fase 8 em `feat/f8-entrevista-voz`.
 
 ## Status geral
 
@@ -10,7 +10,8 @@
 ✅ **Fase 2 concluída** — modelo de dados, RLS, seeds, testes de isolamento e ADR multi-tenant aprovado.  
 🟢 **Fases 1–5 concluídas** na `main` — Fases 3, 4 e 5 mergeadas nos PRs [#8](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/8), [#10](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/10) e [#9](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/9).  
 🟢 **Fase 6 concluída** na `main` (PR [#11](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/11)). ADR 0005 está provisório, aguardando o Renato.  
-🟢 **Fase 7 implementada** na branch `feat/f7-entrevista-whatsapp` — orquestração, retry, inatividade, monitor, avaliação, telas e suíte de aceite. Ficam com o Renato: F7-01, F7-02 (decisão final) e F7-15. ADR 0006 continua provisório. Fases 8 a 10 seguem em [plano-restante.md](plano-restante.md).  
+🟢 **Fase 7 concluída** na `main` (PR [#12](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/12)). Ficam com o Renato: F7-01, F7-02 (decisão final) e F7-15. ADR 0006 continua provisório.  
+🟢 **Fase 8 implementada** na branch `feat/f8-entrevista-voz` — roteiro, sessão falsa, reconexão, exceção e telas. F8-15 fica com o Renato. ADR 0007 é provisório. Fases 9 e 10 seguem em [plano-restante.md](plano-restante.md).  
 🟢 **POC 8.1 concluída** na `main` — latência de voz STT→LLM→TTS.
 
 ## Decisões do Renato (registro)
@@ -176,6 +177,28 @@ Plano do restante (handoff para agente Cursor): [plano-restante.md](plano-restan
 | F7-15 | Teste ponta a ponta com número real                                        |      ⏸️ Pendente (pulada)       | Renato         |
 | F7-16 | Roteamento por empresa                                                     |            ✅ Feito             | Cursor         |
 
+## Checklist Fase 8
+
+Decisões provisórias: [ADR 0007](adr/0007-entrevista-voz.md). Guia: [fase-8-entrevista-voz.md](fase-8-entrevista-voz.md).
+
+| ID    | Tarefa                                                         |          Status          | Responsável |
+| ----- | -------------------------------------------------------------- | :----------------------: | ----------- |
+| F8-01 | POC de latência                                                |         ✅ Feito         | —           |
+| F8-02 | Arquitetura de voz (Q3)                                        | 🟡 Provisório (ADR 0007) | Renato      |
+| F8-03 | Token de sala e gravação (fake; sem LiveKit real)              |         ✅ Feito         | Cursor      |
+| F8-04 | Agente de voz (pipeline mock; sem VAD/barge-in reais)          |         ✅ Feito         | Cursor      |
+| F8-05 | Roteiro, follow-up e guardrails                                |         ✅ Feito         | Cursor      |
+| F8-06 | Cronômetro, aviso e estouro sem eliminação                     |         ✅ Feito         | Cursor      |
+| F8-07 | Tentativa, reconexão e vaga pausada                            |         ✅ Feito         | Cursor      |
+| F8-08 | Transcrição por pergunta (no turno; sem fila separada)         |         ✅ Feito         | Cursor      |
+| F8-09 | Avaliação por pergunta (mock determinístico)                   |         ✅ Feito         | Cursor      |
+| F8-10 | Tela do candidato                                              |         ✅ Feito         | Cursor      |
+| F8-11 | Pré-checagem e aceite                                          |         ✅ Feito         | Cursor      |
+| F8-12 | Tela da empresa (gravação, transcrição, revisão)               |         ✅ Feito         | Cursor      |
+| F8-13 | Carga local e fila de admissão                                 |         ✅ Feito         | Cursor      |
+| F8-14 | Exceção manual auditada e runbook local                        |         ✅ Feito         | Cursor      |
+| F8-15 | Provedores e chaves em staging                                 |   ⏸️ Pendente (pulada)   | Renato      |
+
 ## Documentos de referência
 
 - [Plano Técnico e de Produto](plano-sistema.md)
@@ -186,9 +209,11 @@ Plano do restante (handoff para agente Cursor): [plano-restante.md](plano-restan
 - [ADR 0004 — LLM e regras de vaga (provisório)](adr/0004-vagas-llm.md)
 - [ADR 0005 — Candidatura, match e notificações (provisório)](adr/0005-candidatura-match-notificacoes.md)
 - [ADR 0006 — Entrevista WhatsApp (provisório)](adr/0006-entrevista-whatsapp.md)
+- [ADR 0007 — Entrevista por voz (provisório)](adr/0007-entrevista-voz.md)
 - [Plano restante (Fases 7–10, handoff)](plano-restante.md)
 - [Guia da Fase 6](fase-6-candidatura-notificacoes.md)
 - [Guia da Fase 7](fase-7-entrevista-whatsapp.md)
+- [Guia da Fase 8](fase-8-entrevista-voz.md)
 - [Diagrama ER Fase 2](diagrama-er-fase2.md)
 - [Proteção da branch main](protecao-branch-main.md)
 - [AGENTS.md](../AGENTS.md)
