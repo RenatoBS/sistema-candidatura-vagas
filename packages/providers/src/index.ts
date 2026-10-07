@@ -20,6 +20,8 @@ export { ArmazenamentoMemoria, ArmazenamentoS3, criarArmazenamentoS3 } from './a
 export type { Armazenamento, PedidoUpload, UrlUpload } from './armazenamento';
 export { AntivirusClamAv, AntivirusMock, criarAntivirus } from './antivirus';
 export type { Antivirus, ResultadoAntivirus } from './antivirus';
+export { criarEmbeddingProvider, EmbeddingOpenAiCompativel, FakeEmbeddingProvider } from './embeddings';
+export type { AmbienteEmbedding, EmbeddingProvider, FetchEmbedding } from './embeddings';
 export { ExtratorEstruturadoMock } from './extrator-estruturado';
 export type { ExtratorEstruturadoCurriculo } from './extrator-estruturado';
 export { criarExtratorEstruturado, ExtratorEstruturadoLlm } from './extrator-estruturado-llm';
