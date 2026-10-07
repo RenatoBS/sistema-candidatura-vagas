@@ -1,3 +1,4 @@
+import type { NotificacaoDto, NotificacoesResponse } from '@scv/contracts';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { api } from '@/api/cliente';
@@ -5,7 +6,6 @@ import { useAuth } from '@/auth/AuthContext';
 import { Button } from '@/design-system/Button';
 import { colors, spacing } from '@/design-system/tokens';
 import { useConsulta } from '@/hooks/useConsulta';
-import type { NotificacaoDto, NotificacoesResponse } from '@scv/contracts';
 
 const ROTULOS: Record<string, string> = {
   CANDIDATO_NOVO: 'Novo candidato',

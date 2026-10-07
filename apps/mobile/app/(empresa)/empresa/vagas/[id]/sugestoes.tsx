@@ -1,3 +1,4 @@
+import type { SugestoesMatchVagaResponse } from '@scv/contracts';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -6,7 +7,6 @@ import { useAuth } from '@/auth/AuthContext';
 import { Button } from '@/design-system/Button';
 import { colors, spacing } from '@/design-system/tokens';
 import { useConsulta } from '@/hooks/useConsulta';
-import type { SugestoesMatchVagaResponse } from '@scv/contracts';
 export default function SugestoesDaVaga() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { accessToken } = useAuth();
