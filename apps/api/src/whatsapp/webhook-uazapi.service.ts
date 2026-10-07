@@ -35,13 +35,11 @@ export class WebhookUazapiService {
     if (mensagem.enviadaPelaApi) return { status: 'ignorado', motivo: 'api' };
     if (mensagem.grupo) return { status: 'ignorado', motivo: 'grupo' };
     const chave = `${instancia.id}:${mensagem.mensagemIdProvedor}`;
-    let reservado = true;
     try {
-      reservado = await this.deduplicador.registrar(chave);
+      await this.deduplicador.registrar(chave);
     } catch {
-      reservado = true;
+      // O índice único do banco continua sendo a fonte de verdade.
     }
-    if (!reservado) return { status: 'duplicado' };
     const evento = await this.repo.registrarEventoWhatsappEntrada(
       {
         id: randomUUID(),
