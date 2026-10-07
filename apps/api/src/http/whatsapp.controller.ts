@@ -1,14 +1,9 @@
-import { timingSafeEqual } from 'node:crypto';
 import { Controller, Get, Headers, Inject, Param, Post, Req, Body } from '@nestjs/common';
-import { normalizarWebhookUazapi, decifrar } from '@scv/providers';
 
-import type { ConfiguracaoApp } from '../configuracao';
-import { ErroAplicacao } from '../erros';
-import type { FilaWhatsappEntrada } from '../fila/fila-whatsapp-entrada';
-import type { Repositorio } from '../repositorio/tipos';
 import type { SessaoRequest } from '../sessao';
-import { FILA_WHATSAPP_ENTRADA, REPOSITORIO, CONFIG } from '../tokens';
+import { CONFIG } from '../tokens';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { WebhookUazapiService } from '../whatsapp/webhook-uazapi.service';
 import { Publico, Sensivel } from './decoradores';
 
 interface RequisicaoComSessao {
@@ -17,12 +12,9 @@ interface RequisicaoComSessao {
 
 @Controller()
 export class WhatsappController {
-  private readonly dedup = new Set<string>();
   constructor(
     @Inject(WhatsappService) private readonly whatsapp: WhatsappService,
-    @Inject(REPOSITORIO) private readonly repo: Repositorio,
-    @Inject(CONFIG) private readonly config: ConfiguracaoApp,
-    @Inject(FILA_WHATSAPP_ENTRADA) private readonly fila: FilaWhatsappEntrada,
+    @Inject(WebhookUazapiService) private readonly webhookService: WebhookUazapiService,
   ) {}
 
   @Post('empresas/:empresaId/whatsapp/instancia')
@@ -58,48 +50,6 @@ export class WhatsappController {
     @Headers('x-webhook-secret') segredo: string | undefined,
     @Body() payload: unknown,
   ) {
-    if (
-      !this.config.uazapiWebhookSecret ||
-      !segredo ||
-      !segredosIguais(segredo, this.config.uazapiWebhookSecret)
-    )
-      throw new ErroAplicacao('WEBHOOK_NAO_AUTORIZADO', 401, 'webhook não autorizado');
-    const instancia = (await this.repo.listarInstancias({ sistema: true })).find(
-      (item) => item.id === instanciaId,
-    );
-    if (!instancia)
-      throw new ErroAplicacao('INSTANCIA_NAO_ENCONTRADA', 404, 'instância não encontrada');
-    const recebido = payload as Record<string, unknown>;
-    const token = typeof recebido.token === 'string' ? recebido.token : undefined;
-    if (token) {
-      let tokenReal = '';
-      try {
-        tokenReal = decifrar(instancia.tokenCifrado, this.config.encryptionKey);
-      } catch {
-        throw new ErroAplicacao('WEBHOOK_NAO_AUTORIZADO', 401, 'webhook não autorizado');
-      }
-      if (!segredosIguais(token, tokenReal))
-        throw new ErroAplicacao('WEBHOOK_NAO_AUTORIZADO', 401, 'webhook não autorizado');
-    }
-    const mensagem = normalizarWebhookUazapi(payload);
-    if (!mensagem) return { status: 'ignorado', motivo: 'evento_sem_mensagem' };
-    if (mensagem.deMim) return { status: 'ignorado', motivo: 'from_me' };
-    if (mensagem.enviadaPelaApi) return { status: 'ignorado', motivo: 'api' };
-    if (mensagem.grupo) return { status: 'ignorado', motivo: 'grupo' };
-    const chave = `${instancia.id}:${mensagem.mensagemIdProvedor}`;
-    if (this.dedup.has(chave)) return { status: 'duplicado' };
-    this.dedup.add(chave);
-    const eventoId = `evento-${mensagem.mensagemIdProvedor}`;
-    await this.fila.enfileirar(
-      { eventoId, empresaId: instancia.empresaId, instanciaId: instancia.id, mensagem },
-      chave,
-    );
-    return { status: 'recebido', eventoId };
+    return this.webhookService.receber(instanciaId, segredo, payload);
   }
-}
-
-function segredosIguais(a: string, b: string): boolean {
-  const esquerda = Buffer.from(a);
-  const direita = Buffer.from(b);
-  return esquerda.length === direita.length && timingSafeEqual(esquerda, direita);
 }

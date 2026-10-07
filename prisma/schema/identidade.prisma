@@ -1,66 +1,66 @@
 // Domínio: identidade — usuários, empresas, membros, auditoria
 
 model Usuario {
-  id                 String         @id @default(uuid()) @db.Uuid
-  email              String         @unique
-  senhaHash          String
-  papeisGlobais      PapelGlobal[]
-  mfaAtivo           Boolean        @default(false)
-  mfaSecretCifrado   String?
-  visaoPreferida     VisaoPreferida @default(CANDIDATO)
-  emailConfirmadoEm  DateTime?      @db.Timestamptz
-  criadoEm           DateTime       @default(now()) @db.Timestamptz
-  atualizadoEm       DateTime       @updatedAt @db.Timestamptz
+  id                String         @id @default(uuid()) @db.Uuid
+  email             String         @unique
+  senhaHash         String
+  papeisGlobais     PapelGlobal[]
+  mfaAtivo          Boolean        @default(false)
+  mfaSecretCifrado  String?
+  visaoPreferida    VisaoPreferida @default(CANDIDATO)
+  emailConfirmadoEm DateTime?      @db.Timestamptz
+  criadoEm          DateTime       @default(now()) @db.Timestamptz
+  atualizadoEm      DateTime       @updatedAt @db.Timestamptz
 
-  candidato              Candidato?
-  membrosEmpresa         MembroEmpresa[]
-  verificacoesFeitas     VerificacaoEmpresa[] @relation("RevisorVerificacao")
-  auditorias             AuditoriaAcesso[]
-  notificacoes           Notificacao[]
-  preferenciasNotif      PreferenciaNotificacao[]
-  dispositivosPush       DispositivoPush[]
-  historicoStatus        HistoricoStatus[]
-  refreshTokens          RefreshToken[]
-  tokensUsoUnico         TokenUsoUnico[]
-  codigosRecuperacaoMfa  CodigoRecuperacaoMfa[]
-  convitesEnviados       ConviteMembro[]          @relation("ConvitesEnviados")
-  solicitacoesLgpd       SolicitacaoLgpd[]
+  candidato             Candidato?
+  membrosEmpresa        MembroEmpresa[]
+  verificacoesFeitas    VerificacaoEmpresa[]     @relation("RevisorVerificacao")
+  auditorias            AuditoriaAcesso[]
+  notificacoes          Notificacao[]
+  preferenciasNotif     PreferenciaNotificacao[]
+  dispositivosPush      DispositivoPush[]
+  historicoStatus       HistoricoStatus[]
+  refreshTokens         RefreshToken[]
+  tokensUsoUnico        TokenUsoUnico[]
+  codigosRecuperacaoMfa CodigoRecuperacaoMfa[]
+  convitesEnviados      ConviteMembro[]          @relation("ConvitesEnviados")
+  solicitacoesLgpd      SolicitacaoLgpd[]
 
   @@map("usuarios")
 }
 
 model Empresa {
-  id                  String                   @id @default(uuid()) @db.Uuid
-  razaoSocial         String
-  nomeFantasia        String
-  cnpj                String                   @unique
-  dominio             String
-  responsavelNome     String
-  responsavelEmail    String
-  responsavelCargo    String?
-  telefone            String?
-  endereco            Json?
-  statusVerificacao   StatusVerificacaoEmpresa @default(PENDENTE)
-  verificadaEm        DateTime?                @db.Timestamptz
-  configuracoes       Json                     @default("{}")
-  criadoEm            DateTime                 @default(now()) @db.Timestamptz
-  atualizadoEm        DateTime                 @updatedAt @db.Timestamptz
+  id                String                   @id @default(uuid()) @db.Uuid
+  razaoSocial       String
+  nomeFantasia      String
+  cnpj              String                   @unique
+  dominio           String
+  responsavelNome   String
+  responsavelEmail  String
+  responsavelCargo  String?
+  telefone          String?
+  endereco          Json?
+  statusVerificacao StatusVerificacaoEmpresa @default(PENDENTE)
+  verificadaEm      DateTime?                @db.Timestamptz
+  configuracoes     Json                     @default("{}")
+  criadoEm          DateTime                 @default(now()) @db.Timestamptz
+  atualizadoEm      DateTime                 @updatedAt @db.Timestamptz
 
-  verificacoes       VerificacaoEmpresa[]
-  membros            MembroEmpresa[]
-  vagas              Vaga[]
-  perguntas          Pergunta[]
-  processos          ProcessoSeletivo[]
-  candidaturas       Candidatura[]
-  entrevistas        Entrevista[]
-  respostas          Resposta[]
-  instanciaWhatsapp  InstanciaWhatsapp?
-  notificacoes       Notificacao[]
-  preferenciasNotif  PreferenciaNotificacao[]
-  auditorias         AuditoriaAcesso[]
-  convites           ConviteMembro[]
-  tokensUsoUnico     TokenUsoUnico[]
-  eventosVaga        EventoVaga[]
+  verificacoes           VerificacaoEmpresa[]
+  membros                MembroEmpresa[]
+  vagas                  Vaga[]
+  perguntas              Pergunta[]
+  processos              ProcessoSeletivo[]
+  candidaturas           Candidatura[]
+  entrevistas            Entrevista[]
+  respostas              Resposta[]
+  instanciaWhatsapp      InstanciaWhatsapp?
+  notificacoes           Notificacao[]
+  preferenciasNotif      PreferenciaNotificacao[]
+  auditorias             AuditoriaAcesso[]
+  convites               ConviteMembro[]
+  tokensUsoUnico         TokenUsoUnico[]
+  eventosVaga            EventoVaga[]
   eventosWhatsappEntrada EventoWhatsappEntrada[]
 
   @@index([statusVerificacao])
@@ -68,30 +68,30 @@ model Empresa {
 }
 
 model VerificacaoEmpresa {
-  id              String                 @id @default(uuid()) @db.Uuid
-  empresaId       String                 @db.Uuid
-  tipo            TipoVerificacaoEmpresa
-  resultado       String
-  detalhes        Json                   @default("{}")
-  revisorAdminId  String?                @db.Uuid
-  motivo          String?
-  criadoEm        DateTime               @default(now()) @db.Timestamptz
+  id             String                 @id @default(uuid()) @db.Uuid
+  empresaId      String                 @db.Uuid
+  tipo           TipoVerificacaoEmpresa
+  resultado      String
+  detalhes       Json                   @default("{}")
+  revisorAdminId String?                @db.Uuid
+  motivo         String?
+  criadoEm       DateTime               @default(now()) @db.Timestamptz
 
-  empresa       Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  revisorAdmin  Usuario? @relation("RevisorVerificacao", fields: [revisorAdminId], references: [id])
+  empresa      Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  revisorAdmin Usuario? @relation("RevisorVerificacao", fields: [revisorAdminId], references: [id])
 
   @@index([empresaId])
   @@map("verificacoes_empresa")
 }
 
 model MembroEmpresa {
-  id         String              @id @default(uuid()) @db.Uuid
-  usuarioId  String              @db.Uuid
-  empresaId  String              @db.Uuid
-  papeis     PapelEmpresa[]
-  status     StatusMembroEmpresa @default(ATIVO)
-  criadoEm   DateTime            @default(now()) @db.Timestamptz
-  atualizadoEm DateTime          @updatedAt @db.Timestamptz
+  id           String              @id @default(uuid()) @db.Uuid
+  usuarioId    String              @db.Uuid
+  empresaId    String              @db.Uuid
+  papeis       PapelEmpresa[]
+  status       StatusMembroEmpresa @default(ATIVO)
+  criadoEm     DateTime            @default(now()) @db.Timestamptz
+  atualizadoEm DateTime            @updatedAt @db.Timestamptz
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
@@ -102,15 +102,15 @@ model MembroEmpresa {
 }
 
 model AuditoriaAcesso {
-  id           String   @id @default(uuid()) @db.Uuid
-  usuarioId    String   @db.Uuid
-  empresaId    String?  @db.Uuid
-  papel        String
-  acao         String
-  recursoTipo  String
-  recursoId    String?  @db.Uuid
-  motivo       String?
-  criadoEm     DateTime @default(now()) @db.Timestamptz
+  id          String   @id @default(uuid()) @db.Uuid
+  usuarioId   String   @db.Uuid
+  empresaId   String?  @db.Uuid
+  papel       String
+  acao        String
+  recursoTipo String
+  recursoId   String?  @db.Uuid
+  motivo      String?
+  criadoEm    DateTime @default(now()) @db.Timestamptz
 
   usuario Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   empresa Empresa? @relation(fields: [empresaId], references: [id], onDelete: SetNull)

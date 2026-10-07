@@ -13,5 +13,6 @@ export const FILA_VAGAS = Symbol('FILA_VAGAS');
 export const LLM = Symbol('LLM');
 export const FILA_MATCH = Symbol('FILA_MATCH');
 export const FILA_WHATSAPP_ENTRADA = Symbol('FILA_WHATSAPP_ENTRADA');
+export const DEDUPLICADOR_WEBHOOK = Symbol('DEDUPLICADOR_WEBHOOK');
 export const EMBEDDINGS = Symbol('EMBEDDINGS');
 export const CANAIS_ENTREGA = Symbol('CANAIS_ENTREGA');

@@ -29,6 +29,7 @@ import {
   repositorioTeste,
   whatsappTeste,
   filaWhatsappEntradaTeste,
+  deduplicadorWebhookTeste,
 } from './ambiente-teste';
 import { AcessoSensivelService } from './auditoria/acesso-sensivel';
 import { AuditoriaService } from './auditoria/auditoria.service';
@@ -50,7 +51,11 @@ import { FilaCnpjBull } from './fila/fila-cnpj';
 import { FilaCurriculoBull } from './fila/fila-curriculo';
 import { FilaMatchBull, type FilaMatch } from './fila/fila-match';
 import { FilaVagasBull } from './fila/fila-vagas';
-import { FilaWhatsappEntradaBull } from './fila/fila-whatsapp-entrada';
+import {
+  DeduplicadorWebhookMemoria,
+  DeduplicadorWebhookRedis,
+  FilaWhatsappEntradaBull,
+} from './fila/fila-whatsapp-entrada';
 import { AuditoriaController } from './http/auditoria.controller';
 import { AuthController } from './http/auth.controller';
 import { AuthGuard } from './http/auth.guard';
@@ -81,6 +86,7 @@ import {
   FILA_MATCH,
   FILA_VAGAS,
   FILA_WHATSAPP_ENTRADA,
+  DEDUPLICADOR_WEBHOOK,
   FONTE_CNPJ,
   LLM,
   RELOGIO,
@@ -88,6 +94,7 @@ import {
 } from './tokens';
 import { VagasService } from './vagas/vagas.service';
 import { WhatsappService } from './whatsapp/whatsapp.service';
+import { WebhookUazapiService } from './whatsapp/webhook-uazapi.service';
 
 const configProvider: FactoryProvider = {
   provide: CONFIG,
@@ -176,6 +183,12 @@ const filaWhatsappEntradaProvider: FactoryProvider = {
   useFactory: (config: ConfiguracaoApp) =>
     config.authStore === 'memory' ? filaWhatsappEntradaTeste : new FilaWhatsappEntradaBull(),
 };
+const deduplicadorWebhookProvider: FactoryProvider = {
+  provide: DEDUPLICADOR_WEBHOOK,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? deduplicadorWebhookTeste : new DeduplicadorWebhookRedis(),
+};
 
 const embeddingsProvider: FactoryProvider<EmbeddingProvider> = {
   provide: EMBEDDINGS,
@@ -229,6 +242,8 @@ const whatsappClienteProvider: FactoryProvider = {
     filaVagasProvider,
     filaMatchProvider,
     filaWhatsappEntradaProvider,
+    deduplicadorWebhookProvider,
+    WebhookUazapiService,
     embeddingsProvider,
     canaisEntregaProvider,
     llmProvider,
