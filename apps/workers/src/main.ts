@@ -6,6 +6,7 @@ import express from 'express';
 import pino from 'pino';
 
 import { FILA_EMBEDDINGS, FILA_MATCH, processarEmbedding, processarMatch } from './match-jobs';
+import { FILA_NOTIFICACOES, processarNotificacao } from './notificacoes-jobs';
 import { FILA_CV, processarJobCurriculo } from './processar-cv';
 import { aplicarEventoVaga, encerrarInscricoesVaga, reconciliarVagas, sugerirPerguntasVaga } from './vagas-jobs';
 import { executarVerificacaoCnpj } from './verificar-cnpj';
@@ -25,6 +26,7 @@ const filaSugestoes = new Queue('ia-perguntas', { connection: redisConnection })
 const filaEfeitos = new Queue('vagas-efeitos', { connection: redisConnection });
 const filaEmbeddings = new Queue(FILA_EMBEDDINGS, { connection: redisConnection });
 const filaMatch = new Queue(FILA_MATCH, { connection: redisConnection });
+const filaNotificacoes = new Queue(FILA_NOTIFICACOES, { connection: redisConnection });
 
 void filaPrazos.add('reconciliar', {}, { repeat: { every: 15 * 60 * 1000 }, jobId: 'reconciliar-vagas' });
 
@@ -106,12 +108,20 @@ const workerMatch = new Worker(FILA_MATCH, async (job) => processarMatch(job), {
   concurrency: 2,
 });
 
-// TODO(F6-06): consumir `match.forte` da fila `notificacoes` (MATCH_FORTE, dedup, agrupamento, preferências).
 for (const workerFila of [workerEmbeddings, workerMatch]) {
   workerFila.on('failed', (job, err) => {
     logger.error({ jobId: job?.id, name: job?.name, err: err.message }, 'Job de match falhou');
   });
 }
+
+const workerNotificacoes = new Worker(FILA_NOTIFICACOES, async (job) => processarNotificacao(job), {
+  connection: redisConnection,
+  concurrency: 4,
+});
+
+workerNotificacoes.on('failed', (job, err) => {
+  logger.error({ jobId: job?.id, name: job?.name, err: err.message }, 'Job de notificação falhou');
+});
 
 const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath('/admin/queues');
@@ -126,6 +136,7 @@ createBullBoard({
     new BullMQAdapter(filaEfeitos),
     new BullMQAdapter(filaEmbeddings),
     new BullMQAdapter(filaMatch),
+    new BullMQAdapter(filaNotificacoes),
   ],
   serverAdapter,
 });
@@ -153,6 +164,7 @@ process.on('SIGTERM', async () => {
   await workerEfeitos.close();
   await workerEmbeddings.close();
   await workerMatch.close();
+  await workerNotificacoes.close();
   await exampleQueue.close();
   await filaCnpj.close();
   await filaCv.close();
@@ -161,5 +173,6 @@ process.on('SIGTERM', async () => {
   await filaEfeitos.close();
   await filaEmbeddings.close();
   await filaMatch.close();
+  await filaNotificacoes.close();
   process.exit(0);
 });
