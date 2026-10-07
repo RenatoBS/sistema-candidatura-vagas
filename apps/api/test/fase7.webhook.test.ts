@@ -7,12 +7,15 @@ process.env.AUTH_STORE = 'memory';
 process.env.JWT_SECRET = 'segredo-de-teste-com-32-bytes!!';
 process.env.APP_ENCRYPTION_KEY = randomBytes(32).toString('base64');
 process.env.UAZAPI_WEBHOOK_SECRET = 'segredo-webhook';
+process.env.INTERNAL_JOB_TOKEN = 'job-teste';
 process.env.LOG_LEVEL = 'silent';
 import { cifrar } from '@scv/providers';
 import {
+  armazenamentoTeste,
   filaWhatsappEntradaTeste,
   limparAmbienteTeste,
   repositorioTeste,
+  whatsappMensagensTeste,
 } from '../src/ambiente-teste';
 let base = '';
 let fechar: () => Promise<void> = async () => {};
@@ -115,5 +118,42 @@ describe('F7-04 webhook Uazapi', () => {
       ).json.status,
       'ignorado',
     );
+  });
+  it('processa transcrição pela rota interna protegida e é idempotente', async () => {
+    const respostaId = '00000000-0000-4000-8000-000000000001';
+    await repositorioTeste.guardarResposta({
+      id: respostaId,
+      empresaId: '00000000-0000-0000-0000-000000000001',
+      entrevistaId: '00000000-0000-4000-8000-000000000002',
+      mensagemIdProvedor: 'audio-1',
+      audioUrl: null,
+      transcricao: null,
+      statusTranscricao: 'PENDENTE',
+      revisaoHumanaNecessaria: false,
+    });
+    whatsappMensagensTeste.programarMidia('audio-1', {
+      base64: Buffer.from('audio').toString('base64'),
+      mimetype: 'audio/ogg',
+    });
+    const sucesso = await fetch(`${base}/interno/triagem/respostas/${respostaId}/transcrever`, {
+      method: 'POST',
+      headers: { 'x-internal-token': 'job-teste' },
+    });
+    assert.equal(sucesso.status, 200);
+    const salvo = await repositorioTeste.buscarResposta(respostaId, { sistema: true });
+    assert.equal(salvo?.statusTranscricao, 'CONCLUIDA');
+    assert.equal(salvo?.confiancaTranscricao, 1);
+    assert.equal(salvo?.duracaoSegundos, 1);
+    assert.equal((await armazenamentoTeste.ler(String(salvo?.audioUrl)))?.toString(), 'audio');
+    const segunda = await fetch(`${base}/interno/triagem/respostas/${respostaId}/transcrever`, {
+      method: 'POST',
+      headers: { 'x-internal-token': 'job-teste' },
+    });
+    assert.equal((await segunda.json()).status, 'idempotente');
+    const negada = await fetch(`${base}/interno/triagem/respostas/${respostaId}/transcrever`, {
+      method: 'POST',
+      headers: { 'x-internal-token': 'errado' },
+    });
+    assert.equal(negada.status, 401);
   });
 });

@@ -18,12 +18,13 @@ describe('conversor de áudio', () => {
       '-f',
       'lavfi',
       '-i',
-      'sine=frequency=440:duration=0.2',
+      'sine=frequency=440:duration=1',
       '-f',
       'ogg',
       'pipe:1',
     ]);
     const resultado = await new FfmpegConversor().converter(ogg, 'audio/ogg');
     assert.equal(resultado.wav.subarray(0, 4).toString(), 'RIFF');
+    assert.ok(resultado.duracaoSegundos > 0.95 && resultado.duracaoSegundos < 1.05);
   });
 });

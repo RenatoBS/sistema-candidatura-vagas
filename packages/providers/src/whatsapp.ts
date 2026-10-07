@@ -22,6 +22,27 @@ export interface DownloadMidiaWhatsapp {
   base64?: string;
   mimetype: string | null;
 }
+export async function baixarConteudoMidia(
+  midia: DownloadMidiaWhatsapp,
+  fetchImpl: FetchLike = fetch,
+  limiteBytes = 16 * 1024 * 1024,
+): Promise<Buffer> {
+  if (midia.mimetype && !midia.mimetype.toLowerCase().startsWith('audio/'))
+    throw new Error('AUDIO_MIMETYPE_INVALIDO');
+  if (midia.base64) {
+    const bytes = Buffer.from(midia.base64, 'base64');
+    if (bytes.length > limiteBytes) throw new Error('AUDIO_MUITO_GRANDE');
+    return bytes;
+  }
+  if (!midia.url) throw new Error('AUDIO_NAO_ENCONTRADO');
+  const resposta = await fetchImpl(midia.url);
+  if (!resposta.ok) throw new Error(`UAZAPI_${resposta.status}`);
+  const tamanho = Number(resposta.headers.get('content-length') ?? 0);
+  if (tamanho > limiteBytes) throw new Error('AUDIO_MUITO_GRANDE');
+  const bytes = Buffer.from(await resposta.arrayBuffer());
+  if (bytes.length > limiteBytes) throw new Error('AUDIO_MUITO_GRANDE');
+  return bytes;
+}
 export interface WhatsappProvider {
   enviarTexto(entrada: {
     token: string;

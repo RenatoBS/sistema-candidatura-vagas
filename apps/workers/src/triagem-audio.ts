@@ -1,14 +1,23 @@
-import type { ConversorAudio, Armazenamento, SttProvider, WhatsappProvider } from '@scv/providers';
+import {
+  baixarConteudoMidia,
+  type ConversorAudio,
+  type Armazenamento,
+  type SttProvider,
+  type WhatsappProvider,
+} from '@scv/providers';
 export const FILA_STT_TRANSCRICAO = 'stt-transcricao';
 export interface RespostaAudio {
   id: string;
   empresaId: string;
   entrevistaId: string;
   mensagemIdProvedor: string;
+  tokenInstancia?: string;
   audioUrl: string | null;
   transcricao: string | null;
   statusTranscricao: 'PENDENTE' | 'PROCESSANDO' | 'CONCLUIDA' | 'FALHA';
   revisaoHumanaNecessaria: boolean;
+  duracaoSegundos?: number | null;
+  confiancaTranscricao?: number | null;
 }
 export interface DependenciasAudio {
   buscarResposta(id: string): Promise<RespostaAudio | null>;
@@ -18,6 +27,7 @@ export interface DependenciasAudio {
   conversor: ConversorAudio;
   stt: SttProvider;
   limiarConfianca: number;
+  fetchImpl?: typeof fetch;
   aoConcluirTranscricao?: (respostaId: string) => Promise<void>;
 }
 export async function processarAudioResposta(
@@ -29,17 +39,10 @@ export async function processarAudioResposta(
   await deps.atualizarResposta(resposta.id, { statusTranscricao: 'PROCESSANDO' });
   try {
     const midia = await deps.whatsapp.baixarMidia({
-      token: '',
+      token: resposta.tokenInstancia ?? '',
       mensagemId: resposta.mensagemIdProvedor,
     });
-    const original = midia.base64
-      ? Buffer.from(midia.base64, 'base64')
-      : midia.url
-        ? await (
-            deps.whatsapp as WhatsappProvider & { baixarBuffer?: (url: string) => Promise<Buffer> }
-          ).baixarBuffer?.(midia.url)
-        : undefined;
-    if (!original) throw new Error('AUDIO_NAO_ENCONTRADO');
+    const original = await baixarConteudoMidia(midia, deps.fetchImpl);
     const key = `empresas/${resposta.empresaId}/entrevistas/${resposta.entrevistaId}/respostas/${resposta.id}.ogg`;
     await deps.armazenamento.salvar(key, original, midia.mimetype ?? 'audio/ogg');
     const convertido = await deps.conversor.converter(original, midia.mimetype ?? 'audio/ogg');
@@ -51,6 +54,8 @@ export async function processarAudioResposta(
     await deps.atualizarResposta(resposta.id, {
       audioUrl: key,
       transcricao: resultado.texto,
+      duracaoSegundos: Math.max(convertido.duracaoSegundos, resultado.duracaoSegundos),
+      confiancaTranscricao: resultado.confianca,
       statusTranscricao: 'CONCLUIDA',
       revisaoHumanaNecessaria: resultado.confianca < deps.limiarConfianca,
     });

@@ -9,6 +9,9 @@ import {
   criarEmbeddingProvider,
   criarPushProvider,
   UazapiInstanciaCliente,
+  UazapiProvider,
+  criarSttProvider,
+  FfmpegConversor,
   type EmbeddingProvider,
 } from '@scv/providers';
 
@@ -30,6 +33,9 @@ import {
   whatsappTeste,
   filaWhatsappEntradaTeste,
   deduplicadorWebhookTeste,
+  whatsappMensagensTeste,
+  sttTeste,
+  conversorAudioTeste,
 } from './ambiente-teste';
 import { AcessoSensivelService } from './auditoria/acesso-sensivel';
 import { AuditoriaService } from './auditoria/auditoria.service';
@@ -59,6 +65,7 @@ import { CandidatoController } from './http/candidatos.controller';
 import { EmpresasController } from './http/empresas.controller';
 import { MatchController } from './http/match.controller';
 import { NotificacoesController } from './http/notificacoes.controller';
+import { TriagemController } from './http/triagem.controller';
 import { VagasController } from './http/vagas.controller';
 import { WhatsappController } from './http/whatsapp.controller';
 import { MatchService } from './match/match.service';
@@ -83,11 +90,15 @@ import {
   FILA_VAGAS,
   FILA_WHATSAPP_ENTRADA,
   DEDUPLICADOR_WEBHOOK,
+  WHATSAPP_MENSAGENS,
+  STT_PROVIDER,
+  CONVERSOR_AUDIO,
   FONTE_CNPJ,
   LLM,
   RELOGIO,
   REPOSITORIO,
 } from './tokens';
+import { TranscricaoService } from './triagem/transcricao.service';
 import { VagasService } from './vagas/vagas.service';
 import { WebhookUazapiService } from './whatsapp/webhook-uazapi.service';
 import { WhatsappService } from './whatsapp/whatsapp.service';
@@ -192,6 +203,26 @@ const embeddingsProvider: FactoryProvider<EmbeddingProvider> = {
   useFactory: (config: ConfiguracaoApp) =>
     config.authStore === 'memory' ? embeddingsTeste : criarEmbeddingProvider(),
 };
+const mensagensWhatsappProvider: FactoryProvider = {
+  provide: WHATSAPP_MENSAGENS,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory'
+      ? whatsappMensagensTeste
+      : new UazapiProvider(config.uazapiBaseUrl),
+};
+const sttProvider: FactoryProvider = {
+  provide: STT_PROVIDER,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? sttTeste : criarSttProvider(),
+};
+const conversorAudioProvider: FactoryProvider = {
+  provide: CONVERSOR_AUDIO,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? conversorAudioTeste : new FfmpegConversor(),
+};
 
 /** Push (F6-07) e e-mail (F6-08) substituem os no-ops quando existirem. */
 const canaisEntregaProvider: FactoryProvider<CanalEntrega[]> = {
@@ -222,6 +253,7 @@ const whatsappClienteProvider: FactoryProvider = {
     AuthController,
     EmpresasController,
     WhatsappController,
+    TriagemController,
     AuditoriaController,
     CandidatoController,
     VagasController,
@@ -240,6 +272,10 @@ const whatsappClienteProvider: FactoryProvider = {
     filaWhatsappEntradaProvider,
     deduplicadorWebhookProvider,
     WebhookUazapiService,
+    mensagensWhatsappProvider,
+    sttProvider,
+    conversorAudioProvider,
+    TranscricaoService,
     embeddingsProvider,
     canaisEntregaProvider,
     llmProvider,

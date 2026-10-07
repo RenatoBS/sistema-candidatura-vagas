@@ -40,24 +40,24 @@ enum TipoSolicitacaoLgpd {
 }
 
 model Candidato {
-  id                 String   @id @default(uuid()) @db.Uuid
-  usuarioId          String   @unique @db.Uuid
+  id                 String                       @id @default(uuid()) @db.Uuid
+  usuarioId          String                       @unique @db.Uuid
   nome               String
   whatsapp           String?
-  whatsappVerificado Boolean  @default(false)
+  whatsappVerificado Boolean                      @default(false)
   linkedinUrl        String?
-  perfil             Json     @default("{}")
-  visivelParaMatch   Boolean  @default(false)
+  perfil             Json                         @default("{}")
+  visivelParaMatch   Boolean                      @default(false)
   embedding          Unsupported("vector(1536)")?
-  criadoEm           DateTime @default(now()) @db.Timestamptz
-  atualizadoEm       DateTime @updatedAt @db.Timestamptz
+  criadoEm           DateTime                     @default(now()) @db.Timestamptz
+  atualizadoEm       DateTime                     @updatedAt @db.Timestamptz
 
-  usuario      Usuario              @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  habilidades  CandidatoHabilidade[]
-  curriculos   Curriculo[]
-  consentimentos Consentimento[]
-  candidaturas Candidatura[]
-  sugestoesMatch SugestaoMatch[]
+  usuario          Usuario               @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  habilidades      CandidatoHabilidade[]
+  curriculos       Curriculo[]
+  consentimentos   Consentimento[]
+  candidaturas     Candidatura[]
+  sugestoesMatch   SugestaoMatch[]
   solicitacoesLgpd SolicitacaoLgpd[]
 
   @@map("candidatos")
@@ -79,22 +79,22 @@ model CandidatoHabilidade {
 }
 
 model Curriculo {
-  id                   String                     @id @default(uuid()) @db.Uuid
-  candidatoId          String                     @db.Uuid
-  arquivoKey           String                     @unique
-  mimeType             String?
-  tamanhoBytes         Int?
-  antivirusStatus      StatusAntivirus            @default(PENDENTE)
-  metodoExtracao       MetodoExtracaoCurriculo?
-  statusProcessamento  StatusProcessamentoCurriculo @default(PENDENTE)
-  confiancaOcr         Float?
-  textoExtraido        String?                    @db.Text
-  dadosExtraidos       Json?
-  confirmadoEm         DateTime?                  @db.Timestamptz
-  aplicadoAoPerfil     Boolean                    @default(false)
-  paginas              Json?
-  criadoEm             DateTime                   @default(now()) @db.Timestamptz
-  atualizadoEm         DateTime                   @updatedAt @db.Timestamptz
+  id                  String                       @id @default(uuid()) @db.Uuid
+  candidatoId         String                       @db.Uuid
+  arquivoKey          String                       @unique
+  mimeType            String?
+  tamanhoBytes        Int?
+  antivirusStatus     StatusAntivirus              @default(PENDENTE)
+  metodoExtracao      MetodoExtracaoCurriculo?
+  statusProcessamento StatusProcessamentoCurriculo @default(PENDENTE)
+  confiancaOcr        Float?
+  textoExtraido       String?                      @db.Text
+  dadosExtraidos      Json?
+  confirmadoEm        DateTime?                    @db.Timestamptz
+  aplicadoAoPerfil    Boolean                      @default(false)
+  paginas             Json?
+  criadoEm            DateTime                     @default(now()) @db.Timestamptz
+  atualizadoEm        DateTime                     @updatedAt @db.Timestamptz
 
   candidato Candidato @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
 
@@ -117,13 +117,13 @@ model SolicitacaoLgpd {
 }
 
 model Consentimento {
-  id             String            @id @default(uuid()) @db.Uuid
-  candidatoId    String            @db.Uuid
-  candidaturaId  String?           @db.Uuid
-  tipo           TipoConsentimento
-  concedido      Boolean
-  versaoTermo    String
-  criadoEm       DateTime          @default(now()) @db.Timestamptz
+  id            String            @id @default(uuid()) @db.Uuid
+  candidatoId   String            @db.Uuid
+  candidaturaId String?           @db.Uuid
+  tipo          TipoConsentimento
+  concedido     Boolean
+  versaoTermo   String
+  criadoEm      DateTime          @default(now()) @db.Timestamptz
 
   candidato   Candidato    @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
   candidatura Candidatura? @relation(fields: [candidaturaId], references: [id], onDelete: SetNull)

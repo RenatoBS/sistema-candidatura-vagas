@@ -9,6 +9,7 @@ import { FILA_EMBEDDINGS, FILA_MATCH, processarEmbedding, processarMatch } from 
 import { FILA_NOTIFICACOES, processarNotificacao } from './notificacoes-jobs';
 import { FILA_CV, processarJobCurriculo } from './processar-cv';
 import { FILA_STT_TRANSCRICAO } from './triagem-audio';
+import { processarJobTranscricao } from './triagem-jobs';
 import {
   aplicarEventoVaga,
   encerrarInscricoesVaga,
@@ -130,9 +131,17 @@ const workerNotificacoes = new Worker(FILA_NOTIFICACOES, async (job) => processa
   concurrency: 4,
 });
 // Costura para F7-10 (Claude Code): a avaliação IA será enfileirada após a transcrição.
-const workerStt = new Worker(FILA_STT_TRANSCRICAO, async () => undefined, {
-  connection: redisConnection,
-});
+const workerStt = new Worker(
+  FILA_STT_TRANSCRICAO,
+  async (job: {
+    data: { respostaId: string };
+    attemptsMade: number;
+    opts: { attempts?: number };
+  }) => processarJobTranscricao(job),
+  {
+    connection: redisConnection,
+  },
+);
 
 workerNotificacoes.on('failed', (job, err) => {
   logger.error({ jobId: job?.id, name: job?.name, err: err.message }, 'Job de notificação falhou');

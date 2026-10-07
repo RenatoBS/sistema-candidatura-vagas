@@ -898,6 +898,7 @@ export class RepositorioPrisma implements Repositorio {
         select: {
           id: true,
           empresaId: true,
+          entrevistaId: true,
           audioUrl: true,
           transcricao: true,
           mensagemIdProvedor: true,

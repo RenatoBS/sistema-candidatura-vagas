@@ -5,6 +5,9 @@ import {
   MockPushProvider,
   FakeEmbeddingProvider,
   FakeUazapiInstancia,
+  FakeWhatsappProvider,
+  FakeSttProvider,
+  ConversorAudioFake,
   FonteCnpjControlavel,
 } from '@scv/providers';
 
@@ -26,6 +29,9 @@ export const filaCnpjTeste = new FilaCnpjMemoria();
 export const filaCurriculoTeste = new FilaCurriculoMemoria();
 export const dnsTeste = new DnsControlavel();
 export const whatsappTeste = new FakeUazapiInstancia();
+export const whatsappMensagensTeste = new FakeWhatsappProvider();
+export const sttTeste = new FakeSttProvider();
+export const conversorAudioTeste = new ConversorAudioFake();
 export const armazenamentoTeste = new ArmazenamentoMemoria();
 export const antivirusTeste = new AntivirusMock();
 export const filaVagasTeste = new FilaVagasMemoria();
@@ -62,6 +68,7 @@ export function limparAmbienteTeste(): void {
   emailNotificacaoTeste.limpar();
   dnsTeste.limpar();
   whatsappTeste.limpar();
+  whatsappMensagensTeste.limpar();
   armazenamentoTeste.limpar();
   relogioTeste.definir(null);
 }

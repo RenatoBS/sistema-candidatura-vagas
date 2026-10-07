@@ -285,6 +285,7 @@ export interface EventoWhatsappEntradaRegistro {
 export interface RespostaSensivel {
   id: string;
   empresaId: string;
+  entrevistaId?: string;
   audioUrl: string | null;
   transcricao: string | null;
   mensagemIdProvedor?: string | null;

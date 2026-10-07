@@ -2,12 +2,21 @@ import { spawn } from 'node:child_process';
 export interface ConversorAudio {
   converter(audio: Buffer, mimetype: string): Promise<{ wav: Buffer; duracaoSegundos: number }>;
 }
+export function duracaoWav(wav: Buffer): number {
+  if (wav.length < 44 || wav.subarray(0, 4).toString() !== 'RIFF') return 0;
+  const canais = wav.readUInt16LE(22);
+  const taxa = wav.readUInt32LE(24);
+  const bits = wav.readUInt16LE(34);
+  const inicio = wav.indexOf('data', 36, 'ascii');
+  if (inicio < 0 || !canais || !taxa || !bits) return 0;
+  return wav.readUInt32LE(inicio + 4) / (taxa * canais * (bits / 8));
+}
 export class ConversorAudioFake implements ConversorAudio {
   async converter(
     audio: Buffer,
     _mimetype?: string,
   ): Promise<{ wav: Buffer; duracaoSegundos: number }> {
-    return { wav: Buffer.from(audio), duracaoSegundos: 1 };
+    return { wav: Buffer.from(audio), duracaoSegundos: duracaoWav(audio) || 1 };
   }
 }
 export class FfmpegConversor implements ConversorAudio {
@@ -42,7 +51,10 @@ export class FfmpegConversor implements ConversorAudio {
       processo.on('close', (codigo) => {
         clearTimeout(timer);
         if (codigo !== 0) reject(new Error(`FFMPEG_FALHA:${erro.slice(0, 100)}`));
-        else resolve({ wav: Buffer.concat(partes), duracaoSegundos: 0 });
+        else {
+          const wav = Buffer.concat(partes);
+          resolve({ wav, duracaoSegundos: duracaoWav(wav) });
+        }
       });
       processo.stdin.end(audio);
     });
