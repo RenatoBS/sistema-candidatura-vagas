@@ -3,13 +3,13 @@
  * `resetarBanco` faz DROP SCHEMA: só roda se o banco terminar em `_test` (nunca use o banco `scv`).
  */
 import { execSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 
 import { PrismaClient } from '@prisma/client';
 import { envOu } from '@scv/env';
 
-const PADRAO = 'postgresql://scv:scv_dev_password@localhost:5432/scv_test?schema=public';
-
-export const URL_BANCO_TESTE = envOu(process.env, 'SCV_TEST_DATABASE_URL', PADRAO);
+export const URL_BANCO_TESTE = envOu(process.env, 'SCV_TEST_DATABASE_URL', '');
+if (!URL_BANCO_TESTE) throw new Error('SCV_TEST_DATABASE_URL deve ser definida para os testes Prisma');
 
 function exigirBancoDescartavel(url: string): void {
   const nome = new URL(url).pathname.replace(/^\//, '');
@@ -88,7 +88,11 @@ export async function criarCandidaturaComScore(prisma: PrismaClient, empresaId: 
 }
 
 
-const SENHA_APP = 'scv_app_dev_password';
+const SENHA_APP = envOu(process.env, 'SCV_APP_DB_PASSWORD', '');
+const SENHA_APP_EFETIVA = SENHA_APP || (process.env.CI ? randomUUID() : (() => {
+  throw new Error('SCV_APP_DB_PASSWORD deve ser definida fora da CI');
+})());
+const SENHA_APP_SQL = SENHA_APP_EFETIVA.replace(/'/g, "''");
 
 /** Cria o papel de runtime `scv_app` (sem superuser, sem BYPASSRLS) com os mesmos privilégios do init do compose. */
 export async function prepararPapelApp(url = URL_BANCO_TESTE): Promise<void> {
@@ -98,10 +102,10 @@ export async function prepararPapelApp(url = URL_BANCO_TESTE): Promise<void> {
     await admin.$executeRawUnsafe(`
       DO $$ BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'scv_app') THEN
-          CREATE ROLE scv_app LOGIN PASSWORD '${SENHA_APP}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+          CREATE ROLE scv_app LOGIN PASSWORD '${SENHA_APP_SQL}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
         END IF;
       END $$`);
-    await admin.$executeRawUnsafe(`ALTER ROLE scv_app NOSUPERUSER NOBYPASSRLS`);
+    await admin.$executeRawUnsafe(`ALTER ROLE scv_app NOSUPERUSER NOBYPASSRLS PASSWORD '${SENHA_APP_SQL}'`);
     await admin.$executeRawUnsafe(`GRANT CONNECT ON DATABASE "${new URL(url).pathname.replace(/^\//, '')}" TO scv_app`);
     await admin.$executeRawUnsafe('GRANT USAGE ON SCHEMA public TO scv_app');
     await admin.$executeRawUnsafe('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO scv_app');
@@ -116,6 +120,6 @@ export async function prepararPapelApp(url = URL_BANCO_TESTE): Promise<void> {
 export function urlDoPapelApp(url = URL_BANCO_TESTE): string {
   const copia = new URL(url);
   copia.username = 'scv_app';
-  copia.password = SENHA_APP;
+  copia.password = SENHA_APP_EFETIVA;
   return copia.toString();
 }

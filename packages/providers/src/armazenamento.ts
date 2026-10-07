@@ -85,8 +85,9 @@ export class ArmazenamentoMemoria implements Armazenamento {
 }
 
 export function criarArmazenamentoS3(env: NodeJS.ProcessEnv = process.env): ArmazenamentoS3 {
-  const chave = envOu(env, 'S3_ACCESS_KEY', 'minioadmin');
-  const segredo = envOu(env, 'S3_SECRET_KEY', 'minioadmin123');
+  const chave = envOu(env, 'S3_ACCESS_KEY', '');
+  const segredo = envOu(env, 'S3_SECRET_KEY', '');
+  if (!chave || !segredo) throw new Error('S3_ACCESS_KEY e S3_SECRET_KEY devem ser definidas');
   return new ArmazenamentoS3({
     endpoint: envOu(env, 'S3_ENDPOINT', 'http://localhost:9000'),
     bucket: envOu(env, 'S3_BUCKET', 'scv-dev'),
