@@ -13,21 +13,22 @@ import { Cartao } from '@/design-system/Cartao';
 import { estilos } from '@/design-system/estilos';
 import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
+import { useEmpresaAtiva } from '@/hooks/useEmpresaAtiva';
+import { PESOS_RANKING, percentualInteiro } from '@/vaga/opcoes';
 
 interface ItemRanking {
   candidaturaId: string;
+  candidatoNome?: string | null;
   scoreFinal: number | null;
   completude: number | null;
   explicacao: { texto?: string };
 }
 
-const CAMPOS = ['perfil', 'habilidades', 'curriculo', 'linkedin', 'triagem', 'voz'] as const;
-
 export default function RankingScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { sessao, accessToken } = useAuth();
-  const empresaId = sessao?.empresaAtivaId ?? sessao?.empresas[0]?.empresaId ?? '';
+  const { accessToken } = useAuth();
+  const empresaId = useEmpresaAtiva();
   const consulta = useConsulta(
     ['ranking', id ?? ''],
     () => api<{ itens: ItemRanking[] }>(`/empresas/${empresaId}/vagas/${id}/ranking`, {}, accessToken),
@@ -45,7 +46,7 @@ export default function RankingScreen() {
 
   async function salvar() {
     setErro('');
-    const corpo = Object.fromEntries(CAMPOS.map((chave) => [chave, Number(pesos[chave] ?? 0)]));
+    const corpo = Object.fromEntries(PESOS_RANKING.map((chave) => [chave, Number(pesos[chave] ?? 0)]));
     try {
       await api(`/empresas/${empresaId}/vagas/${id}/ranking/pesos`, { method: 'PUT', body: JSON.stringify(corpo) }, accessToken);
       await consulta.refetch();
@@ -61,21 +62,21 @@ export default function RankingScreen() {
       <Cabecalho titulo={t('ranking.titulo')} voltar />
       {erro ? <Banner tipo="erro" texto={erro} /> : null}
       {consulta.isLoading ? <Text style={estilos.mudo}>{t('comum.carregando')}</Text> : null}
-      {!consulta.isLoading && itens.length === 0 ? <Text style={estilos.mudo}>{t('ranking.vazio')}</Text> : null}
+      {consulta.isError ? <Banner tipo="erro" texto={t('comum.erroCarregar')} /> : null}
+      {!consulta.isLoading && !consulta.isError && itens.length === 0 ? <Text style={estilos.mudo}>{t('ranking.vazio')}</Text> : null}
       {itens.map((item) => (
         <Cartao key={item.candidaturaId}>
-          <Text style={estilos.tituloItem}>{Math.round(item.scoreFinal ?? 0)}/100</Text>
-          <Text style={estilos.mudo}>
-            {t('ranking.completude')}: {item.completude ?? 0}
-          </Text>
-          <Text style={estilos.corpo}>{item.explicacao?.texto ?? ''}</Text>
+          <Text style={estilos.tituloItem}>{item.candidatoNome || t('comum.candidato')}</Text>
+          <Text style={estilos.corpo}>{Math.round(item.scoreFinal ?? 0)}/100</Text>
+          <Text style={estilos.mudo}>{t('ranking.completudePct', { n: percentualInteiro(item.completude) })}</Text>
+          {item.explicacao?.texto ? <Text style={estilos.corpo}>{item.explicacao.texto}</Text> : null}
         </Cartao>
       ))}
       <Text style={estilos.tituloItem}>{t('ranking.pesos')}</Text>
-      {CAMPOS.map((chave) => (
+      {PESOS_RANKING.map((chave) => (
         <Campo
           key={chave}
-          label={chave}
+          label={t(`ranking.peso.${chave}`)}
           value={pesos[chave] ?? ''}
           onChangeText={(valor) => setPesos((atual) => ({ ...atual, [chave]: valor }))}
           keyboardType="number-pad"

@@ -13,6 +13,7 @@ import { EstadoVazio } from '@/design-system/EstadoVazio';
 import { estilos } from '@/design-system/estilos';
 import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
+import { useEmpresaAtiva } from '@/hooks/useEmpresaAtiva';
 
 interface StatusWhatsapp {
   status: string | null;
@@ -28,15 +29,15 @@ interface VagaResumo {
 export default function VagasEmpresaScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { sessao, accessToken } = useAuth();
-  const empresaId = sessao?.empresaAtivaId ?? sessao?.empresas[0]?.empresaId ?? '';
+  const { accessToken } = useAuth();
+  const empresaId = useEmpresaAtiva();
   const whatsapp = useConsulta(
     ['whatsapp-vagas'],
     () => api<StatusWhatsapp>(`/empresas/${empresaId}/whatsapp/status`, {}, accessToken),
     empresaId,
   );
   const vagas = useConsulta(['vagas-empresa'], () => api<VagaResumo[]>(`/empresas/${empresaId}/vagas`, {}, accessToken), empresaId);
-  const desconectada = whatsapp.data?.status !== 'CONECTADA';
+  const desconectada = whatsapp.isSuccess && whatsapp.data?.status !== 'CONECTADA';
   const lista = vagas.data ?? [];
 
   return (

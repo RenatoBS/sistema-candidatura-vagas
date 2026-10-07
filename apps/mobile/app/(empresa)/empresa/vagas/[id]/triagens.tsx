@@ -8,6 +8,7 @@ import { EstadoVazio } from '@/design-system/EstadoVazio';
 import { ItemLista } from '@/design-system/ItemLista';
 import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
+import { useEmpresaAtiva } from '@/hooks/useEmpresaAtiva';
 
 interface TriagemResumo {
   id: string;
@@ -20,8 +21,8 @@ export default function TriagensDaVaga() {
   const { t } = useTranslation();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { sessao, accessToken } = useAuth();
-  const empresaId = sessao?.empresaAtivaId ?? sessao?.empresas[0]?.empresaId ?? '';
+  const { accessToken } = useAuth();
+  const empresaId = useEmpresaAtiva();
   const consulta = useConsulta(
     ['triagens', id ?? ''],
     () => api<{ itens: TriagemResumo[] }>(`/empresas/${empresaId}/vagas/${id}/triagens`, {}, accessToken),
@@ -33,7 +34,8 @@ export default function TriagensDaVaga() {
     <Tela>
       <Cabecalho titulo={t('triagem.titulo')} voltar />
       {consulta.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
-      {!consulta.isLoading && itens.length === 0 ? <EstadoVazio titulo={t('triagem.vazia')} /> : null}
+      {consulta.isError ? <EstadoVazio titulo={t('comum.erroCarregar')} /> : null}
+      {!consulta.isLoading && !consulta.isError && itens.length === 0 ? <EstadoVazio titulo={t('triagem.vazia')} /> : null}
       {itens.map((item) => (
         <ItemLista
           key={item.id}

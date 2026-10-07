@@ -13,6 +13,7 @@ import { Cartao } from '@/design-system/Cartao';
 import { estilos } from '@/design-system/estilos';
 import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
+import { useEmpresaAtiva } from '@/hooks/useEmpresaAtiva';
 
 interface RespostaVoz {
   id: string;
@@ -28,8 +29,8 @@ interface DetalheVoz {
 export default function GravacaoVozScreen() {
   const { t } = useTranslation();
   const { entrevistaId } = useLocalSearchParams<{ entrevistaId: string }>();
-  const { sessao, accessToken } = useAuth();
-  const empresaId = sessao?.empresaAtivaId ?? sessao?.empresas[0]?.empresaId ?? '';
+  const { accessToken } = useAuth();
+  const empresaId = useEmpresaAtiva();
   const consulta = useConsulta(
     ['voz-detalhe', entrevistaId ?? ''],
     () => api<DetalheVoz>(`/empresas/${empresaId}/voz/${entrevistaId}`, {}, accessToken),
@@ -56,6 +57,8 @@ export default function GravacaoVozScreen() {
     <Tela teclado>
       <Cabecalho titulo={t('voz.titulo')} voltar />
       {erro ? <Banner tipo="erro" texto={erro} /> : null}
+      {consulta.isLoading ? <Text style={estilos.mudo}>{t('comum.carregando')}</Text> : null}
+      {consulta.isError ? <Banner tipo="erro" texto={t('comum.erroCarregar')} /> : null}
       <Text style={estilos.corpo}>{consulta.data?.status ?? '—'}</Text>
       <Campo label={t('voz.motivo')} value={motivo} onChangeText={setMotivo} />
       <Button label={t('voz.gravacao')} onPress={() => void ouvir()} />

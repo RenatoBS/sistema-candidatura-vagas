@@ -5,6 +5,7 @@ import { Text } from 'react-native';
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { rotuloStatus } from '@/candidatura/regras';
+import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
 import { Cabecalho } from '@/design-system/Cabecalho';
 import { Chip } from '@/design-system/Chip';
@@ -18,6 +19,7 @@ export default function Detalhe() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { accessToken } = useAuth();
   const q = useConsulta<{
+    vagaTitulo?: string | null;
     vaga?: { titulo: string };
     status?: string;
     fase?: string;
@@ -28,8 +30,9 @@ export default function Detalhe() {
 
   return (
     <Tela>
-      <Cabecalho titulo={q.data?.vaga?.titulo ?? t('candidato.candidatura')} voltar />
+      <Cabecalho titulo={q.data?.vagaTitulo || q.data?.vaga?.titulo || t('candidato.candidatura')} voltar />
       {q.isLoading ? <Text style={estilos.mudo}>{t('comum.carregando')}</Text> : null}
+      {q.isError ? <Banner tipo="erro" texto={t('candidato.candidaturasErro')} /> : null}
       {rotulo ? <Chip texto={rotulo} /> : null}
       {podeVoz ? (
         <Button label={t('candidato.entrevistaVoz')} onPress={() => router.push(`/candidato/voz/${id}`)} />

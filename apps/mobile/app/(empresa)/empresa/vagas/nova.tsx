@@ -8,17 +8,20 @@ import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
 import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
+import { Seletor } from '@/design-system/Seletor';
 import { Tela } from '@/design-system/Tela';
+import { useEmpresaAtiva } from '@/hooks/useEmpresaAtiva';
+import { MODELOS_TRABALHO, SENIORIDADES, type ModeloTrabalho, type Senioridade } from '@/vaga/opcoes';
 
 export default function NovaVagaScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { sessao, accessToken } = useAuth();
-  const empresaId = sessao?.empresaAtivaId ?? sessao?.empresas[0]?.empresaId ?? '';
+  const { accessToken } = useAuth();
+  const empresaId = useEmpresaAtiva();
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [senioridade, setSenioridade] = useState('PLENO');
-  const [modelo, setModelo] = useState('REMOTO');
+  const [senioridade, setSenioridade] = useState<Senioridade>('PLENO');
+  const [modelo, setModelo] = useState<ModeloTrabalho>('REMOTO');
   const [localidade, setLocalidade] = useState('');
   const [prazo, setPrazo] = useState('');
   const [habilidade, setHabilidade] = useState('');
@@ -55,8 +58,18 @@ export default function NovaVagaScreen() {
       {erro ? <Banner tipo="erro" texto={erro} /> : null}
       <Campo label={t('vaga.titulo')} value={titulo} onChangeText={setTitulo} />
       <Campo label={t('vaga.descricao')} value={descricao} onChangeText={setDescricao} multiline />
-      <Campo label={t('vaga.senioridade')} value={senioridade} onChangeText={setSenioridade} autoCapitalize="none" />
-      <Campo label={t('vaga.modelo')} value={modelo} onChangeText={setModelo} autoCapitalize="none" />
+      <Seletor
+        label={t('vaga.senioridade')}
+        valor={senioridade}
+        onChange={setSenioridade}
+        opcoes={SENIORIDADES.map((valor) => ({ valor, rotulo: t(`vaga.opcaoSenioridade.${valor}`) }))}
+      />
+      <Seletor
+        label={t('vaga.modelo')}
+        valor={modelo}
+        onChange={setModelo}
+        opcoes={MODELOS_TRABALHO.map((valor) => ({ valor, rotulo: t(`vaga.opcaoModelo.${valor}`) }))}
+      />
       <Campo label={t('vaga.localidade')} value={localidade} onChangeText={setLocalidade} />
       <Campo label={t('vaga.prazo')} value={prazo} onChangeText={setPrazo} placeholder={t('vaga.prazoAjuda')} autoCapitalize="none" />
       <Campo label={t('vaga.habilidade')} value={habilidade} onChangeText={setHabilidade} />

@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text } from 'react-native';
 
-import { api } from '@/api/cliente';
+import { api, ErroApi } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
+import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
 import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
@@ -12,6 +13,7 @@ import { EstadoVazio } from '@/design-system/EstadoVazio';
 import { estilos } from '@/design-system/estilos';
 import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
+import { useEmpresaAtiva } from '@/hooks/useEmpresaAtiva';
 import { usePermissao } from '@/hooks/usePermissao';
 
 interface Membro {
@@ -22,19 +24,26 @@ interface Membro {
 
 export default function MembrosScreen() {
   const { t } = useTranslation();
-  const { sessao, accessToken } = useAuth();
-  const empresaId = sessao?.empresaAtivaId ?? '';
+  const { accessToken } = useAuth();
+  const empresaId = useEmpresaAtiva();
   const pode = usePermissao('gerenciar_membros', empresaId);
   const [email, setEmail] = useState('');
+  const [erro, setErro] = useState('');
   const consulta = useConsulta(['membros'], () => api<Membro[]>(`/empresas/${empresaId}/membros`, {}, accessToken), empresaId);
 
   async function convidar(papel: 'RECRUTADOR' | 'AVALIADOR') {
-    await api(
-      `/empresas/${empresaId}/membros/convites`,
-      { method: 'POST', body: JSON.stringify({ email, papeis: [papel] }) },
-      accessToken,
-    );
-    await consulta.refetch();
+    setErro('');
+    try {
+      await api(
+        `/empresas/${empresaId}/membros/convites`,
+        { method: 'POST', body: JSON.stringify({ email, papeis: [papel] }) },
+        accessToken,
+      );
+      setEmail('');
+      await consulta.refetch();
+    } catch (falha) {
+      setErro(falha instanceof ErroApi ? falha.message : t('comum.erro'));
+    }
   }
 
   if (!pode) {
@@ -51,7 +60,10 @@ export default function MembrosScreen() {
   return (
     <Tela teclado>
       <Cabecalho titulo={t('empresa.membros')} voltar />
-      {membros.length === 0 ? <EstadoVazio titulo={t('admin.vazia')} /> : null}
+      {erro ? <Banner tipo="erro" texto={erro} /> : null}
+      {consulta.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
+      {consulta.isError ? <EstadoVazio titulo={t('comum.erroCarregar')} /> : null}
+      {!consulta.isLoading && !consulta.isError && membros.length === 0 ? <EstadoVazio titulo={t('admin.vazia')} /> : null}
       {membros.map((membro) => (
         <Cartao key={membro.id}>
           <Text style={estilos.tituloItem}>{membro.papeis.join(', ')}</Text>

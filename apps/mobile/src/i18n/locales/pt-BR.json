@@ -22,7 +22,9 @@
     "aceitar": "Aceitar",
     "recusar": "Recusar",
     "vaga": "Vaga",
-    "candidato": "Candidato"
+    "candidato": "Candidato",
+    "continuar": "Continuar",
+    "erroCarregar": "Não foi possível carregar. Tente de novo."
   },
   "abas": {
     "vagas": "Vagas",
@@ -44,7 +46,12 @@
     "mfaIniciar": "Configurar autenticador",
     "mfaConfirmar": "Confirmar código",
     "mfaVerificar": "Validar MFA",
-    "codigosRecuperacao": "Guarde estes códigos de recuperação. Eles aparecem uma única vez."
+    "codigosRecuperacao": "Guarde estes códigos de recuperação. Eles aparecem uma única vez.",
+    "mfaInstrucao": "No app autenticador, adicione uma conta digitando a chave abaixo. Depois informe o código de 6 dígitos e toque em Confirmar código.",
+    "mfaSegredo": "Chave do autenticador",
+    "mfaUri": "Link de configuração",
+    "mfaConfirmado": "Autenticador configurado.",
+    "mfaContinuarErro": "O código expirou. Digite um novo código e toque em Validar MFA."
   },
   "onboarding": {
     "titulo": "Como você quer usar o app?",
@@ -96,7 +103,20 @@
     "rejeitar": "Rejeitar",
     "suspender": "Suspender",
     "motivo": "Motivo",
-    "vazia": "Nenhum item."
+    "senha": "Sua senha (confirmação)",
+    "senhaObrigatoria": "Informe sua senha para confirmar a ação.",
+    "acaoErro": "Não foi possível concluir. Confira a senha e tente de novo.",
+    "vazia": "Nenhum item.",
+    "reativar": "Reativar",
+    "motivoObrigatorio": "Informe o motivo (mínimo de 3 caracteres).",
+    "acaoAjuda": "Ações administrativas pedem sua senha para confirmação. O motivo fica registrado na auditoria; a senha, não.",
+    "acaoConcluida": "Ação registrada.",
+    "statusEmpresa": {
+      "PENDENTE": "Pendente",
+      "VERIFICADA": "Verificada",
+      "REJEITADA": "Rejeitada",
+      "SUSPENSA": "Suspensa"
+    }
   },
   "visao": {
     "trocar": "Trocar visão",
@@ -136,6 +156,21 @@
     "candidaturaEnviada": "Candidatura enviada.",
     "jaCandidatou": "Você já se candidatou ou o prazo encerrou.",
     "candidaturaErro": "Não foi possível candidatar-se.",
+    "conviteVaga": "Você foi convidado para esta vaga.",
+    "conviteAceito": "Convite aceito. Acompanhe em Minhas candidaturas.",
+    "conviteRecusado": "Convite recusado.",
+    "curriculosEnviados": "Currículos enviados",
+    "curriculosVazios": "Nenhum currículo enviado ainda.",
+    "curriculosErro": "Não foi possível carregar seus currículos.",
+    "enviadoEm": "Enviado em {{data}}",
+    "revisarCurriculo": "Revisar e confirmar",
+    "statusCurriculo": {
+      "PENDENTE": "Na fila de leitura",
+      "PROCESSANDO": "Em leitura",
+      "FALHA": "Falha na leitura",
+      "AGUARDANDO": "Aguardando sua confirmação",
+      "APLICADO": "Aplicado ao perfil"
+    },
     "convites": "Convites",
     "convitesTitulo": "Convites de match",
     "convitesVazios": "Você não tem convites pendentes.",
@@ -185,6 +220,32 @@
     "localidade": "Localidade",
     "prazo": "Prazo (horário de Brasília)",
     "prazoAjuda": "Ex.: 20/11/2026 23:59",
+    "salvarPrazo": "Salvar prazo",
+    "opcaoSenioridade": {
+      "ESTAGIO": "Estágio",
+      "JUNIOR": "Júnior",
+      "PLENO": "Pleno",
+      "SENIOR": "Sênior",
+      "ESPECIALISTA": "Especialista",
+      "LIDERANCA": "Liderança"
+    },
+    "opcaoModelo": {
+      "REMOTO": "Remoto",
+      "HIBRIDO": "Híbrido",
+      "PRESENCIAL": "Presencial"
+    },
+    "etapaTipo": {
+      "TRIAGEM_WHATSAPP": "Triagem por WhatsApp",
+      "ENTREVISTA_VOZ": "Entrevista por voz",
+      "REVISAO_HUMANA": "Revisão humana"
+    },
+    "contadorEtapa": "Aprovadas {{aprovadas}} de {{total}} · pendentes {{pendentes}}",
+    "perguntasAprovadas": "Perguntas aprovadas",
+    "sugestoesPendentes": "Sugestões da IA para revisar",
+    "etapaCompleta": "Etapa completa.",
+    "perguntaVazia": "Escreva a pergunta antes de adicionar.",
+    "publicarSemProcesso": "Para publicar, defina o processo seletivo.",
+    "publicarFalta": "Para publicar, complete: {{etapas}}. Cada etapa precisa de todas as perguntas aprovadas e nenhuma sugestão pendente.",
     "habilidade": "Habilidade",
     "nivel": "Nível mínimo (1 a 5)",
     "peso": "Peso",
@@ -264,7 +325,16 @@
     "completude": "Completude",
     "pesos": "Pesos (somam 100)",
     "salvar": "Salvar pesos",
-    "explicacao": "Explicação"
+    "explicacao": "Explicação",
+    "completudePct": "Completude: {{n}}%",
+    "peso": {
+      "perfil": "Perfil",
+      "habilidades": "Habilidades",
+      "curriculo": "Currículo",
+      "linkedin": "LinkedIn",
+      "triagem": "Triagem por WhatsApp",
+      "voz": "Entrevista por voz"
+    }
   },
   "notificacoes": {
     "preferencias": "Preferências de notificações",

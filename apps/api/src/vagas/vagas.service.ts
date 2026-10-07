@@ -148,6 +148,7 @@ export class VagasService {
       await this.auditar(alinhada, empresaId, vagaId, 'BYPASS_ADMIN', 'criar_vaga', ctx);
     }
     await this.encerrarEmpresa(empresaId, ctx);
+    await this.exigirVaga(vagaId, empresaId, ctx);
     return this.detalhe(vagaId, ctx);
   }
 

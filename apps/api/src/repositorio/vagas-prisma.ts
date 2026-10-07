@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { EFEITOS_EVENTO_VAGA, POLITICA_RETRY_PADRAO, type PoliticaRetry } from '@scv/domain';
 
+import { escopoTenant } from './escopo';
 import type { ContextoTenant } from './tipos';
 import type {
   EtapaPerguntaRegistro,
@@ -127,7 +128,7 @@ export class VagasPrisma {
 
   buscarVaga(id: string, ctx: ContextoTenant): Promise<VagaRegistro | null> {
     return this.com(ctx, async (tx) => {
-      const vaga = await tx.vaga.findUnique({ where: { id } });
+      const vaga = await tx.vaga.findFirst({ where: { id, ...escopoTenant(ctx) } });
       return vaga ? vagaDe(vaga) : null;
     });
   }

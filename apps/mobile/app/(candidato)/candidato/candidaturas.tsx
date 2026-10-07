@@ -15,6 +15,7 @@ import { useConsulta } from '@/hooks/useConsulta';
 
 type Candidatura = {
   id: string;
+  vagaTitulo?: string | null;
   vaga?: { titulo: string };
   status?: string;
   fase?: string;
@@ -37,7 +38,7 @@ export default function Candidaturas() {
       {lista.length > 1 ? <Banner tipo="aviso" texto={t('candidato.variosProcessos')} /> : null}
       {lista.map((c) => (
         <Cartao key={c.id} onPress={() => router.push(`/candidato/candidaturas/${c.id}`)}>
-          <Text style={estilos.tituloItem}>{c.vaga?.titulo ?? t('comum.vaga')}</Text>
+          <Text style={estilos.tituloItem}>{c.vagaTitulo || c.vaga?.titulo || t('comum.vaga')}</Text>
           <Text style={estilos.mudo}>{c.rotuloAmigavel ?? rotuloStatus(c.status, c.fase)}</Text>
           <Text style={estilos.legenda}>{t('comum.verDetalhes')}</Text>
         </Cartao>

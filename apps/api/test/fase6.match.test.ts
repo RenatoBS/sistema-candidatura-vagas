@@ -172,6 +172,7 @@ async function vagaPublicada(empresaId: string, token: string): Promise<string> 
 }
 
 interface SugestaoDto {
+  id: string;
   candidatoId: string;
   compatibilidade: number;
   forte: boolean;
@@ -366,5 +367,38 @@ describe('Fase 6 — embeddings e match (F6-04)', () => {
     assert.equal((await api(`/vagas/${vagaId}/sugestoes-match`, {}, pessoa.token)).status, 403);
     assert.equal((await api(`/interno/match/vagas/${vagaId}`, { method: 'POST' })).status, 401);
     assert.equal((await sugestoes(vagaId, dona.token)).length, 1);
+  });
+
+  it('outra empresa não lista candidaturas, não convida nem abre o detalhe da vaga alheia', async () => {
+    const dona = await empresaVerificada('dona5@empresa.test', '11.222.333/0001-81');
+    const outra = await empresaVerificada('outra5@empresa.test', '11.444.777/0001-61');
+    const vagaId = await vagaPublicada(dona.empresaId, dona.token);
+    const pessoa = await candidato('cruzado@pessoal.test');
+    await perfilCompleto(pessoa.token, RESUMO_ADERENTE, HABILIDADES_ADERENTES, true);
+    await drenar();
+    const [sugestao] = await sugestoes(vagaId, dona.token);
+    assert.ok(sugestao);
+
+    const comHeader = { headers: { 'x-empresa-id': outra.empresaId } };
+    assert.equal((await api(`/vagas/${vagaId}/candidaturas`, comHeader, outra.token)).status, 404);
+    const convite = await api(
+      `/vagas/${vagaId}/sugestoes-match/${sugestao.id}/convidar`,
+      { method: 'POST', ...comHeader },
+      outra.token,
+    );
+    assert.equal(convite.status, 404);
+    assert.equal((await api(`/empresas/${outra.empresaId}/vagas/${vagaId}`, {}, outra.token)).status, 404);
+    assert.equal((await api(`/empresas/${dona.empresaId}/vagas/${vagaId}`, {}, dona.token)).status, 200);
+  });
+
+  it('rotas admin/* recusam membro de empresa e candidato', async () => {
+    const empresa = await empresaVerificada('membro-admin@empresa.test', '11.222.333/0001-81');
+    const pessoa = await candidato('admin-rotas@pessoal.test');
+    const rotas = ['/admin/auditoria', '/admin/whatsapp/instancias', '/admin/empresas', '/admin/empresas/fila'];
+    for (const rota of rotas) {
+      assert.equal((await api(rota, {}, empresa.token)).status, 403, rota);
+      assert.equal((await api(rota, { headers: { 'x-empresa-id': empresa.empresaId } }, empresa.token)).status, 403, rota);
+      assert.equal((await api(rota, {}, pessoa.token)).status, 403, rota);
+    }
   });
 });

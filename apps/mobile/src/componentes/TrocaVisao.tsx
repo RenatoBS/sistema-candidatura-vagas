@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/cliente';
+import { empresaAtivaDaSessao } from '@/auth/acesso';
 import { useAuth } from '@/auth/AuthContext';
 import { Button } from '@/design-system/Button';
 import { estilos } from '@/design-system/estilos';
@@ -17,7 +18,7 @@ export function TrocaVisao() {
   async function trocar(visao: 'CANDIDATO' | 'EMPRESA' | 'ADMIN') {
     const resposta = await api<{ accessToken: string; perfil: typeof sessao }>(
       '/me/visao',
-      { method: 'PATCH', body: JSON.stringify({ visao, empresaId: sessao?.empresaAtivaId ?? undefined }) },
+      { method: 'PATCH', body: JSON.stringify({ visao, empresaId: empresaAtivaDaSessao(sessao) || undefined }) },
       accessToken,
     );
     if (resposta.perfil) await entrar({ accessToken: resposta.accessToken, refreshToken: '' }, resposta.perfil);

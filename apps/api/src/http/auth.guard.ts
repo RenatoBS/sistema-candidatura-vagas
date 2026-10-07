@@ -1,11 +1,12 @@
 import { type CanActivate, type ExecutionContext, Inject, Injectable } from '@nestjs/common';
+import { PATH_METADATA } from '@nestjs/common/constants';
 import { Reflector } from '@nestjs/core';
 import { bypassAdmin, type Acao } from '@scv/domain';
 
 import { AuthService } from '../auth/auth.service';
 import { ErroAplicacao } from '../erros';
 import type { Repositorio } from '../repositorio/tipos';
-import { exigir, montarAtor, type SessaoRequest } from '../sessao';
+import { exigir, exigirAdminPlataforma, montarAtor, type SessaoRequest } from '../sessao';
 import { REPOSITORIO } from '../tokens';
 import { ACAO, PUBLICO, SENSIVEL } from './decoradores';
 
@@ -68,6 +69,8 @@ export class AuthGuard implements CanActivate {
     const sessao: SessaoRequest = { ...base, ator: montarAtor(base) };
     req.sessao = sessao;
 
+    if (this.rotaAdmin(context)) exigirAdminPlataforma(sessao);
+
     if (this.reflector.getAllAndOverride<boolean>(SENSIVEL, [context.getHandler(), context.getClass()])) {
       const reauth = req.headers['x-reauth-token'];
       this.auth.lerReauth(typeof reauth === 'string' ? reauth : undefined, usuario.id);
@@ -79,5 +82,11 @@ export class AuthGuard implements CanActivate {
     ]);
     if (acao) exigir(sessao, acao);
     return true;
+  }
+
+  private rotaAdmin(context: ExecutionContext): boolean {
+    const caminho = this.reflector.get<string | string[] | undefined>(PATH_METADATA, context.getHandler());
+    const caminhos = Array.isArray(caminho) ? caminho : [caminho ?? ''];
+    return caminhos.some((item) => item.replace(/^\/+/, '').startsWith('admin/'));
   }
 }

@@ -11,7 +11,7 @@ import type { Relogio } from '../auth/auth.service';
 import { ErroAplicacao } from '../erros';
 import type { NotificacoesService } from '../notificacoes/notificacoes.service';
 import type { Repositorio } from '../repositorio/tipos';
-import { ctxDe, type SessaoRequest } from '../sessao';
+import { ctxDe, exigirMesmaEmpresa, type SessaoRequest } from '../sessao';
 import { CandidaturaStateMachine } from './candidatura-state-machine';
 
 export interface ConsentimentoEntrada {
@@ -79,6 +79,7 @@ export class CandidaturasService {
   async convidar(sessao: SessaoRequest, vagaId: string, sugestaoId: string) {
     const vaga = await this.repo.buscarVaga(vagaId, ctxDe(sessao));
     if (!vaga) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'vaga não encontrada');
+    exigirMesmaEmpresa(sessao, vaga.empresaId, 'vaga');
     if (!aceitaInscricoes(vaga, this.relogio.agora()))
       throw new ErroAplicacao('INSCRICOES_INDISPONIVEIS', 409, 'inscrições não disponíveis');
     const sugestao = await this.repo.buscarSugestao(sugestaoId, ctxDe(sessao, vaga.empresaId));
@@ -206,6 +207,7 @@ export class CandidaturasService {
   async daVaga(sessao: SessaoRequest, vagaId: string) {
     const vaga = await this.repo.buscarVaga(vagaId, ctxDe(sessao));
     if (!vaga) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'vaga não encontrada');
+    exigirMesmaEmpresa(sessao, vaga.empresaId, 'vaga');
     const itens = await this.repo.listarCandidaturasVaga(vagaId, ctxDe(sessao, vaga.empresaId));
     return Promise.all(
       itens.map(async (item) => ({

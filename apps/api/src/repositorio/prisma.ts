@@ -4,6 +4,7 @@ import { ErroAplicacao } from '../erros';
 import { CandidaturasPrisma } from './candidaturas-prisma';
 import { EntrevistasPrisma } from './entrevistas-prisma';
 import type { EntrevistaRegistro, SessaoVozRegistro } from './entrevistas-tipos';
+import { escopoTenant } from './escopo';
 import { MatchPrisma } from './match-prisma';
 import { NotificacoesPrisma } from './notificacoes-prisma';
 import type {
@@ -320,7 +321,11 @@ export class RepositorioPrisma implements Repositorio {
     ctx: ContextoTenant,
   ): Promise<MembroRegistro> {
     const data = semId(patch);
-    return this.comTenant(ctx, (tx) => tx.membroEmpresa.update({ where: { id }, data }));
+    return this.comTenant(ctx, async (tx) => {
+      const atual = await tx.membroEmpresa.findFirst({ where: { id, ...escopoTenant(ctx) } });
+      if (!atual) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'membro não encontrado');
+      return tx.membroEmpresa.update({ where: { id }, data });
+    });
   }
 
   async vinculosDoUsuario(usuarioId: string): Promise<VinculoUsuario[]> {
@@ -352,7 +357,11 @@ export class RepositorioPrisma implements Repositorio {
     ctx: ContextoTenant,
   ): Promise<ConviteRegistro> {
     const data = semId(patch);
-    return this.comTenant(ctx, (tx) => tx.conviteMembro.update({ where: { id }, data }));
+    return this.comTenant(ctx, async (tx) => {
+      const atual = await tx.conviteMembro.findFirst({ where: { id, ...escopoTenant(ctx) } });
+      if (!atual) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'convite não encontrado');
+      return tx.conviteMembro.update({ where: { id }, data });
+    });
   }
 
   async criarCandidato(candidato: CandidatoRegistro): Promise<CandidatoRegistro> {
