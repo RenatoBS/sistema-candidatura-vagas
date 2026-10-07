@@ -4,6 +4,7 @@
  */
 import type { PoliticaInatividade } from './triagem-inatividade';
 import type { PoliticaRetry } from './vaga';
+import type { EstadoVoz } from './voz';
 
 export const VERSAO_PROMPT_TRIAGEM = 'triagem-avaliacao-v1';
 export const JANELA_AGREGACAO_SEGUNDOS = 60;
@@ -289,6 +290,7 @@ export interface ContextoEntrevista {
   conviteEm?: string | null;
   audiosAgregados?: string[];
   optOutEm?: string | null;
+  voz?: EstadoVoz;
 }
 
 export function lerContexto(valor: unknown): ContextoEntrevista {

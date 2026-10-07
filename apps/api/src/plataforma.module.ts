@@ -70,6 +70,7 @@ import { MatchController } from './http/match.controller';
 import { NotificacoesController } from './http/notificacoes.controller';
 import { TriagemController } from './http/triagem.controller';
 import { VagasController } from './http/vagas.controller';
+import { VozController } from './http/voz.controller';
 import { WhatsappController } from './http/whatsapp.controller';
 import { MatchService } from './match/match.service';
 import { MembrosService } from './membros/membros.service';
@@ -116,6 +117,7 @@ import { TriagemMonitorService } from './triagem/triagem-monitor.service';
 import { TriagemOrquestradorService, TravaEntrevistaMemoria } from './triagem/triagem-orquestrador.service';
 import { TriagemRetryService } from './triagem/triagem-retry.service';
 import { VagasService } from './vagas/vagas.service';
+import { VozService } from './voz/voz.service';
 import { WebhookUazapiService } from './whatsapp/webhook-uazapi.service';
 import { WhatsappService } from './whatsapp/whatsapp.service';
 
@@ -298,6 +300,7 @@ const whatsappClienteProvider: FactoryProvider = {
     AuditoriaController,
     CandidatoController,
     VagasController,
+    VozController,
     MatchController,
     NotificacoesController,
   ],
@@ -329,6 +332,7 @@ const whatsappClienteProvider: FactoryProvider = {
     TriagemOrquestradorService,
     TriagemInatividadeService,
     TriagemConsultaService,
+    VozService,
     embeddingsProvider,
     canaisEntregaProvider,
     llmProvider,

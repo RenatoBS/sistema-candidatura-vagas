@@ -3,7 +3,7 @@
  * Auth, papéis, verificação de empresa e CNPJ local entram na Fase 3.
  */
 
-export const DOMAIN_PACKAGE_VERSION = '0.7.0';
+export const DOMAIN_PACKAGE_VERSION = '0.8.0';
 
 export {
   candidaturaTerminal,
@@ -227,3 +227,19 @@ export {
   type StatusVaga,
   type TipoEventoVaga,
 } from './vaga';
+export {
+  AVISO_EXPIRACAO_SEGUNDOS,
+  avaliarAviso,
+  avaliarReconexao,
+  concederExcecao,
+  decidirAdmissao,
+  decidirTurno,
+  JANELA_RECONEXAO_MS_PADRAO,
+  pausarTimer,
+  percentil50,
+  retomarTimer,
+  tempoRestanteSegundos,
+  VOZ_MAX_SESSOES_SIMULTANEAS,
+  type EstadoVoz,
+  type PerguntaRoteiro,
+} from './voz';

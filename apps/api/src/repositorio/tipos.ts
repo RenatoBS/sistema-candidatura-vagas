@@ -5,7 +5,7 @@ import type {
   HistoricoStatusRegistro,
   TransicaoCandidaturaRegistro,
 } from './candidaturas-tipos';
-import type { EntrevistaRegistro } from './entrevistas-tipos';
+import type { EntrevistaRegistro, SessaoVozRegistro } from './entrevistas-tipos';
 import type {
   CandidatoSimilar,
   EntradaSugestaoMatch,
@@ -68,7 +68,13 @@ export type {
   VagaHabilidadeRegistro,
   VagaRegistro,
 } from './vagas-tipos';
-export type { CanalEntrevista, EntrevistaRegistro, StatusEntrevista } from './entrevistas-tipos';
+export type {
+  CanalEntrevista,
+  EntrevistaRegistro,
+  SessaoVozRegistro,
+  StatusEntrevista,
+  StatusSessaoVoz,
+} from './entrevistas-tipos';
 
 export interface ContextoTenant {
   empresaId?: string;
@@ -438,6 +444,15 @@ export interface Repositorio {
     esperadoAtualizadoEm?: Date,
   ): Promise<EntrevistaRegistro | null>;
   listarEntrevistas(ctx: ContextoTenant): Promise<EntrevistaRegistro[]>;
+  criarSessaoVoz(dados: SessaoVozRegistro, ctx: ContextoTenant): Promise<SessaoVozRegistro>;
+  buscarSessaoVoz(id: string, ctx: ContextoTenant): Promise<SessaoVozRegistro | null>;
+  atualizarSessaoVoz(
+    id: string,
+    patch: Partial<SessaoVozRegistro>,
+    ctx: ContextoTenant,
+  ): Promise<SessaoVozRegistro | null>;
+  listarSessoesEntrevista(entrevistaId: string, ctx: ContextoTenant): Promise<SessaoVozRegistro[]>;
+  contarSessoesAtivas(ctx: ContextoTenant): Promise<number>;
   marcarRespostasParciais(entrevistaId: string, ctx: ContextoTenant): Promise<void>;
   registrarEventoWhatsappEntrada(
     registro: EventoWhatsappEntradaRegistro,

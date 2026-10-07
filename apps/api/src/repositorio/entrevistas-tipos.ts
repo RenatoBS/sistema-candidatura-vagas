@@ -23,6 +23,22 @@ export type StatusEntrevista =
   | 'RECONECTANDO'
   | 'EXPIRADA';
 
+export type StatusSessaoVoz = 'CONECTANDO' | 'ATIVA' | 'RECONECTANDO' | 'FINALIZADA' | 'ABANDONADA';
+
+export interface SessaoVozRegistro {
+  id: string;
+  entrevistaId: string;
+  salaId: string;
+  status: StatusSessaoVoz;
+  inicioEm: Date | null;
+  fimEm: Date | null;
+  desconectadoEm: Date | null;
+  motivoFim: string | null;
+  gravacaoKey: string | null;
+  criadoEm: Date;
+  atualizadoEm: Date;
+}
+
 export interface EntrevistaRegistro {
   id: string;
   empresaId: string;

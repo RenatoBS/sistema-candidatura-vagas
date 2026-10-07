@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { lerContexto } from '@scv/domain';
 
 import { ErroAplicacao } from '../erros';
-import type { EntrevistaRegistro } from './entrevistas-tipos';
+import type { EntrevistaRegistro, SessaoVozRegistro } from './entrevistas-tipos';
 import type { ContextoTenant } from './tipos';
 
 function jsonContexto(valor: unknown): Prisma.InputJsonValue {
@@ -111,5 +111,44 @@ export class EntrevistasPrisma {
         });
       }
     });
+  }
+
+  criarSessao(dados: SessaoVozRegistro, ctx: ContextoTenant): Promise<SessaoVozRegistro> {
+    return this.com(ctx, (tx) => tx.sessaoVoz.create({ data: dados })).then((row) => this.sessao(row));
+  }
+
+  async buscarSessao(id: string, ctx: ContextoTenant): Promise<SessaoVozRegistro | null> {
+    const row = await this.com(ctx, (tx) => tx.sessaoVoz.findUnique({ where: { id } }));
+    return row ? this.sessao(row) : null;
+  }
+
+  async atualizarSessao(
+    id: string,
+    patch: Partial<SessaoVozRegistro>,
+    ctx: ContextoTenant,
+  ): Promise<SessaoVozRegistro | null> {
+    const data = Object.fromEntries(Object.entries(patch).filter(([, valor]) => valor !== undefined));
+    try {
+      const row = await this.com(ctx, (tx) => tx.sessaoVoz.update({ where: { id }, data }));
+      return this.sessao(row);
+    } catch (erro) {
+      if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === 'P2025') return null;
+      throw erro;
+    }
+  }
+
+  async listarSessoes(entrevistaId: string, ctx: ContextoTenant): Promise<SessaoVozRegistro[]> {
+    const rows = await this.com(ctx, (tx) => tx.sessaoVoz.findMany({ where: { entrevistaId } }));
+    return rows.map((row) => this.sessao(row));
+  }
+
+  contarAtivas(ctx: ContextoTenant): Promise<number> {
+    return this.com(ctx, (tx) =>
+      tx.sessaoVoz.count({ where: { status: { in: ['ATIVA', 'RECONECTANDO'] } } }),
+    );
+  }
+
+  private sessao(row: SessaoVozRegistro): SessaoVozRegistro {
+    return { ...row };
   }
 }

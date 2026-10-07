@@ -103,6 +103,7 @@ describe('máquina de estados da candidatura', () => {
       { tipo: 'esgotarRetries' },
       { tipo: 'concluirEntrevista' },
       { tipo: 'abandonarEntrevista' },
+      { tipo: 'concederExcecaoVoz' },
       { tipo: 'enviarRevisao' },
       { tipo: 'expirarConvite' },
       { tipo: 'pausarVaga' },

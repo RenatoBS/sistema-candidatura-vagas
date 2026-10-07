@@ -75,6 +75,7 @@ export type ComandoCandidatura =
   | { tipo: 'iniciarEntrevistaVoz' }
   | { tipo: 'concluirEntrevista' }
   | { tipo: 'abandonarEntrevista' }
+  | { tipo: 'concederExcecaoVoz' }
   | { tipo: 'enviarRevisao' }
   | { tipo: 'aprovar'; autorHumanoId: string }
   | { tipo: 'reprovar'; autorHumanoId: string }
@@ -121,6 +122,7 @@ const TRANSICOES_SIMPLES: Record<ComandoSimples, { de: readonly StatusCandidatur
   iniciarEntrevistaVoz: { de: ['TRIAGEM_CONCLUIDA'], para: 'ENTREVISTA_VOZ' },
   concluirEntrevista: { de: ['ENTREVISTA_VOZ'], para: 'ENTREVISTA_CONCLUIDA' },
   abandonarEntrevista: { de: ['ENTREVISTA_VOZ'], para: 'ENTREVISTA_ABANDONADA' },
+  concederExcecaoVoz: { de: ['ENTREVISTA_ABANDONADA'], para: 'TRIAGEM_CONCLUIDA' },
   enviarRevisao: {
     de: ['TRIAGEM_CONCLUIDA', 'TRIAGEM_ABANDONADA', 'SEM_RESPOSTA', 'ENTREVISTA_CONCLUIDA', 'ENTREVISTA_ABANDONADA'],
     para: 'EM_REVISAO',

@@ -3,7 +3,7 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import { ErroAplicacao } from '../erros';
 import { CandidaturasPrisma } from './candidaturas-prisma';
 import { EntrevistasPrisma } from './entrevistas-prisma';
-import type { EntrevistaRegistro } from './entrevistas-tipos';
+import type { EntrevistaRegistro, SessaoVozRegistro } from './entrevistas-tipos';
 import { MatchPrisma } from './match-prisma';
 import { NotificacoesPrisma } from './notificacoes-prisma';
 import type {
@@ -1083,6 +1083,26 @@ export class RepositorioPrisma implements Repositorio {
 
   marcarRespostasParciais(entrevistaId: string, ctx: ContextoTenant) {
     return this.entrevistasStore.marcarRespostasParciais(entrevistaId, ctx);
+  }
+
+  criarSessaoVoz(dados: SessaoVozRegistro, ctx: ContextoTenant) {
+    return this.entrevistasStore.criarSessao(dados, ctx);
+  }
+
+  buscarSessaoVoz(id: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.buscarSessao(id, ctx);
+  }
+
+  atualizarSessaoVoz(id: string, patch: Partial<SessaoVozRegistro>, ctx: ContextoTenant) {
+    return this.entrevistasStore.atualizarSessao(id, patch, ctx);
+  }
+
+  listarSessoesEntrevista(entrevistaId: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.listarSessoes(entrevistaId, ctx);
+  }
+
+  contarSessoesAtivas(ctx: ContextoTenant) {
+    return this.entrevistasStore.contarAtivas(ctx);
   }
 
   private usuario(usuario: {
