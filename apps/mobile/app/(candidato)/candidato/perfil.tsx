@@ -5,6 +5,7 @@ import { Text } from 'react-native';
 
 import { api, ErroApi } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
+import { BotaoSair } from '@/componentes/BotaoSair';
 import { TrocaVisao } from '@/componentes/TrocaVisao';
 import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
@@ -80,6 +81,7 @@ export default function PerfilCandidato() {
       <ItemLista titulo={t('candidato.dados')} onPress={() => router.push('/candidato/dados')} />
       <ItemLista titulo={t('notificacoes.preferencias')} onPress={() => router.push('/candidato/notificacoes-preferencias')} />
       <TrocaVisao />
+      <BotaoSair />
     </Tela>
   );
 }

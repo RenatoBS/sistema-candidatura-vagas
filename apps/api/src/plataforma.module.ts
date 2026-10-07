@@ -1,6 +1,6 @@
 import { type FactoryProvider, Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import { criarLlmProvider } from '@scv/llm';
+import { criarLlmProvider, simuladorEntrevistaLigado } from '@scv/llm';
 import {
   BrasilApiFonteCnpj,
   criarAntivirus,
@@ -76,6 +76,7 @@ import { EmpresasController } from './http/empresas.controller';
 import { MatchController } from './http/match.controller';
 import { NotificacoesController } from './http/notificacoes.controller';
 import { RankingController } from './http/ranking.controller';
+import { SimuladorController } from './http/simulador.controller';
 import { TriagemController } from './http/triagem.controller';
 import { UuidParamPipe } from './http/uuid-param.pipe';
 import { VagasController } from './http/vagas.controller';
@@ -89,6 +90,9 @@ import { NotificacoesService } from './notificacoes/notificacoes.service';
 import { RankingService } from './ranking/ranking.service';
 import { RepositorioPrisma } from './repositorio/prisma';
 import type { Repositorio } from './repositorio/tipos';
+import { gravadorSimulador } from './simulador/gravador-whatsapp';
+import { InstanciaSimulada } from './simulador/instancia-simulada';
+import { SimuladorEntrevistaService } from './simulador/simulador-entrevista.service';
 import {
   ANTIVIRUS,
   ARMAZENAMENTO,
@@ -242,10 +246,10 @@ const embeddingsProvider: FactoryProvider<EmbeddingProvider> = {
 const mensagensWhatsappProvider: FactoryProvider = {
   provide: WHATSAPP_MENSAGENS,
   inject: [CONFIG],
-  useFactory: (config: ConfiguracaoApp) =>
-    config.authStore === 'memory'
-      ? whatsappMensagensTeste
-      : new UazapiProvider(config.uazapiBaseUrl),
+  useFactory: (config: ConfiguracaoApp) => {
+    if (config.simuladorEntrevista) return gravadorSimulador;
+    return config.authStore === 'memory' ? whatsappMensagensTeste : new UazapiProvider(config.uazapiBaseUrl);
+  },
 };
 const sttProvider: FactoryProvider = {
   provide: STT_PROVIDER,
@@ -303,11 +307,15 @@ const travaProvider: FactoryProvider = {
 const whatsappClienteProvider: FactoryProvider = {
   provide: CLIENTE_WHATSAPP,
   inject: [CONFIG],
-  useFactory: (config: ConfiguracaoApp) =>
-    config.authStore === 'memory'
+  useFactory: (config: ConfiguracaoApp) => {
+    if (config.simuladorEntrevista) return new InstanciaSimulada();
+    return config.authStore === 'memory'
       ? whatsappTeste
-      : new UazapiInstanciaCliente(config.uazapiBaseUrl, config.uazapiAdminToken),
+      : new UazapiInstanciaCliente(config.uazapiBaseUrl, config.uazapiAdminToken);
+  },
 };
+
+const simuladorAtivo = simuladorEntrevistaLigado(process.env);
 
 @Module({
   controllers: [
@@ -323,6 +331,7 @@ const whatsappClienteProvider: FactoryProvider = {
     RankingController,
     MatchController,
     NotificacoesController,
+    ...(simuladorAtivo ? [SimuladorController] : []),
   ],
   providers: [
     { provide: APP_PIPE, useClass: UuidParamPipe },
@@ -354,6 +363,7 @@ const whatsappClienteProvider: FactoryProvider = {
     TriagemOrquestradorService,
     TriagemInatividadeService,
     TriagemConsultaService,
+    ...(simuladorAtivo ? [SimuladorEntrevistaService] : []),
     VozService,
     RankingService,
     CapacidadeService,

@@ -1,5 +1,27 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 /** `process.env` ou qualquer objeto com variáveis opcionais (interfaces sem index signature também servem). */
 export type Ambiente = object;
+
+/**
+ * Carrega o primeiro `.env` a partir de `inicio`, subindo diretórios.
+ * Variáveis já definidas no processo prevalecem. Devolve o arquivo lido, ou null.
+ */
+export function carregarArquivoEnv(inicio = process.cwd()): string | null {
+  let diretorio = resolve(inicio);
+  for (let nivel = 0; nivel < 6; nivel += 1) {
+    const arquivo = resolve(diretorio, '.env');
+    if (existsSync(arquivo)) {
+      process.loadEnvFile(arquivo);
+      return arquivo;
+    }
+    const pai = resolve(diretorio, '..');
+    if (pai === diretorio) break;
+    diretorio = pai;
+  }
+  return null;
+}
 
 function ler(env: Ambiente, nome: string): string | undefined {
   const valor = (env as Record<string, unknown>)[nome];

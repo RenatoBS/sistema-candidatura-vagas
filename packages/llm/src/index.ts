@@ -1,5 +1,7 @@
+export { LlmEntrevistadorSimulado, pontuar } from './entrevistador-simulado';
 export { criarLlmProvider, type AmbienteLlm } from './fabrica';
 export { LlmMock } from './mock';
+export { simuladorEntrevistaLigado } from './simulador-flag';
 export { LlmOllama } from './ollama';
 export { LlmOpenAi } from './openai';
 export { VERSAO_PROMPT_CURRICULO, VERSAO_PROMPT_SUGERIR, lerPrompt } from './prompts';

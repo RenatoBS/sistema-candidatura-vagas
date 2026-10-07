@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
+import { BotaoSair } from '@/componentes/BotaoSair';
 import { TrocaVisao } from '@/componentes/TrocaVisao';
 import { Banner } from '@/design-system/Banner';
 import { Cabecalho } from '@/design-system/Cabecalho';
@@ -36,6 +37,7 @@ export default function EmpresaHome() {
       {podeMembros ? <ItemLista titulo={t('empresa.membros')} onPress={() => router.push('/empresa/membros')} /> : null}
       <ItemLista titulo={t('empresa.preferencias')} onPress={() => router.push('/empresa/notificacoes-preferencias')} />
       <TrocaVisao />
+      <BotaoSair />
     </Tela>
   );
 }

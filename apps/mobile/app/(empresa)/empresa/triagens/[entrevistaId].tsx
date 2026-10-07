@@ -21,6 +21,7 @@ interface RespostaTriagem {
   nota: number | null;
   notaOrigem: string | null;
   statusTranscricao: string | null;
+  justificativa: string | null;
 }
 
 interface DetalheTriagem {
@@ -101,6 +102,11 @@ export default function DetalheTriagemScreen() {
           <Text style={estilos.mudo}>
             {t('triagem.nota')}: {resposta.nota ?? '—'} ({resposta.notaOrigem ?? '—'})
           </Text>
+          {resposta.justificativa ? (
+            <Text style={estilos.corpo}>
+              {t('triagem.justificativa')}: {resposta.justificativa}
+            </Text>
+          ) : null}
           <Button label={t('triagem.audio')} variante="secundario" onPress={() => void ouvir(resposta.id)} />
           <Button label={t('triagem.revisar')} onPress={() => void revisar(resposta.id)} />
         </Cartao>

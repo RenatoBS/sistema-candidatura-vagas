@@ -5,6 +5,7 @@ import {
   type PoliticaRevisaoManual,
 } from '@scv/domain';
 import { envOu } from '@scv/env';
+import { simuladorEntrevistaLigado } from '@scv/llm';
 
 export interface ConfiguracaoApp {
   jwtSecret: string;
@@ -28,6 +29,8 @@ export interface ConfiguracaoApp {
   pausaMaxDias: number;
   /** Compatibilidade mínima para a sugestão virar match forte (MATCH_LIMIAR_FORTE). */
   matchLimiarForte: number;
+  /** Chat e entrevistador falsos. Nunca verdadeiro em produção. */
+  simuladorEntrevista: boolean;
 }
 
 export function lerConfiguracao(env: NodeJS.ProcessEnv = process.env): ConfiguracaoApp {
@@ -50,8 +53,9 @@ export function lerConfiguracao(env: NodeJS.ProcessEnv = process.env): Configura
   const uazapiAdminToken = envOu(env, 'UAZAPI_ADMIN_TOKEN', '');
   const uazapiWebhookSecret = envOu(env, 'UAZAPI_WEBHOOK_SECRET', '');
   const apiPublicUrl = envOu(env, 'API_PUBLIC_URL', 'http://localhost:3000');
-  if ((uazapiBaseUrl || uazapiAdminToken) && !uazapiWebhookSecret) {
-    throw new Error('UAZAPI_WEBHOOK_SECRET obrigatório quando UAZAPI_BASE_URL/UAZAPI_ADMIN_TOKEN estão configurados');
+  const simuladorEntrevista = simuladorEntrevistaLigado(env);
+  if ((uazapiBaseUrl || uazapiAdminToken || simuladorEntrevista) && !uazapiWebhookSecret) {
+    throw new Error('UAZAPI_WEBHOOK_SECRET obrigatório quando UAZAPI_BASE_URL/UAZAPI_ADMIN_TOKEN estão configurados ou o simulador está ligado');
   }
   validarUrlPublica(apiPublicUrl, env.NODE_ENV);
 
@@ -75,6 +79,7 @@ export function lerConfiguracao(env: NodeJS.ProcessEnv = process.env): Configura
     bcryptRounds: env.NODE_ENV === 'test' ? 4 : 10,
     pausaMaxDias: inteiroPositivo(env.PAUSA_MAX_DIAS, 30),
     matchLimiarForte: limiarMatch(env.MATCH_LIMIAR_FORTE),
+    simuladorEntrevista,
   };
 }
 
