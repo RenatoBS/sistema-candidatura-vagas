@@ -630,8 +630,8 @@ export class RepositorioPrisma implements Repositorio {
         tx.eventoWhatsappEntrada.create({
           data: {
             ...registro,
-            tipo: registro.tipo,
-            payloadNormalizado: registro.payloadNormalizado,
+            tipo: registro.tipo === 'BOTAO' ? 'MENU' : registro.tipo,
+            payloadNormalizado: registro.payloadNormalizado as Prisma.InputJsonValue,
           },
         }),
       );

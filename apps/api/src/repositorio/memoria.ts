@@ -560,7 +560,7 @@ export class RepositorioMemoria implements Repositorio {
   }
 
   async buscarInstanciaPorId(id: string, ctx: ContextoTenant): Promise<InstanciaRegistro | null> {
-    const instancia = this.instanciasById(id);
+    const instancia = this.instanciaById(id);
     return instancia && visivel(ctx, instancia.empresaId) ? { ...instancia } : null;
   }
 
