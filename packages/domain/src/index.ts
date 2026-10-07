@@ -143,6 +143,19 @@ export {
 export { senhaAtendePolitica } from './senha';
 export { interpretarWhatsapp, type LeituraWhatsapp } from './whatsapp';
 export {
+  avaliarInatividade,
+  momentoLembreteInatividade,
+  podeReiniciar,
+  prazoInatividade,
+  POLITICA_INATIVIDADE_PADRAO,
+  registrarAceiteTentativa,
+  registrarPrimeiraResposta,
+  type EntrevistaInatividade,
+  type PoliticaInatividade,
+  type ResultadoInatividade,
+} from './triagem-inatividade';
+export { mensagemTriagem, type DadosMensagemTriagem } from './mensagens-triagem';
+export {
   decidirAposChecagens,
   podePublicarVaga,
   politicaRevisaoValida,

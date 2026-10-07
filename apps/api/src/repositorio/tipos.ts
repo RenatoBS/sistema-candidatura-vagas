@@ -30,6 +30,7 @@ import type {
   VagaHabilidadeRegistro,
   VagaRegistro,
 } from './vagas-tipos';
+import type { CanalEntrevista, EntrevistaRegistro, StatusEntrevista } from './entrevistas-tipos';
 
 export type {
   CandidaturaRegistro,
@@ -67,6 +68,7 @@ export type {
   VagaHabilidadeRegistro,
   VagaRegistro,
 } from './vagas-tipos';
+export type { CanalEntrevista, EntrevistaRegistro, StatusEntrevista } from './entrevistas-tipos';
 
 export interface ContextoTenant {
   empresaId?: string;
@@ -293,6 +295,7 @@ export interface RespostaSensivel {
   confiancaTranscricao?: number | null;
   statusTranscricao?: 'PENDENTE' | 'PROCESSANDO' | 'CONCLUIDA' | 'FALHA';
   revisaoHumanaNecessaria?: boolean;
+  parcial?: boolean;
 }
 
 export interface VinculoUsuario {
@@ -393,12 +396,28 @@ export interface Repositorio {
   ): Promise<InstanciaRegistro | null>;
   buscarInstanciaPorId(id: string, ctx: ContextoTenant): Promise<InstanciaRegistro | null>;
   listarInstancias(ctx: ContextoTenant): Promise<InstanciaRegistro[]>;
+  criarEntrevista(dados: EntrevistaRegistro, ctx: ContextoTenant): Promise<EntrevistaRegistro>;
+  buscarEntrevista(id: string, ctx: ContextoTenant): Promise<EntrevistaRegistro | null>;
+  buscarEntrevistaPorCandidaturaEtapa(
+    candidaturaId: string,
+    etapaId: string,
+    ctx: ContextoTenant,
+  ): Promise<EntrevistaRegistro | null>;
+  atualizarEntrevista(
+    id: string,
+    patch: Partial<EntrevistaRegistro>,
+    ctx: ContextoTenant,
+    esperadoAtualizadoEm?: Date,
+  ): Promise<EntrevistaRegistro | null>;
+  listarEntrevistas(ctx: ContextoTenant): Promise<EntrevistaRegistro[]>;
+  marcarRespostasParciais(entrevistaId: string, ctx: ContextoTenant): Promise<void>;
   registrarEventoWhatsappEntrada(
     registro: EventoWhatsappEntradaRegistro,
     ctx: ContextoTenant,
   ): Promise<EventoWhatsappEntradaRegistro | null>;
   pausarVagasPublicadas(empresaId: string, quando: Date, ctx: ContextoTenant): Promise<number>;
   buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null>;
+  listarRespostasEntrevista(entrevistaId: string, ctx: ContextoTenant): Promise<RespostaSensivel[]>;
   guardarResposta(resposta: RespostaSensivel): Promise<void>;
   garantirHabilidade(nome: string, categoria?: string): Promise<HabilidadeCatalogo>;
   buscarHabilidade(id: string): Promise<HabilidadeCatalogo | null>;

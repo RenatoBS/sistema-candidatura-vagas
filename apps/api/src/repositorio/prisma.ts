@@ -33,6 +33,8 @@ import type {
   VinculoUsuario,
 } from './tipos';
 import { VagasPrisma } from './vagas-prisma';
+import { EntrevistasPrisma } from './entrevistas-prisma';
+import type { EntrevistaRegistro } from './entrevistas-tipos';
 
 function semId<T extends { id?: string }>(patch: T): Omit<T, 'id'> {
   const copia = { ...patch };
@@ -60,12 +62,14 @@ export class RepositorioPrisma implements Repositorio {
   private readonly candidaturasStore: CandidaturasPrisma;
   private readonly matchStore: MatchPrisma;
   private readonly notificacoesStore: NotificacoesPrisma;
+  private readonly entrevistasStore: EntrevistasPrisma;
 
   constructor(private readonly prisma = new PrismaClient()) {
     this.vagasStore = new VagasPrisma(this.prisma, (ctx, fn) => this.comTenant(ctx, fn));
     this.candidaturasStore = new CandidaturasPrisma((ctx, fn) => this.comTenant(ctx, fn));
     this.matchStore = new MatchPrisma(this.prisma, (ctx, fn) => this.comTenant(ctx, fn));
     this.notificacoesStore = new NotificacoesPrisma((ctx, fn) => this.comTenant(ctx, fn));
+    this.entrevistasStore = new EntrevistasPrisma((ctx, fn) => this.comTenant(ctx, fn));
   }
 
   private async comTenant<T>(
@@ -906,6 +910,7 @@ export class RepositorioPrisma implements Repositorio {
           confiancaTranscricao: true,
           statusTranscricao: true,
           revisaoHumanaNecessaria: true,
+          parcial: true,
         },
       }),
     );
@@ -924,9 +929,63 @@ export class RepositorioPrisma implements Repositorio {
           confiancaTranscricao: resposta.confiancaTranscricao,
           statusTranscricao: resposta.statusTranscricao,
           revisaoHumanaNecessaria: resposta.revisaoHumanaNecessaria,
+          parcial: resposta.parcial,
         },
       }),
     );
+  }
+
+  listarRespostasEntrevista(
+    entrevistaId: string,
+    ctx: ContextoTenant,
+  ): Promise<RespostaSensivel[]> {
+    return this.comTenant(ctx, async (tx) =>
+      tx.resposta.findMany({
+        where: { entrevistaId },
+        select: {
+          id: true,
+          empresaId: true,
+          entrevistaId: true,
+          audioUrl: true,
+          transcricao: true,
+          mensagemIdProvedor: true,
+          duracaoSegundos: true,
+          confiancaTranscricao: true,
+          statusTranscricao: true,
+          revisaoHumanaNecessaria: true,
+          parcial: true,
+        },
+      }),
+    );
+  }
+
+  criarEntrevista(dados: EntrevistaRegistro, ctx: ContextoTenant) {
+    return this.entrevistasStore.criar(dados, ctx);
+  }
+
+  buscarEntrevista(id: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.buscar(id, ctx);
+  }
+
+  buscarEntrevistaPorCandidaturaEtapa(candidaturaId: string, etapaId: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.buscarPorCandidaturaEtapa(candidaturaId, etapaId, ctx);
+  }
+
+  atualizarEntrevista(
+    id: string,
+    patch: Partial<EntrevistaRegistro>,
+    ctx: ContextoTenant,
+    esperadoAtualizadoEm?: Date,
+  ) {
+    return this.entrevistasStore.atualizar(id, patch, ctx, esperadoAtualizadoEm);
+  }
+
+  listarEntrevistas(ctx: ContextoTenant) {
+    return this.entrevistasStore.listar(ctx);
+  }
+
+  marcarRespostasParciais(entrevistaId: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.marcarRespostasParciais(entrevistaId, ctx);
   }
 
   private usuario(usuario: {

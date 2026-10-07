@@ -10,6 +10,7 @@ import { FILA_NOTIFICACOES, processarNotificacao } from './notificacoes-jobs';
 import { FILA_CV, processarJobCurriculo } from './processar-cv';
 import { FILA_STT_TRANSCRICAO } from './triagem-audio';
 import { processarJobTranscricao } from './triagem-jobs';
+import { FILA_TRIAGEM_INATIVIDADE, processarJobInatividade } from './triagem-inatividade';
 import {
   aplicarEventoVaga,
   encerrarInscricoesVaga,
@@ -35,6 +36,7 @@ const filaEmbeddings = new Queue(FILA_EMBEDDINGS, { connection: redisConnection 
 const filaMatch = new Queue(FILA_MATCH, { connection: redisConnection });
 const filaNotificacoes = new Queue(FILA_NOTIFICACOES, { connection: redisConnection });
 const filaStt = new Queue(FILA_STT_TRANSCRICAO, { connection: redisConnection });
+const filaTriagemInatividade = new Queue(FILA_TRIAGEM_INATIVIDADE, { connection: redisConnection });
 
 void filaPrazos.add(
   'reconciliar',
@@ -143,6 +145,13 @@ const workerStt = new Worker(
   },
 );
 
+const workerTriagemInatividade = new Worker(
+  FILA_TRIAGEM_INATIVIDADE,
+  async (job: { data: { entrevistaId: string; ultimaInteracaoEm: string } }) =>
+    processarJobInatividade(job),
+  { connection: redisConnection },
+);
+
 workerNotificacoes.on('failed', (job, err) => {
   logger.error({ jobId: job?.id, name: job?.name, err: err.message }, 'Job de notificação falhou');
 });
@@ -162,6 +171,7 @@ createBullBoard({
     new BullMQAdapter(filaMatch),
     new BullMQAdapter(filaNotificacoes),
     new BullMQAdapter(filaStt),
+    new BullMQAdapter(filaTriagemInatividade),
   ],
   serverAdapter,
 });
@@ -191,6 +201,7 @@ process.on('SIGTERM', async () => {
   await workerMatch.close();
   await workerNotificacoes.close();
   await workerStt.close();
+  await workerTriagemInatividade.close();
   await exampleQueue.close();
   await filaCnpj.close();
   await filaCv.close();
@@ -201,5 +212,6 @@ process.on('SIGTERM', async () => {
   await filaMatch.close();
   await filaNotificacoes.close();
   await filaStt.close();
+  await filaTriagemInatividade.close();
   process.exit(0);
 });

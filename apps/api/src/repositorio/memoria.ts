@@ -33,6 +33,8 @@ import type {
   VinculoUsuario,
 } from './tipos';
 import { VagasMemoria } from './vagas-memoria';
+import { EntrevistasMemoria } from './entrevistas-memoria';
+import type { EntrevistaRegistro } from './entrevistas-tipos';
 
 const CATALOGO_MEMORIA: HabilidadeCatalogo[] = CATALOGO_BASE.map((item, indice) => ({
   ...item,
@@ -109,6 +111,7 @@ export class RepositorioMemoria implements Repositorio {
   instancias = new Map<string, InstanciaRegistro>();
   eventosWhatsappEntrada = new Map<string, EventoWhatsappEntradaRegistro>();
   respostas = new Map<string, RespostaSensivel>();
+  readonly entrevistasStore = new EntrevistasMemoria();
   readonly vagasStore = new VagasMemoria();
   readonly candidaturasStore = new CandidaturasMemoria();
   readonly matchStore = new MatchMemoria({
@@ -141,6 +144,7 @@ export class RepositorioMemoria implements Repositorio {
     this.instancias.clear();
     this.eventosWhatsappEntrada.clear();
     this.respostas.clear();
+    this.entrevistasStore.limpar();
     this.vagasStore.limpar();
     this.candidaturasStore.limpar();
     this.matchStore.limpar();
@@ -849,6 +853,47 @@ export class RepositorioMemoria implements Repositorio {
 
   async guardarResposta(resposta: RespostaSensivel): Promise<void> {
     this.respostas.set(resposta.id, { ...resposta });
+  }
+
+  listarRespostasEntrevista(
+    entrevistaId: string,
+    ctx: ContextoTenant,
+  ): Promise<RespostaSensivel[]> {
+    return this.entrevistasStore.buscar(entrevistaId, ctx).then((entrevista) => {
+      if (!entrevista) return [];
+      return [...this.respostas.values()]
+        .filter((resposta) => resposta.entrevistaId === entrevistaId)
+        .map((resposta) => ({ ...resposta }));
+    });
+  }
+
+  criarEntrevista(dados: EntrevistaRegistro, ctx: ContextoTenant) {
+    return this.entrevistasStore.criar(dados, ctx);
+  }
+
+  buscarEntrevista(id: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.buscar(id, ctx);
+  }
+
+  buscarEntrevistaPorCandidaturaEtapa(candidaturaId: string, etapaId: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.buscarPorCandidaturaEtapa(candidaturaId, etapaId, ctx);
+  }
+
+  atualizarEntrevista(
+    id: string,
+    patch: Partial<EntrevistaRegistro>,
+    ctx: ContextoTenant,
+    esperadoAtualizadoEm?: Date,
+  ) {
+    return this.entrevistasStore.atualizar(id, patch, ctx, esperadoAtualizadoEm);
+  }
+
+  listarEntrevistas(ctx: ContextoTenant) {
+    return this.entrevistasStore.listar(ctx);
+  }
+
+  async marcarRespostasParciais(entrevistaId: string, ctx: ContextoTenant): Promise<void> {
+    await this.entrevistasStore.marcarRespostasParciais(this, entrevistaId, ctx);
   }
 
   private instanciaById(id: string): InstanciaRegistro | null {

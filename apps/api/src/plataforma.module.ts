@@ -99,6 +99,10 @@ import {
   REPOSITORIO,
 } from './tokens';
 import { TranscricaoService } from './triagem/transcricao.service';
+import {
+  AvaliadorTriagemNoop,
+  TriagemInatividadeService,
+} from './triagem/triagem-inatividade.service';
 import { VagasService } from './vagas/vagas.service';
 import { WebhookUazapiService } from './whatsapp/webhook-uazapi.service';
 import { WhatsappService } from './whatsapp/whatsapp.service';
@@ -276,6 +280,8 @@ const whatsappClienteProvider: FactoryProvider = {
     sttProvider,
     conversorAudioProvider,
     TranscricaoService,
+    TriagemInatividadeService,
+    AvaliadorTriagemNoop,
     embeddingsProvider,
     canaisEntregaProvider,
     llmProvider,
