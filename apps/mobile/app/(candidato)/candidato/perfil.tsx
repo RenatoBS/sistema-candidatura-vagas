@@ -75,7 +75,6 @@ export default function PerfilCandidato() {
       <ItemLista titulo={t('candidato.privacidade')} onPress={() => router.push('/candidato/privacidade')} />
       <ItemLista titulo={t('candidato.dados')} onPress={() => router.push('/candidato/dados')} />
       <ItemLista titulo={t('notificacoes.preferencias')} onPress={() => router.push('/candidato/notificacoes-preferencias')} />
-      <Text style={estilos.legenda}>{t('visao.trocar')}</Text>
       <TrocaVisao />
     </Tela>
   );

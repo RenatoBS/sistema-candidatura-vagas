@@ -1,7 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
@@ -9,7 +8,6 @@ import { TrocaVisao } from '@/componentes/TrocaVisao';
 import { Button } from '@/design-system/Button';
 import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
-import { estilos } from '@/design-system/estilos';
 import { Tela } from '@/design-system/Tela';
 
 export default function OnboardingScreen() {
@@ -34,7 +32,6 @@ export default function OnboardingScreen() {
       <Campo label={t('onboarding.nome')} value={nome} onChangeText={setNome} />
       <Button label={t('onboarding.candidato')} onPress={() => void candidato()} />
       <Button label={t('onboarding.empresa')} variante="secundario" onPress={() => router.push('/onboarding/empresa')} />
-      <Text style={estilos.legenda}>{t('visao.trocar')}</Text>
       <TrocaVisao />
     </Tela>
   );
