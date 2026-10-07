@@ -1,5 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text } from 'react-native';
 
@@ -38,6 +38,24 @@ export default function CurriculoCandidato() {
   const [curriculo, setCurriculo] = useState<CurriculoResposta | null>(null);
   const [resumo, setResumo] = useState('');
   const [erro, setErro] = useState('');
+
+  const emProcessamento =
+    curriculo !== null && curriculo.statusProcessamento !== 'CONCLUIDO' && curriculo.statusProcessamento !== 'FALHA';
+
+  // O processamento é assíncrono (worker): consulta até concluir ou falhar.
+  useEffect(() => {
+    if (!emProcessamento || !curriculo) return;
+    const id = curriculo.id;
+    const timer = setTimeout(() => {
+      api<CurriculoResposta>(`/curriculos/${id}`, {}, accessToken)
+        .then((detalhe) => {
+          setCurriculo(detalhe);
+          setResumo((atual) => atual || (detalhe.dadosExtraidos?.resumo ?? ''));
+        })
+        .catch(() => setErro(t('comum.erro')));
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [accessToken, curriculo, emProcessamento, t]);
 
   async function enviar() {
     setErro('');

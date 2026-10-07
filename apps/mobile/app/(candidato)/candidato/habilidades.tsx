@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text } from 'react-native';
 
@@ -29,6 +29,10 @@ export default function HabilidadesCandidato() {
   const [escolhidas, setEscolhidas] = useState<Selecionada[]>([]);
   const [mensagem, setMensagem] = useState('');
   const [erro, setErro] = useState(false);
+
+  useEffect(() => {
+    void carregar().catch(() => undefined);
+  }, [accessToken]);
 
   async function carregar() {
     const resposta = await api<{ catalogo: ItemCatalogo[]; selecionadas: Selecionada[] }>(
