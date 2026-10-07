@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
@@ -11,6 +11,7 @@ import { Cartao } from '@/design-system/Cartao';
 import { EstadoVazio } from '@/design-system/EstadoVazio';
 import { estilos } from '@/design-system/estilos';
 import { Tela } from '@/design-system/Tela';
+import { colors, spacing, tipo } from '@/design-system/tokens';
 import { useConsulta } from '@/hooks/useConsulta';
 
 type Candidatura = {
@@ -31,11 +32,12 @@ export default function Candidaturas() {
 
   return (
     <Tela comAbas>
-      <Cabecalho titulo={t('candidato.candidaturas')} />
+      <Cabecalho titulo={t('candidato.candidaturas')} subtitulo="Tudo o que está acontecendo nos seus processos, em um só lugar." />
       {q.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
       {q.isError ? <EstadoVazio titulo={t('candidato.candidaturasErro')} /> : null}
       {!q.isLoading && !q.isError && lista.length === 0 ? <EstadoVazio titulo={t('candidato.candidaturasVazias')} /> : null}
       {lista.length > 1 ? <Banner tipo="aviso" texto={t('candidato.variosProcessos')} /> : null}
+      {lista.length > 0 ? <View style={styles.secao}><Text style={styles.secaoTitulo}>{t('candidato.seusProcessos')}</Text><Text style={styles.contador}>{t('candidato.contadorProcessos', { count: lista.length })}</Text></View> : null}
       {lista.map((c) => (
         <Cartao key={c.id} onPress={() => router.push(`/candidato/candidaturas/${c.id}`)}>
           <Text style={estilos.tituloItem}>{c.vagaTitulo || c.vaga?.titulo || t('comum.vaga')}</Text>
@@ -46,3 +48,9 @@ export default function Candidaturas() {
     </Tela>
   );
 }
+
+const styles = StyleSheet.create({
+  secao: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.xs },
+  secaoTitulo: { ...tipo.destaque, color: colors.text },
+  contador: { ...tipo.legenda, color: colors.textMuted },
+});

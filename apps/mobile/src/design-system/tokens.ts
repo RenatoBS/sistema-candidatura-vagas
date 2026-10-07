@@ -1,19 +1,24 @@
 import type { TextStyle, ViewStyle } from 'react-native';
 
 export const colors = {
-  primary: '#2563EB',
+  primary: '#3E54D3',
+  primaryStrong: '#293AA8',
+  primarySoft: '#EEF0FF',
   onPrimary: '#FFFFFF',
-  background: '#F8FAFC',
+  background: '#F6F7FB',
   surface: '#FFFFFF',
-  text: '#0F172A',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  danger: '#B91C1C',
-  dangerSurface: '#FEF2F2',
-  warning: '#B45309',
-  warningSurface: '#FFFBEB',
-  success: '#047857',
-  successSurface: '#ECFDF5',
+  surfaceMuted: '#F0F3F9',
+  text: '#16213E',
+  textMuted: '#69758C',
+  border: '#E4E8F1',
+  danger: '#C23B4B',
+  dangerSurface: '#FFF0F2',
+  warning: '#A96608',
+  warningSurface: '#FFF7E8',
+  success: '#0B8060',
+  successSurface: '#E8F8F1',
+  teal: '#0D8D8B',
+  tealSoft: '#E5F7F6',
 };
 
 export const spacing = {
@@ -22,33 +27,35 @@ export const spacing = {
   md: 16,
   lg: 24,
   xl: 32,
+  xxl: 48,
 };
 
 export const radius = {
   sm: 8,
-  md: 12,
-  lg: 16,
+  md: 14,
+  lg: 20,
+  xl: 28,
   pill: 999,
 };
 
 export const toque = {
-  minAltura: 48,
+  minAltura: 52,
 };
 
 export const tipo = {
-  titulo: { fontSize: 28, fontWeight: '700', lineHeight: 34 },
-  secao: { fontSize: 20, fontWeight: '700', lineHeight: 26 },
+  titulo: { fontSize: 32, fontWeight: '800', lineHeight: 38, letterSpacing: -0.6 },
+  secao: { fontSize: 22, fontWeight: '800', lineHeight: 28, letterSpacing: -0.25 },
   corpo: { fontSize: 16, fontWeight: '400', lineHeight: 22 },
-  destaque: { fontSize: 16, fontWeight: '600', lineHeight: 22 },
-  legenda: { fontSize: 13, fontWeight: '500', lineHeight: 18 },
+  destaque: { fontSize: 16, fontWeight: '700', lineHeight: 22 },
+  legenda: { fontSize: 13, fontWeight: '600', lineHeight: 18 },
 } satisfies Record<string, TextStyle>;
 
 export const elevacao = {
   cartao: {
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    shadowColor: '#16213E',
+    shadowOpacity: 0.055,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
 } satisfies Record<string, ViewStyle>;

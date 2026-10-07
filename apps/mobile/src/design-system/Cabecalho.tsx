@@ -37,9 +37,9 @@ export function Cabecalho({ titulo, subtitulo, voltar = false }: CabecalhoProps)
 }
 
 const styles = StyleSheet.create({
-  bloco: { gap: spacing.xs, marginBottom: spacing.sm },
+  bloco: { gap: spacing.xs, marginBottom: spacing.xs },
   titulo: { ...tipo.secao, color: colors.text },
   subtitulo: { ...tipo.corpo, color: colors.textMuted },
-  voltar: { flexDirection: 'row', alignItems: 'center', minHeight: 44, alignSelf: 'flex-start' },
-  voltarTexto: { ...tipo.destaque, color: colors.primary },
+  voltar: { flexDirection: 'row', alignItems: 'center', minHeight: 40, paddingRight: spacing.sm, alignSelf: 'flex-start' },
+  voltarTexto: { ...tipo.legenda, color: colors.primary },
 });

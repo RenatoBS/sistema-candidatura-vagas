@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { colors, elevacao, radius, spacing } from './tokens';
+import { colors, elevacao, radius } from './tokens';
 
 interface CartaoProps {
   children: ReactNode;
@@ -30,10 +30,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.md,
-    gap: spacing.sm,
+    padding: 18,
+    gap: 10,
     ...elevacao.cartao,
   },
-  destaque: { borderLeftWidth: 4, borderLeftColor: colors.primary },
-  pressionado: { opacity: 0.92 },
+  destaque: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  pressionado: { opacity: 0.94, transform: [{ scale: 0.99 }] },
 });
