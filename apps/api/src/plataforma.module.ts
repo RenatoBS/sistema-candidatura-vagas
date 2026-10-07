@@ -51,11 +51,7 @@ import { FilaCnpjBull } from './fila/fila-cnpj';
 import { FilaCurriculoBull } from './fila/fila-curriculo';
 import { FilaMatchBull, type FilaMatch } from './fila/fila-match';
 import { FilaVagasBull } from './fila/fila-vagas';
-import {
-  DeduplicadorWebhookMemoria,
-  DeduplicadorWebhookRedis,
-  FilaWhatsappEntradaBull,
-} from './fila/fila-whatsapp-entrada';
+import { DeduplicadorWebhookRedis, FilaWhatsappEntradaBull } from './fila/fila-whatsapp-entrada';
 import { AuditoriaController } from './http/auditoria.controller';
 import { AuthController } from './http/auth.controller';
 import { AuthGuard } from './http/auth.guard';

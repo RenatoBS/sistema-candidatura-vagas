@@ -1,7 +1,6 @@
 import { Controller, Get, Headers, Inject, Param, Post, Req, Body } from '@nestjs/common';
 
 import type { SessaoRequest } from '../sessao';
-import { CONFIG } from '../tokens';
 import { WebhookUazapiService } from '../whatsapp/webhook-uazapi.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { Publico, Sensivel } from './decoradores';
