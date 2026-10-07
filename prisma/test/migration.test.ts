@@ -53,6 +53,22 @@ describe('migrações Prisma (F2-10)', () => {
     await prisma.$disconnect();
   });
 
+  it('cria índices HNSW de embedding e visibilidade para match opt-in (F6-04)', async () => {
+    const prisma = createPrisma(MIGRATION_DATABASE_URL);
+    const indices = await prisma.$queryRaw<{ indexname: string; indexdef: string }[]>`
+      SELECT indexname, indexdef FROM pg_indexes
+      WHERE indexname IN ('vagas_embedding_hnsw_idx', 'candidatos_embedding_hnsw_idx')
+    `;
+    assert.equal(indices.length, 2);
+    assert.ok(indices.every((indice) => /USING hnsw/.test(indice.indexdef) && /vector_cosine_ops/.test(indice.indexdef)));
+    const padrao = await prisma.$queryRaw<{ column_default: string }[]>`
+      SELECT column_default FROM information_schema.columns
+      WHERE table_name = 'candidatos' AND column_name = 'visivelParaMatch'
+    `;
+    assert.equal(padrao[0]?.column_default, 'false');
+    await prisma.$disconnect();
+  });
+
   it('executa seeds sem erro', () => {
     runSeed();
   });
