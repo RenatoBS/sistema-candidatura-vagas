@@ -1,51 +1,47 @@
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Text } from 'react-native';
+
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { rotuloStatus } from '@/candidatura/regras';
-import { colors, spacing } from '@/design-system/tokens';
+import { Banner } from '@/design-system/Banner';
+import { Cabecalho } from '@/design-system/Cabecalho';
+import { Cartao } from '@/design-system/Cartao';
+import { EstadoVazio } from '@/design-system/EstadoVazio';
+import { estilos } from '@/design-system/estilos';
+import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
-type C = {
+
+type Candidatura = {
   id: string;
   vaga?: { titulo: string };
   status?: string;
   fase?: string;
   rotuloAmigavel?: string;
 };
+
 export default function Candidaturas() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { accessToken } = useAuth();
-  const q = useConsulta<C[]>(['candidaturas'], () =>
-    api<C[]>('/candidatos/me/candidaturas', {}, accessToken),
-  );
-  if (q.isLoading) return <ActivityIndicator style={s.estado} color={colors.primary} />;
-  if (q.isError) return <Text style={s.x}>Não foi possível carregar suas candidaturas.</Text>;
+  const q = useConsulta<Candidatura[]>(['candidaturas'], () => api<Candidatura[]>('/candidatos/me/candidaturas', {}, accessToken));
+  const lista = q.data ?? [];
+
   return (
-    <ScrollView style={s.tela} contentContainerStyle={s.c}>
-      <Text style={s.t}>Minhas candidaturas</Text>
-      {(q.data ?? []).length === 0 ? (
-        <Text style={s.x}>Você ainda não se candidatou a nenhuma vaga.</Text>
-      ) : null}
-      {(q.data ?? []).length > 1 ? <Text style={s.x}>{t('candidato.variosProcessos')}</Text> : null}
-      {(q.data ?? []).map((c) => (
-        <View style={s.card} key={c.id}>
-          <Text style={s.x}>{c.vaga?.titulo ?? 'Vaga'}</Text>
-          <Text style={s.x}>{c.rotuloAmigavel ?? rotuloStatus(c.status, c.fase)}</Text>
-          <Link href={`/candidato/candidaturas/${c.id}`} style={s.link}>
-            Ver detalhes
-          </Link>
-        </View>
+    <Tela comAbas>
+      <Cabecalho titulo={t('candidato.candidaturas')} />
+      {q.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
+      {q.isError ? <EstadoVazio titulo={t('candidato.candidaturasErro')} /> : null}
+      {!q.isLoading && !q.isError && lista.length === 0 ? <EstadoVazio titulo={t('candidato.candidaturasVazias')} /> : null}
+      {lista.length > 1 ? <Banner tipo="aviso" texto={t('candidato.variosProcessos')} /> : null}
+      {lista.map((c) => (
+        <Cartao key={c.id} onPress={() => router.push(`/candidato/candidaturas/${c.id}`)}>
+          <Text style={estilos.tituloItem}>{c.vaga?.titulo ?? t('comum.vaga')}</Text>
+          <Text style={estilos.mudo}>{c.rotuloAmigavel ?? rotuloStatus(c.status, c.fase)}</Text>
+          <Text style={estilos.legenda}>{t('comum.verDetalhes')}</Text>
+        </Cartao>
       ))}
-    </ScrollView>
+    </Tela>
   );
 }
-const s = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: colors.background },
-  c: { padding: spacing.lg, gap: spacing.md },
-  t: { fontSize: 22, fontWeight: '700', color: colors.text },
-  card: { backgroundColor: colors.surface, padding: spacing.md, gap: spacing.sm },
-  x: { color: colors.text },
-  link: { color: colors.primary },
-  estado: { flex: 1 },
-});

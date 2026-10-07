@@ -1,14 +1,17 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Text } from 'react-native';
 
 import { api, ErroApi } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
+import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
-import { colors, spacing } from '@/design-system/tokens';
+import { Cartao } from '@/design-system/Cartao';
+import { estilos } from '@/design-system/estilos';
+import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
 
 interface RespostaTriagem {
@@ -72,41 +75,33 @@ export default function DetalheTriagemScreen() {
   }
 
   return (
-    <ScrollView style={styles.tela} contentContainerStyle={styles.conteudo}>
-      <Text style={styles.titulo}>{t('triagem.detalhe')}</Text>
+    <Tela teclado>
+      <Cabecalho titulo={t('triagem.detalhe')} voltar />
       {erro ? <Banner tipo="erro" texto={erro} /> : null}
-      <Text style={styles.texto}>
+      <Text style={estilos.corpo}>
         {t('triagem.status')}: {dados?.status ?? '—'}
       </Text>
-      <Text style={styles.texto}>
+      <Text style={estilos.corpo}>
         {t('triagem.retries')}: {dados?.retryAtual ?? 0}
       </Text>
-      <Text style={styles.texto}>
+      <Text style={estilos.corpo}>
         {t('triagem.pergunta')}: {dados?.perguntaAtual ?? 0}
       </Text>
       <Campo label={t('triagem.motivo')} value={motivo} onChangeText={setMotivo} />
-      <Campo label={t('triagem.nota')} value={nota} onChangeText={setNota} />
-      <Campo label={t('triagem.justificativa')} value={justificativa} onChangeText={setJustificativa} />
+      <Campo label={t('triagem.nota')} value={nota} onChangeText={setNota} keyboardType="number-pad" />
+      <Campo label={t('triagem.justificativa')} value={justificativa} onChangeText={setJustificativa} multiline />
       {(dados?.respostas ?? []).map((resposta) => (
-        <View key={resposta.id} style={styles.bloco}>
-          <Text style={styles.texto}>
+        <Cartao key={resposta.id}>
+          <Text style={estilos.corpo}>
             {t('triagem.transcricao')}: {resposta.transcricao ?? '—'}
           </Text>
-          <Text style={styles.texto}>
+          <Text style={estilos.mudo}>
             {t('triagem.nota')}: {resposta.nota ?? '—'} ({resposta.notaOrigem ?? '—'})
           </Text>
           <Button label={t('triagem.audio')} variante="secundario" onPress={() => void ouvir(resposta.id)} />
           <Button label={t('triagem.revisar')} onPress={() => void revisar(resposta.id)} />
-        </View>
+        </Cartao>
       ))}
-    </ScrollView>
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: colors.background },
-  conteudo: { padding: spacing.lg, gap: spacing.sm },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
-  texto: { color: colors.text },
-  bloco: { gap: spacing.sm, marginTop: spacing.md },
-});

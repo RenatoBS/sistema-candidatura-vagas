@@ -1,6 +1,7 @@
-import { StyleSheet, Text, TextInput } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { colors, spacing } from './tokens';
+import { estilos } from './estilos';
+import { colors, radius, spacing, tipo, toque } from './tokens';
 
 interface CampoProps {
   label: string;
@@ -10,6 +11,8 @@ interface CampoProps {
   autoCapitalize?: 'none' | 'sentences';
   placeholder?: string;
   multiline?: boolean;
+  erro?: string;
+  keyboardType?: 'default' | 'decimal-pad' | 'email-address' | 'number-pad';
 }
 
 export function Campo({
@@ -20,33 +23,43 @@ export function Campo({
   autoCapitalize = 'sentences',
   placeholder,
   multiline,
+  erro,
+  keyboardType = 'default',
 }: CampoProps) {
   return (
-    <>
+    <View style={styles.grupo}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
-        style={[styles.input, multiline ? styles.multilinha : null]}
+        style={[styles.input, multiline ? styles.multilinha : null, erro ? styles.inputErro : null]}
         value={value}
         onChangeText={onChangeText}
         secureTextEntry={secureTextEntry}
         autoCapitalize={autoCapitalize}
         autoCorrect={false}
         placeholder={placeholder}
+        placeholderTextColor={colors.textMuted}
         multiline={multiline}
+        keyboardType={keyboardType}
       />
-    </>
+      {erro ? <Text style={estilos.erro}>{erro}</Text> : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  label: { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.sm },
+  grupo: { gap: spacing.xs, alignSelf: 'stretch' },
+  label: { ...tipo.legenda, color: colors.text },
   input: {
+    minHeight: toque.minAltura,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: spacing.sm,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     color: colors.text,
+    ...tipo.corpo,
   },
-  multilinha: { minHeight: 96, textAlignVertical: 'top' },
+  inputErro: { borderColor: colors.danger },
+  multilinha: { minHeight: 120, textAlignVertical: 'top' },
 });

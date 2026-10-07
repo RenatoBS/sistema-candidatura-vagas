@@ -1,10 +1,12 @@
-import { Link, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, Text } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
-import { colors, spacing } from '@/design-system/tokens';
+import { Cabecalho } from '@/design-system/Cabecalho';
+import { EstadoVazio } from '@/design-system/EstadoVazio';
+import { ItemLista } from '@/design-system/ItemLista';
+import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
 
 interface TriagemResumo {
@@ -16,6 +18,7 @@ interface TriagemResumo {
 
 export default function TriagensDaVaga() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { sessao, accessToken } = useAuth();
   const empresaId = sessao?.empresaAtivaId ?? sessao?.empresas[0]?.empresaId ?? '';
@@ -27,22 +30,18 @@ export default function TriagensDaVaga() {
   const itens = consulta.data?.itens ?? [];
 
   return (
-    <ScrollView style={styles.tela} contentContainerStyle={styles.conteudo}>
-      <Text style={styles.titulo}>{t('triagem.titulo')}</Text>
-      {itens.length === 0 ? <Text style={styles.texto}>{t('triagem.vazia')}</Text> : null}
+    <Tela>
+      <Cabecalho titulo={t('triagem.titulo')} voltar />
+      {consulta.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
+      {!consulta.isLoading && itens.length === 0 ? <EstadoVazio titulo={t('triagem.vazia')} /> : null}
       {itens.map((item) => (
-        <Link key={item.id} href={`/empresa/triagens/${item.id}`} style={styles.link}>
-          {`${t('triagem.status')}: ${item.status} · ${t('triagem.retries')}: ${item.retryAtual}`}
-        </Link>
+        <ItemLista
+          key={item.id}
+          titulo={`${t('triagem.status')}: ${item.status}`}
+          detalhe={`${t('triagem.retries')}: ${item.retryAtual}`}
+          onPress={() => router.push(`/empresa/triagens/${item.id}`)}
+        />
       ))}
-    </ScrollView>
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: colors.background },
-  conteudo: { padding: spacing.lg, gap: spacing.sm },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
-  texto: { color: colors.text },
-  link: { color: colors.primary, fontSize: 16 },
-});

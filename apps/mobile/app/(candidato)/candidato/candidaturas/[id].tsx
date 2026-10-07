@@ -1,11 +1,20 @@
-import { Link, useLocalSearchParams } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { Text } from 'react-native';
+
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { rotuloStatus } from '@/candidatura/regras';
-import { colors, spacing } from '@/design-system/tokens';
+import { Button } from '@/design-system/Button';
+import { Cabecalho } from '@/design-system/Cabecalho';
+import { Chip } from '@/design-system/Chip';
+import { estilos } from '@/design-system/estilos';
+import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
+
 export default function Detalhe() {
+  const { t } = useTranslation();
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { accessToken } = useAuth();
   const q = useConsulta<{
@@ -14,22 +23,17 @@ export default function Detalhe() {
     fase?: string;
     rotuloAmigavel?: string;
   }>(['candidatura', id ?? ''], () => api(`/candidatos/me/candidaturas/${id}`, {}, accessToken));
+  const rotulo = q.data?.rotuloAmigavel ?? rotuloStatus(q.data?.status, q.data?.fase);
+  const podeVoz = q.data?.status === 'ENTREVISTA_VOZ' || q.data?.status === 'TRIAGEM_CONCLUIDA';
+
   return (
-    <View style={s.t}>
-      <Text style={s.h}>{q.data?.vaga?.titulo ?? 'Candidatura'}</Text>
-      <Text style={s.x}>
-        {q.data?.rotuloAmigavel ?? rotuloStatus(q.data?.status, q.data?.fase)}
-      </Text>
-      {q.data?.status === 'ENTREVISTA_VOZ' || q.data?.status === 'TRIAGEM_CONCLUIDA' ? (
-        <Link href={`/candidato/voz/${id}`}>
-          <Text style={s.x}>Entrevista por voz</Text>
-        </Link>
+    <Tela>
+      <Cabecalho titulo={q.data?.vaga?.titulo ?? t('candidato.candidatura')} voltar />
+      {q.isLoading ? <Text style={estilos.mudo}>{t('comum.carregando')}</Text> : null}
+      {rotulo ? <Chip texto={rotulo} /> : null}
+      {podeVoz ? (
+        <Button label={t('candidato.entrevistaVoz')} onPress={() => router.push(`/candidato/voz/${id}`)} />
       ) : null}
-    </View>
+    </Tela>
   );
 }
-const s = StyleSheet.create({
-  t: { flex: 1, padding: spacing.lg, backgroundColor: colors.background, gap: spacing.md },
-  h: { fontSize: 22, fontWeight: '700', color: colors.text },
-  x: { color: colors.text },
-});

@@ -1,23 +1,36 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { Alert, Text } from 'react-native';
+
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
+import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
-import { colors, spacing } from '@/design-system/tokens';
+import { Cabecalho } from '@/design-system/Cabecalho';
+import { Cartao } from '@/design-system/Cartao';
+import { Chip } from '@/design-system/Chip';
+import { EstadoVazio } from '@/design-system/EstadoVazio';
+import { estilos } from '@/design-system/estilos';
+import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
+
 type Convite = {
   id: string;
   vaga?: { id: string; titulo: string };
   status?: string;
   expiraEm?: string;
 };
+
 const consentimentos = [{ tipo: 'TERMOS', concedido: true, versaoTermo: '2026-10-06' }];
+
 export default function Convites() {
+  const { t } = useTranslation();
   const { accessToken } = useAuth();
   const [erro, setErro] = useState('');
   const q = useConsulta<{ convites: Convite[] }>(['convites'], () =>
     api<{ convites: Convite[] }>('/candidatos/me/convites', {}, accessToken),
   );
+
   async function agir(id: string, acao: 'aceitar' | 'recusar') {
     try {
       await api(
@@ -30,60 +43,44 @@ export default function Convites() {
       );
       await q.refetch();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Não foi possível concluir.');
+      setErro(e instanceof Error ? e.message : t('comum.erro'));
     }
   }
-  if (q.isLoading) return <ActivityIndicator style={s.estado} color={colors.primary} />;
-  if (q.isError) return <Text style={s.erro}>Não foi possível carregar os convites.</Text>;
+
+  const convites = q.data?.convites ?? [];
+
   return (
-    <ScrollView style={s.tela} contentContainerStyle={s.conteudo}>
-      <Text style={s.titulo}>Convites de match</Text>
-      {erro ? <Text style={s.erro}>{erro}</Text> : null}
-      {(q.data?.convites ?? []).length === 0 ? (
-        <Text style={s.texto}>Você não tem convites pendentes.</Text>
-      ) : null}
-      {(q.data?.convites ?? []).map((c) => (
-        <View style={s.card} key={c.id}>
-          <Text style={s.texto}>{c.vaga?.titulo ?? 'Vaga'}</Text>
-          <Text style={s.texto}>{c.status ?? 'PENDENTE'}</Text>
+    <Tela>
+      <Cabecalho titulo={t('candidato.convitesTitulo')} voltar />
+      {q.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
+      {q.isError ? <EstadoVazio titulo={t('candidato.convitesErro')} /> : null}
+      {erro ? <Banner tipo="erro" texto={erro} /> : null}
+      {!q.isLoading && !q.isError && convites.length === 0 ? <EstadoVazio titulo={t('candidato.convitesVazios')} /> : null}
+      {convites.map((c) => (
+        <Cartao key={c.id}>
+          <Text style={estilos.tituloItem}>{c.vaga?.titulo ?? t('comum.vaga')}</Text>
+          <Chip texto={c.status ?? 'PENDENTE'} />
           <Button
-            label="Aceitar"
+            label={t('comum.aceitar')}
             onPress={() =>
-              Alert.alert(
-                'Aceitar convite',
-                'Ao aceitar, você concorda com os termos da candidatura.',
-                [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Aceitar', onPress: () => void agir(c.id, 'aceitar') },
-                ],
-              )
-            }
-          />
-          <Button
-            label="Recusar"
-            variante="secundario"
-            onPress={() =>
-              Alert.alert('Recusar convite', 'Deseja recusar este convite?', [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                  text: 'Recusar',
-                  style: 'destructive',
-                  onPress: () => void agir(c.id, 'recusar'),
-                },
+              Alert.alert(t('candidato.aceitarConviteTitulo'), t('candidato.aceitarConviteTexto'), [
+                { text: t('comum.cancelar'), style: 'cancel' },
+                { text: t('comum.aceitar'), onPress: () => void agir(c.id, 'aceitar') },
               ])
             }
           />
-        </View>
+          <Button
+            label={t('comum.recusar')}
+            variante="secundario"
+            onPress={() =>
+              Alert.alert(t('candidato.recusarConviteTitulo'), t('candidato.recusarConviteTexto'), [
+                { text: t('comum.cancelar'), style: 'cancel' },
+                { text: t('comum.recusar'), style: 'destructive', onPress: () => void agir(c.id, 'recusar') },
+              ])
+            }
+          />
+        </Cartao>
       ))}
-    </ScrollView>
+    </Tela>
   );
 }
-const s = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: colors.background },
-  conteudo: { padding: spacing.lg, gap: spacing.md },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text },
-  card: { backgroundColor: colors.surface, padding: spacing.md, gap: spacing.sm },
-  texto: { color: colors.text },
-  erro: { color: colors.danger },
-  estado: { flex: 1 },
-});

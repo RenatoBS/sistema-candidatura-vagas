@@ -1,93 +1,71 @@
 import type { NotificacaoDto, NotificacoesResponse } from '@scv/contracts';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { Text } from 'react-native';
+
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { Button } from '@/design-system/Button';
-import { colors, spacing } from '@/design-system/tokens';
+import { Cabecalho } from '@/design-system/Cabecalho';
+import { Cartao } from '@/design-system/Cartao';
+import { EstadoVazio } from '@/design-system/EstadoVazio';
+import { estilos } from '@/design-system/estilos';
+import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
 
-const ROTULOS: Record<string, string> = {
-  CANDIDATO_NOVO: 'Novo candidato',
-  MATCH_FORTE: 'Match forte',
-  CONVITE_MATCH: 'Convite de match',
-};
 export default function Notificacoes() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { accessToken } = useAuth();
-  const consulta = useConsulta<NotificacoesResponse>(['notificacoes'], () =>
-    api<NotificacoesResponse>('/notificacoes', {}, accessToken),
-  );
+  const consulta = useConsulta<NotificacoesResponse>(['notificacoes'], () => api<NotificacoesResponse>('/notificacoes', {}, accessToken));
+
   async function marcar(id?: string) {
-    await api(
-      id ? `/notificacoes/${id}/lida` : '/notificacoes/lidas',
-      { method: 'POST' },
-      accessToken,
-    );
+    await api(id ? `/notificacoes/${id}/lida` : '/notificacoes/lidas', { method: 'POST' }, accessToken);
     await consulta.refetch();
   }
+
   function abrir(item: NotificacaoDto) {
     void marcar(item.id);
     const dados = item.dados;
     const id = String(dados.vagaId ?? dados.candidaturaId ?? dados.sugestaoId ?? '');
-    if (id)
-      router.push(
-        item.tipo === 'CANDIDATO_NOVO' ? `/candidato/candidaturas/${id}` : `/candidato/vagas/${id}`,
-      );
+    if (id) router.push(item.tipo === 'CANDIDATO_NOVO' ? `/candidato/candidaturas/${id}` : `/candidato/vagas/${id}`);
   }
-  if (consulta.isLoading)
-    return <ActivityIndicator style={styles.carregando} color={colors.primary} />;
-  if (consulta.isError)
-    return (
-      <View style={styles.estado}>
-        <Text style={styles.texto}>Não foi possível carregar as notificações.</Text>
-        <Button label="Tentar novamente" onPress={() => void consulta.refetch()} />
-      </View>
-    );
+
   const itens = consulta.data?.itens ?? [];
+  const rotulos: Record<string, string> = {
+    CANDIDATO_NOVO: t('notificacoes.candidatoNovo'),
+    MATCH_FORTE: t('notificacoes.matchForte'),
+    CONVITE_MATCH: t('notificacoes.conviteMatch'),
+  };
+
   return (
-    <ScrollView style={styles.tela} contentContainerStyle={styles.conteudo}>
-      <Text style={styles.titulo}>Central de notificações</Text>
-      <Button label="Marcar todas como lidas" variante="secundario" onPress={() => void marcar()} />
-      {itens.length === 0 ? (
-        <Text style={styles.texto}>Você não tem notificações novas.</Text>
-      ) : (
-        itens.map((item) => (
-          <View
-            key={item.id}
-            style={[styles.card, !item.lida && !item.lidaEm ? styles.naoLida : null]}
-          >
-            <Text style={styles.rotulo}>
-              {item.resumo
-                ? `${item.agrupadas} novos candidatos`
-                : (ROTULOS[item.tipo] ?? 'Atualização')}
-            </Text>
-            <Text style={styles.texto}>
-              {String(
-                item.dados.vagaTitulo ??
-                  (item.resumo
-                    ? 'Novas movimentações na vaga.'
-                    : 'Você recebeu uma nova atualização.'),
-              )}
-            </Text>
-            {!item.lida && !item.lidaEm ? (
-              <Button label="Marcar como lida" onPress={() => void marcar(item.id)} />
-            ) : null}
-            <Button label="Abrir" variante="secundario" onPress={() => abrir(item)} />
-          </View>
-        ))
-      )}
-    </ScrollView>
+    <Tela comAbas>
+      <Cabecalho titulo={t('candidato.notificacoesTitulo')} />
+      {consulta.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
+      {consulta.isError ? (
+        <>
+          <EstadoVazio titulo={t('candidato.notificacoesErro')} />
+          <Button label={t('comum.tentarNovamente')} onPress={() => void consulta.refetch()} />
+        </>
+      ) : null}
+      {!consulta.isLoading && !consulta.isError ? (
+        <Button label={t('comum.marcarTodas')} variante="secundario" onPress={() => void marcar()} />
+      ) : null}
+      {!consulta.isLoading && !consulta.isError && itens.length === 0 ? (
+        <EstadoVazio titulo={t('candidato.notificacoesVazias')} />
+      ) : null}
+      {itens.map((item) => (
+        <Cartao key={item.id} destaque={!item.lida && !item.lidaEm}>
+          <Text style={estilos.tituloItem}>
+            {item.resumo ? t('candidato.novosCandidatos', { n: item.agrupadas }) : (rotulos[item.tipo] ?? t('candidato.atualizacao'))}
+          </Text>
+          <Text style={estilos.mudo}>
+            {String(item.dados.vagaTitulo ?? (item.resumo ? t('candidato.movimentacoes') : t('candidato.novaAtualizacao')))}
+          </Text>
+          {!item.lida && !item.lidaEm ? <Button label={t('comum.marcarLida')} onPress={() => void marcar(item.id)} /> : null}
+          <Button label={t('comum.abrir')} variante="secundario" onPress={() => abrir(item)} />
+        </Cartao>
+      ))}
+    </Tela>
   );
 }
-const styles = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: colors.background },
-  conteudo: { padding: spacing.lg, gap: spacing.md },
-  carregando: { flex: 1 },
-  estado: { flex: 1, justifyContent: 'center', padding: spacing.lg, gap: spacing.md },
-  titulo: { color: colors.text, fontSize: 22, fontWeight: '700' },
-  card: { backgroundColor: colors.surface, padding: spacing.md, gap: spacing.sm },
-  naoLida: { borderLeftColor: colors.primary, borderLeftWidth: 4 },
-  rotulo: { color: colors.primary, fontWeight: '700' },
-  texto: { color: colors.text },
-});

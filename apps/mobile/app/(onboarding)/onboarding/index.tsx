@@ -1,14 +1,14 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { TrocaVisao } from '@/componentes/TrocaVisao';
 import { Button } from '@/design-system/Button';
+import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
-import { colors, spacing } from '@/design-system/tokens';
+import { Tela } from '@/design-system/Tela';
 
 export default function OnboardingScreen() {
   const { t } = useTranslation();
@@ -27,17 +27,12 @@ export default function OnboardingScreen() {
   }
 
   return (
-    <View style={styles.tela}>
-      <Text style={styles.titulo}>{t('onboarding.titulo')}</Text>
+    <Tela teclado>
+      <Cabecalho titulo={t('onboarding.titulo')} />
       <Campo label={t('onboarding.nome')} value={nome} onChangeText={setNome} />
       <Button label={t('onboarding.candidato')} onPress={() => void candidato()} />
-      <Button label={t('onboarding.empresa')} onPress={() => router.push('/onboarding/empresa')} />
+      <Button label={t('onboarding.empresa')} variante="secundario" onPress={() => router.push('/onboarding/empresa')} />
       <TrocaVisao />
-    </View>
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, padding: spacing.lg, backgroundColor: colors.background, gap: spacing.sm },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text },
-});

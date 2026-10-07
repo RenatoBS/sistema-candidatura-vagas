@@ -1,14 +1,14 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, Text } from 'react-native';
 
 import { api } from '@/api/cliente';
 import type { SessaoApp } from '@/auth/acesso';
 import { useAuth } from '@/auth/AuthContext';
 import { Button } from '@/design-system/Button';
+import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
-import { colors, spacing } from '@/design-system/tokens';
+import { Tela } from '@/design-system/Tela';
 
 export default function CadastroEmpresaScreen() {
   const { t } = useTranslation();
@@ -41,20 +41,21 @@ export default function CadastroEmpresaScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.tela}>
-      <Text style={styles.titulo}>{t('onboarding.empresa')}</Text>
+    <Tela teclado>
+      <Cabecalho titulo={t('onboarding.empresa')} voltar />
       <Campo label={t('empresa.razao')} value={razaoSocial} onChangeText={setRazao} />
       <Campo label={t('empresa.fantasia')} value={nomeFantasia} onChangeText={setFantasia} />
       <Campo label={t('empresa.cnpj')} value={cnpj} onChangeText={setCnpj} autoCapitalize="none" />
       <Campo label={t('empresa.dominio')} value={dominio} onChangeText={setDominio} autoCapitalize="none" />
       <Campo label={t('empresa.responsavel')} value={responsavelNome} onChangeText={setResponsavel} />
-      <Campo label={t('empresa.emailResponsavel')} value={responsavelEmail} onChangeText={setEmail} autoCapitalize="none" />
+      <Campo
+        label={t('empresa.emailResponsavel')}
+        value={responsavelEmail}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+      />
       <Button label={t('comum.enviar')} onPress={() => void enviar()} />
-    </ScrollView>
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { padding: spacing.lg, backgroundColor: colors.background },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
-});

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/cliente';
+import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
+import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
-import { colors, spacing } from '@/design-system/tokens';
+import { Tela } from '@/design-system/Tela';
 
 export default function RecuperarScreen() {
   const { t } = useTranslation();
@@ -18,17 +19,11 @@ export default function RecuperarScreen() {
   }
 
   return (
-    <View style={styles.tela}>
-      <Text style={styles.titulo}>{t('auth.recuperar')}</Text>
-      <Campo label={t('auth.email')} value={email} onChangeText={setEmail} autoCapitalize="none" />
+    <Tela teclado>
+      <Cabecalho titulo={t('auth.recuperar')} voltar />
+      <Campo label={t('auth.email')} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
       <Button label={t('comum.enviar')} onPress={() => void enviar()} />
-      {enviado ? <Text style={styles.ok}>{t('auth.redefinirTitulo')}</Text> : null}
-    </View>
+      {enviado ? <Banner tipo="ok" texto={t('auth.redefinirTitulo')} /> : null}
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, padding: spacing.lg, backgroundColor: colors.background },
-  titulo: { fontSize: 24, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
-  ok: { color: colors.success, marginTop: spacing.md },
-});

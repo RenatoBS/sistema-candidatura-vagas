@@ -1,13 +1,16 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text } from 'react-native';
 
 import { api, ErroApi } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
-import { colors, spacing } from '@/design-system/tokens';
+import { Cabecalho } from '@/design-system/Cabecalho';
+import { Cartao } from '@/design-system/Cartao';
+import { estilos } from '@/design-system/estilos';
+import { Tela } from '@/design-system/Tela';
 
 interface VisaoVoz {
   status: string;
@@ -30,11 +33,7 @@ export default function EntrevistaVozScreen() {
   async function preparar() {
     setErro('');
     try {
-      const preparada = await api<{ id: string }>(
-        `/voz/candidaturas/${candidaturaId}/preparar`,
-        { method: 'POST' },
-        accessToken,
-      );
+      const preparada = await api<{ id: string }>(`/voz/candidaturas/${candidaturaId}/preparar`, { method: 'POST' }, accessToken);
       const aceite = await api<{ sessaoId: string; enunciado: string; segundosRestantes: number }>(
         `/voz/entrevistas/${preparada.id}/aceitar`,
         { method: 'POST' },
@@ -82,32 +81,26 @@ export default function EntrevistaVozScreen() {
   }
 
   return (
-    <View style={styles.tela}>
-      <Text style={styles.titulo}>{t('voz.titulo')}</Text>
-      <Text style={styles.texto}>{t('voz.precheck')}</Text>
+    <Tela>
+      <Cabecalho titulo={t('voz.titulo')} subtitulo={t('voz.precheck')} voltar />
       {erro ? <Banner tipo="erro" texto={erro} /> : null}
       {visao?.aviso ? <Banner tipo="aviso" texto={t('voz.aviso')} /> : null}
-      {visao?.reconectando ? <Text style={styles.texto}>{t('voz.reconectar')}</Text> : null}
-      <Text style={styles.texto}>{visao?.pergunta ?? '—'}</Text>
-      <Text style={styles.texto}>
-        {t('voz.tempo')}: {visao?.segundosRestantes ?? '—'}
-      </Text>
+      {visao?.reconectando ? <Text style={estilos.mudo}>{t('voz.reconectar')}</Text> : null}
+      <Cartao>
+        <Text style={estilos.corpo}>{visao?.pergunta ?? '—'}</Text>
+        <Text style={estilos.legenda}>
+          {t('voz.tempo')}: {visao?.segundosRestantes ?? '—'}
+        </Text>
+      </Cartao>
       {!sessaoId ? <Button label={t('voz.titulo')} onPress={() => void preparar()} /> : null}
       {visao?.reconectando ? <Button label={t('voz.reconectar')} onPress={() => void reconectar()} /> : null}
-      {sessaoId && !confirmar ? <Button label={t('voz.encerrar')} onPress={() => setConfirmar(true)} /> : null}
+      {sessaoId && !confirmar ? <Button label={t('voz.encerrar')} variante="perigo" onPress={() => setConfirmar(true)} /> : null}
       {confirmar ? (
-        <View style={styles.bloco}>
-          <Text style={styles.texto}>{t('voz.confirmar')}</Text>
-          <Button label={t('voz.confirmarSim')} onPress={() => void encerrar()} />
-        </View>
+        <Cartao>
+          <Text style={estilos.corpo}>{t('voz.confirmar')}</Text>
+          <Button label={t('voz.confirmarSim')} variante="perigo" onPress={() => void encerrar()} />
+        </Cartao>
       ) : null}
-    </View>
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, padding: spacing.lg, backgroundColor: colors.background, gap: spacing.md },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text },
-  texto: { color: colors.text },
-  bloco: { gap: spacing.sm },
-});

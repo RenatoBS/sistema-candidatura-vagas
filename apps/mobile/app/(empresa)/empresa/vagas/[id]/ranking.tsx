@@ -1,14 +1,17 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Text } from 'react-native';
 
 import { api, ErroApi } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
+import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
-import { colors, spacing } from '@/design-system/tokens';
+import { Cartao } from '@/design-system/Cartao';
+import { estilos } from '@/design-system/estilos';
+import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
 
 interface ItemRanking {
@@ -52,33 +55,33 @@ export default function RankingScreen() {
   }
 
   const itens = consulta.data?.itens ?? [];
+
   return (
-    <ScrollView style={styles.tela} contentContainerStyle={styles.conteudo}>
-      <Text style={styles.titulo}>{t('ranking.titulo')}</Text>
+    <Tela teclado>
+      <Cabecalho titulo={t('ranking.titulo')} voltar />
       {erro ? <Banner tipo="erro" texto={erro} /> : null}
-      {itens.length === 0 ? <Text style={styles.texto}>{t('ranking.vazio')}</Text> : null}
+      {consulta.isLoading ? <Text style={estilos.mudo}>{t('comum.carregando')}</Text> : null}
+      {!consulta.isLoading && itens.length === 0 ? <Text style={estilos.mudo}>{t('ranking.vazio')}</Text> : null}
       {itens.map((item) => (
-        <View key={item.candidaturaId} style={styles.bloco}>
-          <Text style={styles.texto}>{Math.round(item.scoreFinal ?? 0)}/100</Text>
-          <Text style={styles.texto}>
+        <Cartao key={item.candidaturaId}>
+          <Text style={estilos.tituloItem}>{Math.round(item.scoreFinal ?? 0)}/100</Text>
+          <Text style={estilos.mudo}>
             {t('ranking.completude')}: {item.completude ?? 0}
           </Text>
-          <Text style={styles.texto}>{item.explicacao?.texto ?? ''}</Text>
-        </View>
+          <Text style={estilos.corpo}>{item.explicacao?.texto ?? ''}</Text>
+        </Cartao>
       ))}
-      <Text style={styles.texto}>{t('ranking.pesos')}</Text>
+      <Text style={estilos.tituloItem}>{t('ranking.pesos')}</Text>
       {CAMPOS.map((chave) => (
-        <Campo key={chave} label={chave} value={pesos[chave] ?? ''} onChangeText={(valor) => setPesos((atual) => ({ ...atual, [chave]: valor }))} />
+        <Campo
+          key={chave}
+          label={chave}
+          value={pesos[chave] ?? ''}
+          onChangeText={(valor) => setPesos((atual) => ({ ...atual, [chave]: valor }))}
+          keyboardType="number-pad"
+        />
       ))}
       <Button label={t('ranking.salvar')} onPress={() => void salvar()} />
-    </ScrollView>
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: colors.background },
-  conteudo: { padding: spacing.lg, gap: spacing.md },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text },
-  texto: { color: colors.text },
-  bloco: { gap: spacing.sm },
-});

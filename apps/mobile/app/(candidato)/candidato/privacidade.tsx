@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Switch, Text, View } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
+import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
-import { colors, spacing } from '@/design-system/tokens';
+import { Cabecalho } from '@/design-system/Cabecalho';
+import { Cartao } from '@/design-system/Cartao';
+import { LinhaInterruptor } from '@/design-system/LinhaInterruptor';
+import { Tela } from '@/design-system/Tela';
 import { TIPOS_PRIVACIDADE } from '@/perfil/regras';
 
 const VERSAO = '2026-10-06';
@@ -16,6 +19,7 @@ export default function PrivacidadeCandidato() {
   const [concedidos, setConcedidos] = useState<Record<string, boolean>>({});
   const [visivel, setVisivel] = useState(true);
   const [mensagem, setMensagem] = useState('');
+  const [erro, setErro] = useState(false);
 
   async function carregar() {
     const [perfil, lista] = await Promise.all([
@@ -38,38 +42,31 @@ export default function PrivacidadeCandidato() {
           accessToken,
         );
       }
+      setErro(false);
       setMensagem(t('candidato.perfilSalvo'));
     } catch {
+      setErro(true);
       setMensagem(t('comum.erro'));
     }
   }
 
   return (
-    <View style={styles.tela}>
-      <Text style={styles.titulo}>{t('candidato.privacidade')}</Text>
-      <Button label={t('candidato.carregar')} onPress={() => void carregar()} />
-      <View style={styles.linha}>
-        <Text style={styles.texto}>{t('candidato.visivelMatch')}</Text>
-        <Switch value={visivel} onValueChange={setVisivel} />
-      </View>
-      {TIPOS_PRIVACIDADE.map((tipo) => (
-        <View key={tipo} style={styles.linha}>
-          <Text style={styles.texto}>{t(`candidato.consentimento.${tipo}`)}</Text>
-          <Switch
+    <Tela>
+      <Cabecalho titulo={t('candidato.privacidade')} voltar />
+      <Button label={t('candidato.carregar')} variante="secundario" onPress={() => void carregar()} />
+      <Cartao>
+        <LinhaInterruptor label={t('candidato.visivelMatch')} value={visivel} onValueChange={setVisivel} />
+        {TIPOS_PRIVACIDADE.map((tipo) => (
+          <LinhaInterruptor
+            key={tipo}
+            label={t(`candidato.consentimento.${tipo}`)}
             value={Boolean(concedidos[tipo])}
             onValueChange={(valor) => setConcedidos((atual) => ({ ...atual, [tipo]: valor }))}
           />
-        </View>
-      ))}
-      {mensagem ? <Text style={styles.texto}>{mensagem}</Text> : null}
+        ))}
+      </Cartao>
+      {mensagem ? <Banner tipo={erro ? 'erro' : 'ok'} texto={mensagem} /> : null}
       <Button label={t('comum.salvar')} onPress={() => void salvar()} />
-    </View>
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, padding: spacing.lg, backgroundColor: colors.background, gap: spacing.sm },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text },
-  linha: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md },
-  texto: { color: colors.text, flex: 1 },
-});

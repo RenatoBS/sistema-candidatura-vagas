@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
+import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
-import { colors, spacing } from '@/design-system/tokens';
+import { Cabecalho } from '@/design-system/Cabecalho';
+import { Cartao } from '@/design-system/Cartao';
+import { Tela } from '@/design-system/Tela';
+import { colors, tipo } from '@/design-system/tokens';
 import { habilidadesMarcadas } from '@/perfil/regras';
 
 interface ItemCatalogo {
@@ -24,6 +28,7 @@ export default function HabilidadesCandidato() {
   const [catalogo, setCatalogo] = useState<ItemCatalogo[]>([]);
   const [escolhidas, setEscolhidas] = useState<Selecionada[]>([]);
   const [mensagem, setMensagem] = useState('');
+  const [erro, setErro] = useState(false);
 
   async function carregar() {
     const resposta = await api<{ catalogo: ItemCatalogo[]; selecionadas: Selecionada[] }>(
@@ -44,33 +49,30 @@ export default function HabilidadesCandidato() {
   async function salvar() {
     try {
       await api('/candidatos/me/habilidades', { method: 'PUT', body: JSON.stringify({ itens: escolhidas }) }, accessToken);
+      setErro(false);
       setMensagem(t('candidato.perfilSalvo'));
     } catch {
+      setErro(true);
       setMensagem(t('comum.erro'));
     }
   }
 
   return (
-    <View style={styles.tela}>
-      <Text style={styles.titulo}>{t('candidato.habilidades')}</Text>
-      <Button label={t('candidato.carregar')} onPress={() => void carregar()} />
+    <Tela>
+      <Cabecalho titulo={t('candidato.habilidades')} voltar />
+      <Button label={t('candidato.carregar')} variante="secundario" onPress={() => void carregar()} />
       {catalogo.map((item) => {
         const ativa = habilidadesMarcadas(escolhidas, item.id);
         return (
-          <Pressable key={item.id} onPress={() => alternar(item.id)} style={styles.item}>
-            <Text style={{ color: ativa ? colors.primary : colors.text }}>{item.nome}</Text>
+          <Pressable key={item.id} onPress={() => alternar(item.id)}>
+            <Cartao destaque={ativa}>
+              <Text style={{ ...tipo.destaque, color: ativa ? colors.primary : colors.text }}>{item.nome}</Text>
+            </Cartao>
           </Pressable>
         );
       })}
-      {mensagem ? <Text style={styles.mensagem}>{mensagem}</Text> : null}
+      {mensagem ? <Banner tipo={erro ? 'erro' : 'ok'} texto={mensagem} /> : null}
       <Button label={t('comum.salvar')} onPress={() => void salvar()} />
-    </View>
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, padding: spacing.lg, backgroundColor: colors.background, gap: spacing.sm },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text },
-  item: { paddingVertical: spacing.sm },
-  mensagem: { color: colors.text },
-});

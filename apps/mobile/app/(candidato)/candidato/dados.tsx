@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { Text } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
+import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
+import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
-import { colors, spacing } from '@/design-system/tokens';
+import { estilos } from '@/design-system/estilos';
+import { Tela } from '@/design-system/Tela';
 
 export default function DadosCandidato() {
   const { t } = useTranslation();
@@ -14,11 +17,13 @@ export default function DadosCandidato() {
   const [senha, setSenha] = useState('');
   const [pacote, setPacote] = useState('');
   const [mensagem, setMensagem] = useState('');
+  const [erro, setErro] = useState(false);
 
   async function exportar() {
     const dados = await api<unknown>('/lgpd/exportar', { method: 'POST' }, accessToken);
     setPacote(JSON.stringify(dados, null, 2));
     setMensagem('');
+    setErro(false);
   }
 
   async function excluir() {
@@ -28,34 +33,32 @@ export default function DadosCandidato() {
         { method: 'POST', body: JSON.stringify({ senha }) },
         accessToken,
       );
-      await api('/lgpd/excluir', {
-        method: 'POST',
-        headers: { 'x-reauth-token': reauth.reauthToken },
-        body: JSON.stringify({ confirmacao: 'EXCLUIR' }),
-      }, accessToken);
+      await api(
+        '/lgpd/excluir',
+        {
+          method: 'POST',
+          headers: { 'x-reauth-token': reauth.reauthToken },
+          body: JSON.stringify({ confirmacao: 'EXCLUIR' }),
+        },
+        accessToken,
+      );
+      setErro(false);
       setMensagem(t('candidato.dadosExcluidos'));
       setPacote('');
     } catch {
+      setErro(true);
       setMensagem(t('comum.erro'));
     }
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.tela}>
-      <Text style={styles.titulo}>{t('candidato.dados')}</Text>
-      <Text style={styles.texto}>{t('candidato.dadosAjuda')}</Text>
+    <Tela teclado>
+      <Cabecalho titulo={t('candidato.dados')} subtitulo={t('candidato.dadosAjuda')} voltar />
       <Button label={t('candidato.exportar')} onPress={() => void exportar()} />
-      {pacote ? <Text style={styles.pacote}>{pacote}</Text> : null}
+      {pacote ? <Text style={estilos.legenda}>{pacote}</Text> : null}
       <Campo label={t('auth.senha')} value={senha} onChangeText={setSenha} secureTextEntry autoCapitalize="none" />
-      <Button label={t('candidato.excluir')} onPress={() => void excluir()} />
-      {mensagem ? <Text style={styles.texto}>{mensagem}</Text> : null}
-    </ScrollView>
+      <Button label={t('candidato.excluir')} variante="perigo" onPress={() => void excluir()} />
+      {mensagem ? <Banner tipo={erro ? 'erro' : 'ok'} texto={mensagem} /> : null}
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { padding: spacing.lg, backgroundColor: colors.background, gap: spacing.sm },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text },
-  texto: { color: colors.text },
-  pacote: { color: colors.textMuted, fontSize: 12 },
-});

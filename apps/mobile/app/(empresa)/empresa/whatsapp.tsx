@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { Button } from '@/design-system/Button';
-import { colors, spacing } from '@/design-system/tokens';
+import { Cabecalho } from '@/design-system/Cabecalho';
+import { Cartao } from '@/design-system/Cartao';
+import { Chip } from '@/design-system/Chip';
+import { estilos } from '@/design-system/estilos';
+import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
 import { usePermissao } from '@/hooks/usePermissao';
 
@@ -34,11 +38,7 @@ export default function WhatsappEmpresaScreen() {
   }
 
   async function conectar() {
-    const resposta = await api<StatusWhatsapp>(
-      `/empresas/${empresaId}/whatsapp/conectar`,
-      { method: 'POST' },
-      accessToken,
-    );
+    const resposta = await api<StatusWhatsapp>(`/empresas/${empresaId}/whatsapp/conectar`, { method: 'POST' }, accessToken);
     setQr(resposta.qrcode ?? null);
     await consulta.refetch();
   }
@@ -47,27 +47,30 @@ export default function WhatsappEmpresaScreen() {
   const imagem = qr?.startsWith('data:image') ? qr : null;
 
   return (
-    <View style={styles.tela}>
-      <Text style={styles.titulo}>{t('whatsapp.titulo')}</Text>
-      <Text style={styles.texto}>{status ?? '—'}</Text>
-      <Text style={styles.texto}>
-        {t('whatsapp.numero')}: {consulta.data?.numero ?? t('whatsapp.semNumero')}
-      </Text>
-      <Text style={styles.texto}>
-        {t('whatsapp.ultima')}: {consulta.data?.ultimaConexaoEm ?? t('whatsapp.semConexao')}
-      </Text>
+    <Tela>
+      <Cabecalho titulo={t('whatsapp.titulo')} voltar />
+      <Cartao>
+        {status ? <Chip texto={status} /> : null}
+        <Text style={estilos.corpo}>
+          {t('whatsapp.numero')}: {consulta.data?.numero ?? t('whatsapp.semNumero')}
+        </Text>
+        <Text style={estilos.mudo}>
+          {t('whatsapp.ultima')}: {consulta.data?.ultimaConexaoEm ?? t('whatsapp.semConexao')}
+        </Text>
+        {imagem ? <Image source={{ uri: imagem }} style={styles.qr} accessibilityLabel={t('whatsapp.qr')} /> : null}
+        {qr && !imagem ? (
+          <Text style={estilos.mudo}>
+            {t('whatsapp.qr')}: {qr}
+          </Text>
+        ) : null}
+      </Cartao>
       {podeConectar ? <Button label={t('whatsapp.criar')} onPress={() => void criar()} /> : null}
-      {podeConectar ? <Button label={t('whatsapp.conectar')} onPress={() => void conectar()} /> : null}
-      <Button label={t('whatsapp.atualizar')} onPress={() => void consulta.refetch()} />
-      {imagem ? <Image source={{ uri: imagem }} style={styles.qr} /> : null}
-      {qr && !imagem ? <Text style={styles.texto}>{t('whatsapp.qr')}: {qr}</Text> : null}
-    </View>
+      {podeConectar ? <Button label={t('whatsapp.conectar')} variante="secundario" onPress={() => void conectar()} /> : null}
+      <Button label={t('whatsapp.atualizar')} variante="texto" onPress={() => void consulta.refetch()} />
+    </Tela>
   );
 }
 
 const styles = StyleSheet.create({
-  tela: { flex: 1, padding: spacing.lg, backgroundColor: colors.background, gap: spacing.sm },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text },
-  texto: { color: colors.text },
-  qr: { width: 220, height: 220, marginTop: spacing.md },
+  qr: { width: 220, height: 220, alignSelf: 'center' },
 });

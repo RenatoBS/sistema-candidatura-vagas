@@ -1,10 +1,12 @@
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { Button } from '@/design-system/Button';
+import { estilos } from '@/design-system/estilos';
+import { spacing } from '@/design-system/tokens';
 
 export function TrocaVisao() {
   const { sessao, accessToken, entrar } = useAuth();
@@ -24,13 +26,20 @@ export function TrocaVisao() {
     if (visao === 'ADMIN') router.replace('/admin');
   }
 
+  const podeEmpresa = sessao.empresas.length > 0;
+  const podeAdmin = sessao.papeisGlobais.includes('ADMIN_PLATAFORMA');
+  if (!sessao.ehCandidato && !podeEmpresa && !podeAdmin) return null;
+
   return (
-    <View>
-      {sessao.ehCandidato ? <Button label={t('visao.candidato')} onPress={() => void trocar('CANDIDATO')} /> : null}
-      {sessao.empresas.length > 0 ? <Button label={t('visao.empresa')} onPress={() => void trocar('EMPRESA')} /> : null}
-      {sessao.papeisGlobais.includes('ADMIN_PLATAFORMA') ? (
-        <Button label={t('visao.admin')} onPress={() => void trocar('ADMIN')} />
-      ) : null}
+    <View style={styles.grupo}>
+      <Text style={estilos.legenda}>{t('visao.trocar')}</Text>
+      {sessao.ehCandidato ? <Button label={t('visao.candidato')} variante="secundario" onPress={() => void trocar('CANDIDATO')} /> : null}
+      {podeEmpresa ? <Button label={t('visao.empresa')} variante="secundario" onPress={() => void trocar('EMPRESA')} /> : null}
+      {podeAdmin ? <Button label={t('visao.admin')} variante="secundario" onPress={() => void trocar('ADMIN')} /> : null}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  grupo: { gap: spacing.sm },
+});
