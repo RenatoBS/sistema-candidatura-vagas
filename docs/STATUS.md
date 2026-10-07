@@ -1,8 +1,8 @@
 # Status do Projeto — Sistema de Candidatura a Vagas
 
 **Última atualização:** 2026-10-07  
-**Branch ativa:** `feat/f9-ranqueamento`  
-**PR:** Fases 7 e 8 na `main` (#12, #13). Fase 9 em `feat/f9-ranqueamento`.
+**Branch ativa:** `feat/f10-multiprocesso`  
+**PR:** Fases 7, 8 e 9 na `main` (#12, #13, #14). Fase 10 em `feat/f10-multiprocesso`.
 
 ## Status geral
 
@@ -12,7 +12,8 @@
 🟢 **Fase 6 concluída** na `main` (PR [#11](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/11)). ADR 0005 está provisório, aguardando o Renato.  
 🟢 **Fase 7 concluída** na `main` (PR [#12](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/12)). Ficam com o Renato: F7-01, F7-02 (decisão final) e F7-15. ADR 0006 continua provisório.  
 🟢 **Fase 8 concluída** na `main` (PR [#13](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/13)). F8-15 fica com o Renato. ADR 0007 é provisório.  
-🟢 **Fase 9 implementada** na branch `feat/f9-ranqueamento`. Q15 provisório no ADR 0008. Q16 e a aprovação de F9-01 ficam com o Renato.  
+🟢 **Fase 9 concluída** na `main` (PR [#14](https://github.com/RenatoBS/sistema-candidatura-vagas/pull/14)). Q15 provisório no ADR 0008. Q16 e a aprovação de F9-01 ficam com o Renato.  
+🟢 **Fase 10 implementada** na branch `feat/f10-multiprocesso`. Cotas provisórias no ADR 0009. F10-10 fica com o Renato.  
 🟢 **POC 8.1 concluída** na `main` — latência de voz STT→LLM→TTS.
 
 ## Decisões do Renato (registro)
@@ -34,10 +35,10 @@
 |  4   | CRUD de vagas                | ✅ Concluída na `main` |
 |  5   | Perfil do candidato com OCR  | ✅ Concluída na `main` |
 |  6   | Candidatura e notificações   | ✅ Concluída na `main` |
-|  7   | Entrevista WhatsApp (Uazapi) |    🟡 Em andamento     |
-|  8   | Entrevista IA por voz        |      ⬜ Pendente       |
-|  9   | Ranqueamento                 |      ⬜ Pendente       |
-|  10  | Multiprocesso                |      ⬜ Pendente       |
+|  7   | Entrevista WhatsApp (Uazapi) | ✅ Concluída na `main` |
+|  8   | Entrevista IA por voz        | ✅ Concluída na `main` |
+|  9   | Ranqueamento                 | ✅ Concluída na `main` |
+|  10  | Multiprocesso                |  🟡 Implementada na branch |
 
 ## POCs e trabalho paralelo
 
@@ -217,6 +218,23 @@ Decisões provisórias: [ADR 0008](adr/0008-ranqueamento.md). Guia: [fase-9-ranq
 | F9-09 | Relatório de viés                                   |         ✅ Feito         | Cursor      |
 | F9-10 | Prompt sem atributos sensíveis                      |         ✅ Feito         | Cursor      |
 
+## Checklist Fase 10
+
+Decisões provisórias: [ADR 0009](adr/0009-multiprocesso.md). Guia: [fase-10-multiprocesso.md](fase-10-multiprocesso.md).
+
+| ID     | Tarefa                                              |          Status          | Responsável |
+| ------ | --------------------------------------------------- | :----------------------: | ----------- |
+| F10-01 | Isolamento multi-tenant e bypass admin auditado    |         ✅ Feito         | Cursor      |
+| F10-02 | Concorrência (webhook, pausa, fechamento)          |         ✅ Feito         | Cursor      |
+| F10-03 | Cotas por tenant (API, IA, voz)                    |         ✅ Feito         | Cursor      |
+| F10-04 | Autoscaling local (documentação)                   |         ✅ Feito         | Cursor      |
+| F10-05 | Carga local (teste em memória + script k6)         |         ✅ Feito         | Cursor      |
+| F10-06 | Candidato em vários processos                      |         ✅ Feito         | Cursor      |
+| F10-07 | Painel de capacidade                               |         ✅ Feito         | Cursor      |
+| F10-08 | Threat model e hardening local                     |         ✅ Feito         | Cursor      |
+| F10-09 | Runbooks e checklist do piloto                     |         ✅ Feito         | Cursor      |
+| F10-10 | Go/no-go do piloto                                 |   ⏸️ Pendente (pulada)   | Renato      |
+
 ## Documentos de referência
 
 - [Plano Técnico e de Produto](plano-sistema.md)
@@ -229,11 +247,16 @@ Decisões provisórias: [ADR 0008](adr/0008-ranqueamento.md). Guia: [fase-9-ranq
 - [ADR 0006 — Entrevista WhatsApp (provisório)](adr/0006-entrevista-whatsapp.md)
 - [ADR 0007 — Entrevista por voz (provisório)](adr/0007-entrevista-voz.md)
 - [ADR 0008 — Ranqueamento (provisório)](adr/0008-ranqueamento.md)
+- [ADR 0009 — Multiprocesso (provisório)](adr/0009-multiprocesso.md)
 - [Plano restante (Fases 7–10, handoff)](plano-restante.md)
 - [Guia da Fase 6](fase-6-candidatura-notificacoes.md)
 - [Guia da Fase 7](fase-7-entrevista-whatsapp.md)
 - [Guia da Fase 8](fase-8-entrevista-voz.md)
 - [Guia da Fase 9](fase-9-ranqueamento.md)
+- [Guia da Fase 10](fase-10-multiprocesso.md)
+- [Autoscaling local](autoscaling-local.md)
+- [Threat model](threat-model.md)
+- [Checklist do piloto](piloto-checklist.md)
 - [Diagrama ER Fase 2](diagrama-er-fase2.md)
 - [Proteção da branch main](protecao-branch-main.md)
 - [AGENTS.md](../AGENTS.md)

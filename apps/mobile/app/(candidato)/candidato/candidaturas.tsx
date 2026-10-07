@@ -1,4 +1,5 @@
 import { Link } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
@@ -13,6 +14,7 @@ type C = {
   rotuloAmigavel?: string;
 };
 export default function Candidaturas() {
+  const { t } = useTranslation();
   const { accessToken } = useAuth();
   const q = useConsulta<C[]>(['candidaturas'], () =>
     api<C[]>('/candidatos/me/candidaturas', {}, accessToken),
@@ -25,6 +27,7 @@ export default function Candidaturas() {
       {(q.data ?? []).length === 0 ? (
         <Text style={s.x}>Você ainda não se candidatou a nenhuma vaga.</Text>
       ) : null}
+      {(q.data ?? []).length > 1 ? <Text style={s.x}>{t('candidato.variosProcessos')}</Text> : null}
       {(q.data ?? []).map((c) => (
         <View style={s.card} key={c.id}>
           <Text style={s.x}>{c.vaga?.titulo ?? 'Vaga'}</Text>

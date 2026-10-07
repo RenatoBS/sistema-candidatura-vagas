@@ -470,6 +470,8 @@ export interface Repositorio {
   ): Promise<SessaoVozRegistro | null>;
   listarSessoesEntrevista(entrevistaId: string, ctx: ContextoTenant): Promise<SessaoVozRegistro[]>;
   contarSessoesAtivas(ctx: ContextoTenant): Promise<number>;
+  contarSessoesAtivasEmpresa(empresaId: string, ctx: ContextoTenant): Promise<number>;
+  candidatoTemSessaoVozAtiva(candidatoId: string, ctx: ContextoTenant): Promise<boolean>;
   salvarScore(dados: ScoreRegistro, ctx: ContextoTenant): Promise<ScoreRegistro>;
   buscarScore(candidaturaId: string, ctx: ContextoTenant): Promise<ScoreRegistro | null>;
   listarScores(ctx: ContextoTenant): Promise<ScoreRegistro[]>;

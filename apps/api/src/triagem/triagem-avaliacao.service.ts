@@ -11,6 +11,7 @@ import {
 import type { LlmProvider } from '@scv/llm';
 
 import type { Relogio } from '../auth/auth.service';
+import { CotaService } from '../capacidade/cota.service';
 import type { AvaliacaoRegistro, Repositorio, RespostaSensivel } from '../repositorio/tipos';
 import { LLM, RELOGIO, REPOSITORIO } from '../tokens';
 
@@ -22,6 +23,7 @@ export class AvaliacaoTriagemService {
     @Inject(REPOSITORIO) private readonly repo: Repositorio,
     @Inject(LLM) private readonly llm: LlmProvider,
     @Inject(RELOGIO) private readonly relogio: Relogio,
+    @Inject(CotaService) private readonly cotas: CotaService,
   ) {}
 
   async avaliar(respostaId: string): Promise<AvaliacaoRegistro | null> {
@@ -45,6 +47,7 @@ export class AvaliacaoTriagemService {
     const pergunta = resposta.etapaPerguntaId
       ? await this.enunciado(resposta.etapaPerguntaId)
       : { enunciado: 'Pergunta da triagem', rubrica: {} };
+    this.cotas.consumirIa(resposta.empresaId, this.relogio.agora());
     const prompt = montarPromptAvaliacao({
       enunciado: pergunta.enunciado,
       conteudo,

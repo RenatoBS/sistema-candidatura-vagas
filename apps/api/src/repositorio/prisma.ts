@@ -1106,6 +1106,14 @@ export class RepositorioPrisma implements Repositorio {
     return this.entrevistasStore.contarAtivas(ctx);
   }
 
+  contarSessoesAtivasEmpresa(empresaId: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.contarAtivasEmpresa(empresaId, ctx);
+  }
+
+  candidatoTemSessaoVozAtiva(candidatoId: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.candidatoTemSessaoAtiva(candidatoId, ctx);
+  }
+
   async salvarScore(dados: ScoreRegistro, ctx: ContextoTenant): Promise<ScoreRegistro> {
     const salva = await this.comTenant(ctx, async (tx) => {
       const existente = await tx.score.findFirst({ where: { candidaturaId: dados.candidaturaId } });

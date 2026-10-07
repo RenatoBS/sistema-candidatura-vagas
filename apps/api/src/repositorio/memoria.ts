@@ -1005,6 +1005,21 @@ export class RepositorioMemoria implements Repositorio {
     return this.entrevistasStore.contarAtivas(ctx);
   }
 
+  contarSessoesAtivasEmpresa(empresaId: string, ctx: ContextoTenant) {
+    return this.entrevistasStore.contarAtivasEmpresa(empresaId, ctx);
+  }
+
+  async candidatoTemSessaoVozAtiva(candidatoId: string, ctx: ContextoTenant): Promise<boolean> {
+    for (const sessao of this.entrevistasStore.sessoes.values()) {
+      if (sessao.status !== 'ATIVA' && sessao.status !== 'RECONECTANDO') continue;
+      const entrevista = await this.buscarEntrevista(sessao.entrevistaId, ctx);
+      if (!entrevista) continue;
+      const candidatura = await this.buscarCandidatura(entrevista.candidaturaId, ctx);
+      if (candidatura?.candidatoId === candidatoId) return true;
+    }
+    return false;
+  }
+
   async salvarScore(dados: ScoreRegistro, ctx: ContextoTenant): Promise<ScoreRegistro> {
     const candidatura = await this.buscarCandidatura(dados.candidaturaId, ctx);
     if (!candidatura) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'candidatura não encontrada');

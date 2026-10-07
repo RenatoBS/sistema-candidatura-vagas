@@ -51,6 +51,11 @@ export function ctxDe(sessao: SessaoRequest, empresaId?: string): ContextoTenant
   };
 }
 
+/** Admin com MFA acessando empresa da qual não é membro. */
+export function deveAuditarBypass(sessao: SessaoRequest, auditar: boolean): boolean {
+  return auditar && bypassAdmin(sessao.ator) && sessao.membro === null;
+}
+
 export function papelAuditoria(sessao: SessaoRequest): string {
   if (sessao.usuario.papeisGlobais.includes('ADMIN_PLATAFORMA') && sessao.visao === 'ADMIN') {
     return 'ADMIN_PLATAFORMA';

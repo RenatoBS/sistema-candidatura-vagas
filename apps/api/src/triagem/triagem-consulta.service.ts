@@ -7,7 +7,7 @@ import { AuditoriaService } from '../auditoria/auditoria.service';
 import type { Relogio } from '../auth/auth.service';
 import { ErroAplicacao } from '../erros';
 import type { Repositorio } from '../repositorio/tipos';
-import { ctxDe, exigir, montarAtor, papelAuditoria, type SessaoRequest } from '../sessao';
+import { ctxDe, deveAuditarBypass, exigir, montarAtor, papelAuditoria, type SessaoRequest } from '../sessao';
 import { ARMAZENAMENTO, RELOGIO, REPOSITORIO } from '../tokens';
 
 const EXPIRA_AUDIO_SEGUNDOS = 60;
@@ -23,8 +23,22 @@ export class TriagemConsultaService {
 
   async listar(sessao: SessaoRequest, empresaId: string, vagaId: string) {
     const alinhada = await this.alinhar(sessao, empresaId);
-    exigir(alinhada, 'ver_audio_transcricao');
+    const decisao = exigir(alinhada, 'ver_audio_transcricao');
     const ctx = ctxDe(alinhada, empresaId);
+    if (deveAuditarBypass(alinhada, decisao.auditar)) {
+      await this.auditoria.registrar(
+        {
+          usuarioId: alinhada.usuario.id,
+          empresaId,
+          papel: papelAuditoria(alinhada),
+          acao: 'BYPASS_ADMIN',
+          recursoTipo: 'TRIAGEM',
+          recursoId: vagaId,
+          motivo: 'ver_audio_transcricao',
+        },
+        ctx,
+      );
+    }
     const vaga = await this.repo.buscarVaga(vagaId, ctx);
     if (!vaga || vaga.empresaId !== empresaId) throw new ErroAplicacao('NAO_ENCONTRADO', 404, 'vaga não encontrada');
     const candidaturas = await this.repo.listarCandidaturasVaga(vagaId, ctx);
