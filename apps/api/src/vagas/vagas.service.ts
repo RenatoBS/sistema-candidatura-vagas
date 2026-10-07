@@ -31,6 +31,7 @@ import type { Relogio } from '../auth/auth.service';
 import type { CandidaturaStateMachine, ResumoEfeitoVaga } from '../candidaturas/candidatura-state-machine';
 import type { ConfiguracaoApp } from '../configuracao';
 import { ErroAplicacao } from '../erros';
+import type { FilaMatch } from '../fila/fila-match';
 import type { FilaVagas } from '../fila/fila-vagas';
 import type {
   ContextoTenant,
@@ -70,6 +71,7 @@ export class VagasService {
     private readonly config: ConfiguracaoApp,
     private readonly relogio: Relogio,
     private readonly candidaturas: CandidaturaStateMachine,
+    private readonly filaMatch: FilaMatch,
   ) {}
 
   listarCatalogo(): Promise<Array<{ id: string; nome: string; categoria: string }>> {
@@ -400,6 +402,8 @@ export class VagasService {
     const salva = await this.aplicar(vagaId, resultado, ctx);
     await this.auditar(alinhada, empresaId, vagaId, 'VAGA_PUBLICADA', null, ctx);
     await this.fila.agendarEncerramento(vagaId, salva.prazoInscricoes ?? agora);
+    // O job de embedding enfileira o match vaga → candidatos ao terminar.
+    await this.filaMatch.enfileirarEmbeddingVaga(vagaId);
     return this.detalhe(vagaId, ctx);
   }
 
@@ -411,6 +415,7 @@ export class VagasService {
     const salva = await this.aplicar(vagaId, resultado, ctx);
     await this.auditar(alinhada, empresaId, vagaId, 'VAGA_PRORROGADA', null, ctx);
     if (salva.prazoInscricoes) await this.fila.agendarEncerramento(vagaId, salva.prazoInscricoes);
+    if (vaga.status !== 'PUBLICADA' && salva.status === 'PUBLICADA') await this.filaMatch.enfileirarEmbeddingVaga(vagaId);
     return this.detalhe(vagaId, ctx);
   }
 
@@ -431,7 +436,10 @@ export class VagasService {
     const salva = await this.aplicar(vagaId, resultado, ctx);
     if (resultado.ok && resultado.evento) await this.emitir(vaga, resultado.evento, ctx);
     await this.auditar(alinhada, empresaId, vagaId, 'VAGA_RETOMADA', null, ctx);
-    if (salva.status === 'PUBLICADA' && salva.prazoInscricoes) await this.fila.agendarEncerramento(vagaId, salva.prazoInscricoes);
+    if (salva.status === 'PUBLICADA' && salva.prazoInscricoes) {
+      await this.fila.agendarEncerramento(vagaId, salva.prazoInscricoes);
+      await this.filaMatch.enfileirarEmbeddingVaga(vagaId);
+    }
     if (salva.status === 'INSCRICOES_ENCERRADAS') await this.fila.cancelarEncerramento(vagaId);
     return this.detalhe(vagaId, ctx);
   }

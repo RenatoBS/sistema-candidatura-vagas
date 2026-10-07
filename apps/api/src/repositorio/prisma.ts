@@ -2,6 +2,7 @@ import { Prisma, PrismaClient } from '@prisma/client';
 
 import { ErroAplicacao } from '../erros';
 import { CandidaturasPrisma } from './candidaturas-prisma';
+import { MatchPrisma } from './match-prisma';
 import type {
   AuditoriaRegistro,
   CandidatoRegistro,
@@ -51,10 +52,12 @@ function objetoOuNulo(valor: Prisma.JsonValue | null): Record<string, unknown> |
 export class RepositorioPrisma implements Repositorio {
   private readonly vagasStore: VagasPrisma;
   private readonly candidaturasStore: CandidaturasPrisma;
+  private readonly matchStore: MatchPrisma;
 
   constructor(private readonly prisma = new PrismaClient()) {
     this.vagasStore = new VagasPrisma(this.prisma, (ctx, fn) => this.comTenant(ctx, fn));
     this.candidaturasStore = new CandidaturasPrisma((ctx, fn) => this.comTenant(ctx, fn));
+    this.matchStore = new MatchPrisma(this.prisma, (ctx, fn) => this.comTenant(ctx, fn));
   }
 
   private async comTenant<T>(ctx: ContextoTenant, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
@@ -641,6 +644,34 @@ export class RepositorioPrisma implements Repositorio {
 
   listarHistoricoStatus(candidaturaId: string, ctx: ContextoTenant) {
     return this.candidaturasStore.listarHistoricoStatus(candidaturaId, ctx);
+  }
+
+  salvarEmbeddingVaga(vagaId: string, vetor: number[], ctx: ContextoTenant) {
+    return this.matchStore.salvarEmbeddingVaga(vagaId, vetor, ctx);
+  }
+
+  salvarEmbeddingCandidato(candidatoId: string, vetor: number[]) {
+    return this.matchStore.salvarEmbeddingCandidato(candidatoId, vetor);
+  }
+
+  buscarCandidatosSimilares(vagaId: string, limite: number, ctx: ContextoTenant) {
+    return this.matchStore.buscarCandidatosSimilares(vagaId, limite, ctx);
+  }
+
+  buscarVagasSimilares(candidatoId: string, agora: Date, limite: number) {
+    return this.matchStore.buscarVagasSimilares(candidatoId, agora, limite);
+  }
+
+  registrarSugestao(entrada: Parameters<MatchPrisma['registrarSugestao']>[0], ctx: ContextoTenant) {
+    return this.matchStore.registrarSugestao(entrada, ctx);
+  }
+
+  listarSugestoesVaga(vagaId: string, ctx: ContextoTenant) {
+    return this.matchStore.listarSugestoesVaga(vagaId, ctx);
+  }
+
+  listarSugestoesCandidato(candidatoId: string, ctx: ContextoTenant) {
+    return this.matchStore.listarSugestoesCandidato(candidatoId, ctx);
   }
 
   async buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null> {

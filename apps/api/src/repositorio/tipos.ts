@@ -6,6 +6,13 @@ import type {
   TransicaoCandidaturaRegistro,
 } from './candidaturas-tipos';
 import type {
+  CandidatoSimilar,
+  EntradaSugestaoMatch,
+  ResultadoSugestaoMatch,
+  SugestaoMatchRegistro,
+  VagaSimilar,
+} from './match-tipos';
+import type {
   EtapaPerguntaRegistro,
   EtapaRegistro,
   EventoVagaRegistro,
@@ -22,6 +29,14 @@ export type {
   OrigemCandidatura,
   TransicaoCandidaturaRegistro,
 } from './candidaturas-tipos';
+export type {
+  CandidatoSimilar,
+  EntradaSugestaoMatch,
+  ResultadoSugestaoMatch,
+  StatusSugestaoMatch,
+  SugestaoMatchRegistro,
+  VagaSimilar,
+} from './match-tipos';
 export type {
   EtapaPerguntaRegistro,
   EtapaRegistro,
@@ -389,4 +404,12 @@ export interface Repositorio {
     ctx: ContextoTenant,
   ): Promise<CandidaturaRegistro | null>;
   listarHistoricoStatus(candidaturaId: string, ctx: ContextoTenant): Promise<HistoricoStatusRegistro[]>;
+  /** `false` quando a vaga não existe ou não é visível no contexto. */
+  salvarEmbeddingVaga(vagaId: string, vetor: number[], ctx: ContextoTenant): Promise<boolean>;
+  salvarEmbeddingCandidato(candidatoId: string, vetor: number[]): Promise<boolean>;
+  buscarCandidatosSimilares(vagaId: string, limite: number, ctx: ContextoTenant): Promise<CandidatoSimilar[]>;
+  buscarVagasSimilares(candidatoId: string, agora: Date, limite: number): Promise<VagaSimilar[]>;
+  registrarSugestao(entrada: EntradaSugestaoMatch, ctx: ContextoTenant): Promise<ResultadoSugestaoMatch | null>;
+  listarSugestoesVaga(vagaId: string, ctx: ContextoTenant): Promise<SugestaoMatchRegistro[]>;
+  listarSugestoesCandidato(candidatoId: string, ctx: ContextoTenant): Promise<SugestaoMatchRegistro[]>;
 }

@@ -1,9 +1,17 @@
-import { AntivirusMock, ArmazenamentoMemoria, EmailLogProvider, FakeUazapiInstancia, FonteCnpjControlavel } from '@scv/providers';
+import {
+  AntivirusMock,
+  ArmazenamentoMemoria,
+  EmailLogProvider,
+  FakeEmbeddingProvider,
+  FakeUazapiInstancia,
+  FonteCnpjControlavel,
+} from '@scv/providers';
 
 import type { Relogio } from './auth/auth.service';
 import { DnsControlavel } from './dns';
 import { FilaCnpjMemoria } from './fila/fila-cnpj';
 import { FilaCurriculoMemoria } from './fila/fila-curriculo';
+import { FilaMatchMemoria } from './fila/fila-match';
 import { FilaVagasMemoria } from './fila/fila-vagas';
 import { RepositorioMemoria } from './repositorio/memoria';
 
@@ -17,6 +25,8 @@ export const whatsappTeste = new FakeUazapiInstancia();
 export const armazenamentoTeste = new ArmazenamentoMemoria();
 export const antivirusTeste = new AntivirusMock();
 export const filaVagasTeste = new FilaVagasMemoria();
+export const filaMatchTeste = new FilaMatchMemoria();
+export const embeddingsTeste = new FakeEmbeddingProvider();
 export const relogioTeste: Relogio & { fixo: Date | null; definir(data: Date | null): void } = {
   fixo: null as Date | null,
   agora() {
@@ -34,6 +44,8 @@ export function limparAmbienteTeste(): void {
   filaCnpjTeste.limpar();
   filaCurriculoTeste.limpar();
   filaVagasTeste.limpar();
+  filaMatchTeste.limpar();
+  embeddingsTeste.limpar();
   dnsTeste.limpar();
   whatsappTeste.limpar();
   armazenamentoTeste.limpar();

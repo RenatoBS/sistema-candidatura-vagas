@@ -2,6 +2,7 @@ import { CATALOGO_BASE } from '@scv/domain';
 
 import { ErroAplicacao } from '../erros';
 import { CandidaturasMemoria } from './candidaturas-memoria';
+import { MatchMemoria } from './match-memoria';
 import type {
   AuditoriaRegistro,
   CandidatoRegistro,
@@ -42,7 +43,8 @@ function perfilInicial(candidato: CandidatoRegistro): PerfilCandidato {
     whatsappVerificado: false,
     linkedinUrl: null,
     perfil: {},
-    visivelParaMatch: true,
+    // Q17 (provisória): opt-in, igual ao padrão da coluna no banco.
+    visivelParaMatch: false,
   };
 }
 
@@ -71,6 +73,12 @@ export class RepositorioMemoria implements Repositorio {
   respostas = new Map<string, RespostaSensivel>();
   readonly vagasStore = new VagasMemoria();
   readonly candidaturasStore = new CandidaturasMemoria();
+  readonly matchStore = new MatchMemoria({
+    candidatos: () => this.candidatos.values(),
+    habilidadesCandidato: (candidatoId) => this.listarHabilidades(candidatoId),
+    vagas: () => this.vagasStore.vagas.values(),
+    habilidadesVaga: (vagaId) => this.vagasStore.habilidadesVaga.filter((item) => item.vagaId === vagaId),
+  });
 
   limpar(): void {
     this.usuarios.clear();
@@ -91,6 +99,7 @@ export class RepositorioMemoria implements Repositorio {
     this.respostas.clear();
     this.vagasStore.limpar();
     this.candidaturasStore.limpar();
+    this.matchStore.limpar();
   }
 
   async criarUsuario(dados: UsuarioRegistro): Promise<UsuarioRegistro> {
@@ -324,7 +333,8 @@ export class RepositorioMemoria implements Repositorio {
   }
 
   async buscarCandidatoPorId(id: string): Promise<CandidatoRegistro | null> {
-    const item = this.candidatos.get(id);
+    // `candidatos` é indexado por usuarioId.
+    const item = [...this.candidatos.values()].find((candidato) => candidato.id === id);
     return item ? { id: item.id, usuarioId: item.usuarioId, nome: item.nome } : null;
   }
 
@@ -478,11 +488,17 @@ export class RepositorioMemoria implements Repositorio {
     return this.vagasStore.pausarPublicadas(empresaId, quando, ctx);
   }
 
-  garantirHabilidade(nome: string, categoria?: string) {
+  /** Mesmo catálogo do perfil do candidato, como na tabela única do Prisma. */
+  async garantirHabilidade(nome: string, categoria?: string): Promise<HabilidadeCatalogo> {
+    const chave = nome.trim().toLowerCase();
+    const doCatalogo = CATALOGO_MEMORIA.find((item) => item.nome.toLowerCase() === chave);
+    if (doCatalogo) return { ...doCatalogo, sinonimos: [...doCatalogo.sinonimos] };
     return this.vagasStore.garantirHabilidade(nome, categoria);
   }
 
-  buscarHabilidade(id: string) {
+  async buscarHabilidade(id: string): Promise<HabilidadeCatalogo | null> {
+    const doCatalogo = CATALOGO_MEMORIA.find((item) => item.id === id);
+    if (doCatalogo) return { ...doCatalogo, sinonimos: [...doCatalogo.sinonimos] };
     return this.vagasStore.buscarHabilidade(id);
   }
 
@@ -616,6 +632,34 @@ export class RepositorioMemoria implements Repositorio {
 
   listarHistoricoStatus(candidaturaId: string, ctx: ContextoTenant) {
     return this.candidaturasStore.listarHistoricoStatus(candidaturaId, ctx);
+  }
+
+  salvarEmbeddingVaga(vagaId: string, vetor: number[], ctx: ContextoTenant) {
+    return this.matchStore.salvarEmbeddingVaga(vagaId, vetor, ctx);
+  }
+
+  salvarEmbeddingCandidato(candidatoId: string, vetor: number[]) {
+    return this.matchStore.salvarEmbeddingCandidato(candidatoId, vetor);
+  }
+
+  buscarCandidatosSimilares(vagaId: string, limite: number, ctx: ContextoTenant) {
+    return this.matchStore.buscarCandidatosSimilares(vagaId, limite, ctx);
+  }
+
+  buscarVagasSimilares(candidatoId: string, agora: Date, limite: number) {
+    return this.matchStore.buscarVagasSimilares(candidatoId, agora, limite);
+  }
+
+  registrarSugestao(entrada: Parameters<MatchMemoria['registrarSugestao']>[0], ctx: ContextoTenant) {
+    return this.matchStore.registrarSugestao(entrada, ctx);
+  }
+
+  listarSugestoesVaga(vagaId: string, ctx: ContextoTenant) {
+    return this.matchStore.listarSugestoesVaga(vagaId, ctx);
+  }
+
+  listarSugestoesCandidato(candidatoId: string, ctx: ContextoTenant) {
+    return this.matchStore.listarSugestoesCandidato(candidatoId, ctx);
   }
 
   async buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null> {

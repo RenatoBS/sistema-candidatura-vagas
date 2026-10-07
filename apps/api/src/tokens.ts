@@ -11,3 +11,5 @@ export const ANTIVIRUS = Symbol('ANTIVIRUS');
 export const FILA_CURRICULO = Symbol('FILA_CURRICULO');
 export const FILA_VAGAS = Symbol('FILA_VAGAS');
 export const LLM = Symbol('LLM');
+export const FILA_MATCH = Symbol('FILA_MATCH');
+export const EMBEDDINGS = Symbol('EMBEDDINGS');
