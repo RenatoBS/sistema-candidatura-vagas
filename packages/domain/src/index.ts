@@ -3,7 +3,7 @@
  * Auth, papéis, verificação de empresa e CNPJ local entram na Fase 3.
  */
 
-export const DOMAIN_PACKAGE_VERSION = '0.5.0';
+export const DOMAIN_PACKAGE_VERSION = '0.6.0';
 
 export {
   candidaturaTerminal,
@@ -95,6 +95,23 @@ export {
 } from './habilidades';
 export { contemRanking, emailAnonimizado, NOME_TITULAR_EXCLUIDO } from './lgpd';
 export { interpretarLinkedinUrl, type LeituraLinkedin } from './linkedin';
+export {
+  atendeObrigatorias,
+  calcularCompatibilidade,
+  DIMENSOES_EMBEDDING,
+  LIMIAR_MATCH_FORTE_PADRAO,
+  limiarMatchValido,
+  matchForte,
+  similaridadeCosseno,
+  textoEmbeddingCandidato,
+  textoEmbeddingVaga,
+  vagaElegivelParaMatch,
+  VERSAO_MATCH,
+  type ExplicacaoMatch,
+  type HabilidadeCandidatoMatch,
+  type HabilidadeExigidaMatch,
+  type ResultadoMatch,
+} from './match';
 export {
   baixaConfiancaOcr,
   classificarPaginas,
