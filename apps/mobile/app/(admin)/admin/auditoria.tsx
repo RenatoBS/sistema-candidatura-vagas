@@ -1,9 +1,13 @@
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
-import { colors, spacing } from '@/design-system/tokens';
+import { Cabecalho } from '@/design-system/Cabecalho';
+import { Cartao } from '@/design-system/Cartao';
+import { EstadoVazio } from '@/design-system/EstadoVazio';
+import { estilos } from '@/design-system/estilos';
+import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
 
 interface Evento {
@@ -18,22 +22,21 @@ export default function AuditoriaScreen() {
   const { t } = useTranslation();
   const { accessToken } = useAuth();
   const consulta = useConsulta(['auditoria'], () => api<Evento[]>('/admin/auditoria', {}, accessToken), null);
+  const eventos = consulta.data ?? [];
 
   return (
-    <View style={styles.tela}>
-      <Text style={styles.titulo}>{t('admin.auditoria')}</Text>
-      {(consulta.data ?? []).length === 0 ? <Text style={styles.texto}>{t('admin.vazia')}</Text> : null}
-      {(consulta.data ?? []).map((evento) => (
-        <Text key={evento.id} style={styles.texto}>
-          {evento.acao} · {evento.recursoTipo} · {evento.motivo ?? '—'}
-        </Text>
+    <Tela>
+      <Cabecalho titulo={t('admin.auditoria')} voltar />
+      {consulta.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
+      {!consulta.isLoading && eventos.length === 0 ? <EstadoVazio titulo={t('admin.vazia')} /> : null}
+      {eventos.map((evento) => (
+        <Cartao key={evento.id}>
+          <Text style={estilos.tituloItem}>{evento.acao}</Text>
+          <Text style={estilos.mudo}>
+            {evento.recursoTipo} · {evento.motivo ?? '—'}
+          </Text>
+        </Cartao>
       ))}
-    </View>
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, padding: spacing.lg, backgroundColor: colors.background },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
-  texto: { color: colors.text, marginBottom: spacing.sm },
-});

@@ -1,25 +1,26 @@
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text } from 'react-native';
 
 import { TrocaVisao } from '@/componentes/TrocaVisao';
-import { colors, spacing } from '@/design-system/tokens';
+import { Cabecalho } from '@/design-system/Cabecalho';
+import { estilos } from '@/design-system/estilos';
+import { ItemLista } from '@/design-system/ItemLista';
+import { Tela } from '@/design-system/Tela';
 
 export default function AdminHome() {
   const { t } = useTranslation();
+  const router = useRouter();
+
   return (
-    <View style={styles.tela}>
-      <Text style={styles.titulo}>{t('admin.titulo')}</Text>
-      <Link href="/admin/verificacoes">{t('admin.fila')}</Link>
-      <Link href="/admin/empresas">{t('admin.empresas')}</Link>
-      <Link href="/admin/auditoria">{t('admin.auditoria')}</Link>
-      <Link href="/admin/whatsapp">{t('admin.whatsapp')}</Link>
+    <Tela>
+      <Cabecalho titulo={t('admin.titulo')} />
+      <ItemLista titulo={t('admin.fila')} onPress={() => router.push('/admin/verificacoes')} />
+      <ItemLista titulo={t('admin.empresas')} onPress={() => router.push('/admin/empresas')} />
+      <ItemLista titulo={t('admin.auditoria')} onPress={() => router.push('/admin/auditoria')} />
+      <ItemLista titulo={t('admin.whatsapp')} onPress={() => router.push('/admin/whatsapp')} />
+      <Text style={estilos.legenda}>{t('visao.trocar')}</Text>
       <TrocaVisao />
-    </View>
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, padding: spacing.lg, backgroundColor: colors.background, gap: spacing.md },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text },
-});

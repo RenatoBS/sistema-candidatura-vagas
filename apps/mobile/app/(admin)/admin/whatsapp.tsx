@@ -1,10 +1,15 @@
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { Banner } from '@/design-system/Banner';
-import { colors, spacing } from '@/design-system/tokens';
+import { Cabecalho } from '@/design-system/Cabecalho';
+import { Cartao } from '@/design-system/Cartao';
+import { Chip } from '@/design-system/Chip';
+import { EstadoVazio } from '@/design-system/EstadoVazio';
+import { estilos } from '@/design-system/estilos';
+import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
 
 interface Instancia {
@@ -18,36 +23,27 @@ interface Instancia {
 export default function WhatsappAdminScreen() {
   const { t } = useTranslation();
   const { accessToken } = useAuth();
-  const consulta = useConsulta(
-    ['whatsapp-admin'],
-    () => api<Instancia[]>('/admin/whatsapp/instancias', {}, accessToken),
-    null,
-  );
+  const consulta = useConsulta(['whatsapp-admin'], () => api<Instancia[]>('/admin/whatsapp/instancias', {}, accessToken), null);
+  const instancias = consulta.data ?? [];
 
   return (
-    <View style={styles.tela}>
-      <Text style={styles.titulo}>{t('admin.whatsapp')}</Text>
-      {(consulta.data ?? []).map((instancia) => (
-        <View key={instancia.id} style={styles.item}>
-          <Text style={styles.texto}>
-            {instancia.nomeFantasia ?? '—'} · {instancia.status}
-          </Text>
-          <Text style={styles.texto}>
+    <Tela>
+      <Cabecalho titulo={t('admin.whatsapp')} voltar />
+      {consulta.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
+      {!consulta.isLoading && instancias.length === 0 ? <EstadoVazio titulo={t('admin.vazia')} /> : null}
+      {instancias.map((instancia) => (
+        <Cartao key={instancia.id}>
+          <Text style={estilos.tituloItem}>{instancia.nomeFantasia ?? '—'}</Text>
+          <Chip texto={instancia.status} />
+          <Text style={estilos.mudo}>
             {t('whatsapp.numero')}: {instancia.numero ?? t('whatsapp.semNumero')}
           </Text>
-          <Text style={styles.texto}>
+          <Text style={estilos.mudo}>
             {t('whatsapp.ultima')}: {instancia.ultimaConexaoEm ?? t('whatsapp.semConexao')}
           </Text>
           {instancia.status !== 'CONECTADA' ? <Banner tipo="aviso" texto={t('whatsapp.banner')} /> : null}
-        </View>
+        </Cartao>
       ))}
-    </View>
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, padding: spacing.lg, backgroundColor: colors.background },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
-  texto: { color: colors.text },
-  item: { marginBottom: spacing.md },
-});

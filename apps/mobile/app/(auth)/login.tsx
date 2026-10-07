@@ -1,13 +1,14 @@
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
+import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
+import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
-import { colors, spacing } from '@/design-system/tokens';
+import { Tela } from '@/design-system/Tela';
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -31,20 +32,14 @@ export default function LoginScreen() {
   }
 
   return (
-    <View style={styles.tela}>
-      <Text style={styles.titulo}>{t('auth.loginTitulo')}</Text>
-      <Campo label={t('auth.email')} value={email} onChangeText={setEmail} autoCapitalize="none" />
+    <Tela teclado>
+      <Cabecalho titulo={t('auth.loginTitulo')} subtitulo={t('home.subtitle')} voltar />
+      <Campo label={t('auth.email')} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
       <Campo label={t('auth.senha')} value={senha} onChangeText={setSenha} secureTextEntry autoCapitalize="none" />
-      {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+      {erro ? <Banner tipo="erro" texto={erro} /> : null}
       <Button label={t('home.entrar')} onPress={() => void enviar()} />
-      <Link href="/cadastro">{t('home.cadastrar')}</Link>
-      <Link href="/recuperar">{t('auth.recuperar')}</Link>
-    </View>
+      <Button label={t('home.cadastrar')} variante="texto" onPress={() => router.push('/cadastro')} />
+      <Button label={t('auth.recuperar')} variante="texto" onPress={() => router.push('/recuperar')} />
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, padding: spacing.lg, backgroundColor: colors.background, gap: spacing.sm },
-  titulo: { fontSize: 24, fontWeight: '700', color: colors.text },
-  erro: { color: colors.danger },
-});

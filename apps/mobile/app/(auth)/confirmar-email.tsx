@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/cliente';
+import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
+import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
-import { colors, spacing } from '@/design-system/tokens';
+import { Tela } from '@/design-system/Tela';
 
 export default function ConfirmarEmailScreen() {
   const { t } = useTranslation();
@@ -18,17 +19,11 @@ export default function ConfirmarEmailScreen() {
   }
 
   return (
-    <View style={styles.tela}>
-      <Text style={styles.titulo}>{t('auth.confirmarEmail')}</Text>
+    <Tela teclado>
+      <Cabecalho titulo={t('auth.confirmarEmail')} voltar />
       <Campo label={t('auth.codigo')} value={token} onChangeText={setToken} autoCapitalize="none" />
       <Button label={t('comum.enviar')} onPress={() => void enviar()} />
-      {ok ? <Text style={styles.ok}>{t('auth.confirmarEmail')}</Text> : null}
-    </View>
+      {ok ? <Banner tipo="ok" texto={t('auth.confirmarEmail')} /> : null}
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, padding: spacing.lg, backgroundColor: colors.background },
-  titulo: { fontSize: 24, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
-  ok: { color: colors.success, marginTop: spacing.md },
-});

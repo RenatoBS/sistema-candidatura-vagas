@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { Button } from '@/design-system/Button';
+import { spacing } from '@/design-system/tokens';
 
 export function TrocaVisao() {
   const { sessao, accessToken, entrar } = useAuth();
@@ -25,7 +26,7 @@ export function TrocaVisao() {
   }
 
   return (
-    <View>
+    <View style={styles.grupo}>
       {sessao.ehCandidato ? <Button label={t('visao.candidato')} onPress={() => void trocar('CANDIDATO')} /> : null}
       {sessao.empresas.length > 0 ? <Button label={t('visao.empresa')} onPress={() => void trocar('EMPRESA')} /> : null}
       {sessao.papeisGlobais.includes('ADMIN_PLATAFORMA') ? (
@@ -34,3 +35,7 @@ export function TrocaVisao() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  grupo: { gap: spacing.sm },
+});

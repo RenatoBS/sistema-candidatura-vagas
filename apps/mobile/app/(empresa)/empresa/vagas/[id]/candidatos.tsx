@@ -1,49 +1,49 @@
 import { useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { Text } from 'react-native';
+
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
-import { colors, spacing } from '@/design-system/tokens';
+import { Cabecalho } from '@/design-system/Cabecalho';
+import { Cartao } from '@/design-system/Cartao';
+import { EstadoVazio } from '@/design-system/EstadoVazio';
+import { estilos } from '@/design-system/estilos';
+import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
+
 interface CandidatoVaga {
   id: string;
   candidato?: { nome?: string; primeiroNome?: string };
   status?: string;
   origem?: string;
 }
+
 export default function CandidatosDaVaga() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { accessToken } = useAuth();
   const consulta = useConsulta<CandidatoVaga[]>(['candidatos-vaga', id ?? ''], () =>
     api<CandidatoVaga[]>(`/vagas/${id}/candidaturas`, {}, accessToken),
   );
-  if (consulta.isLoading) return <ActivityIndicator style={styles.estado} color={colors.primary} />;
-  if (consulta.isError)
-    return <Text style={styles.texto}>Não foi possível carregar os candidatos.</Text>;
+  const lista = consulta.data ?? [];
+
   return (
-    <ScrollView style={styles.tela} contentContainerStyle={styles.conteudo}>
-      <Text style={styles.titulo}>Candidatos da vaga</Text>
-      {(consulta.data ?? []).length === 0 ? (
-        <Text style={styles.texto}>Ainda não há candidatos para esta vaga.</Text>
-      ) : (
-        (consulta.data ?? []).map((candidato) => (
-          <View style={styles.card} key={candidato.id}>
-            <Text style={styles.nome}>
-              {candidato.candidato?.nome ?? candidato.candidato?.primeiroNome ?? 'Candidato'}
-            </Text>
-            <Text style={styles.texto}>Status: {candidato.status ?? 'Em análise'}</Text>
-            <Text style={styles.texto}>Origem: {candidato.origem ?? 'Candidatura direta'}</Text>
-          </View>
-        ))
-      )}
-    </ScrollView>
+    <Tela>
+      <Cabecalho titulo={t('vaga.verCandidatos')} voltar />
+      {consulta.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
+      {consulta.isError ? <EstadoVazio titulo={t('vaga.candidatosErro')} /> : null}
+      {!consulta.isLoading && !consulta.isError && lista.length === 0 ? <EstadoVazio titulo={t('vaga.candidatosVazios')} /> : null}
+      {lista.map((candidato) => (
+        <Cartao key={candidato.id}>
+          <Text style={estilos.tituloItem}>{candidato.candidato?.nome ?? candidato.candidato?.primeiroNome ?? t('comum.candidato')}</Text>
+          <Text style={estilos.mudo}>
+            {t('vaga.status')}: {candidato.status ?? t('vaga.emAnalise')}
+          </Text>
+          <Text style={estilos.mudo}>
+            {t('vaga.origem')}: {candidato.origem ?? t('vaga.candidaturaDireta')}
+          </Text>
+        </Cartao>
+      ))}
+    </Tela>
   );
 }
-const styles = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: colors.background },
-  conteudo: { padding: spacing.lg, gap: spacing.md },
-  estado: { flex: 1 },
-  titulo: { color: colors.text, fontSize: 22, fontWeight: '700' },
-  card: { backgroundColor: colors.surface, padding: spacing.md, gap: spacing.sm },
-  nome: { color: colors.text, fontSize: 17, fontWeight: '700' },
-  texto: { color: colors.text },
-});

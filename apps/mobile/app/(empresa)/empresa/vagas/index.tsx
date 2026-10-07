@@ -1,11 +1,17 @@
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { Banner } from '@/design-system/Banner';
-import { colors, spacing } from '@/design-system/tokens';
+import { Button } from '@/design-system/Button';
+import { Cabecalho } from '@/design-system/Cabecalho';
+import { Cartao } from '@/design-system/Cartao';
+import { Chip } from '@/design-system/Chip';
+import { EstadoVazio } from '@/design-system/EstadoVazio';
+import { estilos } from '@/design-system/estilos';
+import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
 
 interface StatusWhatsapp {
@@ -21,6 +27,7 @@ interface VagaResumo {
 
 export default function VagasEmpresaScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { sessao, accessToken } = useAuth();
   const empresaId = sessao?.empresaAtivaId ?? sessao?.empresas[0]?.empresaId ?? '';
   const whatsapp = useConsulta(
@@ -30,28 +37,27 @@ export default function VagasEmpresaScreen() {
   );
   const vagas = useConsulta(['vagas-empresa'], () => api<VagaResumo[]>(`/empresas/${empresaId}/vagas`, {}, accessToken), empresaId);
   const desconectada = whatsapp.data?.status !== 'CONECTADA';
+  const lista = vagas.data ?? [];
 
   return (
-    <View style={styles.tela}>
-      <Text style={styles.titulo}>{t('empresa.vagas')}</Text>
+    <Tela comAbas>
+      <Cabecalho titulo={t('empresa.vagas')} />
       {desconectada ? <Banner tipo="aviso" texto={t('whatsapp.banner')} /> : null}
-      <Link href="/empresa/vagas/nova">{t('vaga.nova')}</Link>
-      {(vagas.data ?? []).length === 0 ? <Text style={styles.texto}>{t('vaga.vazia')}</Text> : null}
-      {(vagas.data ?? []).map((vaga) => (
-        <Link key={vaga.id} href={`/empresa/vagas/${vaga.id}`}>
-          <Text style={styles.item}>
-            {vaga.titulo} — {vaga.status}
-            {vaga.prazoInscricoesBrasilia ? ` — ${vaga.prazoInscricoesBrasilia}` : ''}
-          </Text>
-        </Link>
+      <Button label={t('vaga.nova')} onPress={() => router.push('/empresa/vagas/nova')} />
+      {vagas.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
+      {vagas.isError ? <EstadoVazio titulo={t('comum.erro')} /> : null}
+      {!vagas.isLoading && !vagas.isError && lista.length === 0 ? <EstadoVazio titulo={t('vaga.vazia')} /> : null}
+      {lista.map((vaga) => (
+        <Cartao key={vaga.id} onPress={() => router.push(`/empresa/vagas/${vaga.id}`)}>
+          <Text style={estilos.tituloItem}>{vaga.titulo}</Text>
+          <Chip texto={vaga.status} />
+          {vaga.prazoInscricoesBrasilia ? (
+            <Text style={estilos.legenda}>
+              {t('vaga.ate')}: {vaga.prazoInscricoesBrasilia}
+            </Text>
+          ) : null}
+        </Cartao>
       ))}
-    </View>
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, padding: spacing.lg, backgroundColor: colors.background, gap: spacing.sm },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
-  texto: { color: colors.textMuted },
-  item: { color: colors.text, marginTop: spacing.sm },
-});

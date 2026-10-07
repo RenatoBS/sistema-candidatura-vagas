@@ -1,14 +1,17 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Text } from 'react-native';
 
 import { api, ErroApi } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
+import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
-import { colors, spacing } from '@/design-system/tokens';
+import { Cartao } from '@/design-system/Cartao';
+import { estilos } from '@/design-system/estilos';
+import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
 
 interface RespostaVoz {
@@ -50,27 +53,19 @@ export default function GravacaoVozScreen() {
   }
 
   return (
-    <ScrollView style={styles.tela} contentContainerStyle={styles.conteudo}>
-      <Text style={styles.titulo}>{t('voz.titulo')}</Text>
+    <Tela teclado>
+      <Cabecalho titulo={t('voz.titulo')} voltar />
       {erro ? <Banner tipo="erro" texto={erro} /> : null}
-      <Text style={styles.texto}>{consulta.data?.status ?? '—'}</Text>
+      <Text style={estilos.corpo}>{consulta.data?.status ?? '—'}</Text>
       <Campo label={t('voz.motivo')} value={motivo} onChangeText={setMotivo} />
       <Button label={t('voz.gravacao')} onPress={() => void ouvir()} />
       {(consulta.data?.respostas ?? []).map((resposta) => (
-        <View key={resposta.id} style={styles.bloco}>
-          <Text style={styles.texto}>
+        <Cartao key={resposta.id}>
+          <Text style={estilos.corpo}>
             {t('voz.transcricao')}: {resposta.transcricao ?? '—'}
           </Text>
-        </View>
+        </Cartao>
       ))}
-    </ScrollView>
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: colors.background },
-  conteudo: { padding: spacing.lg, gap: spacing.md },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text },
-  texto: { color: colors.text },
-  bloco: { gap: spacing.sm },
-});

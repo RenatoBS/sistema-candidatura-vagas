@@ -1,13 +1,18 @@
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text } from 'react-native';
 
 import { api, ErroApi } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
+import { TrocaVisao } from '@/componentes/TrocaVisao';
+import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
+import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
-import { colors, spacing } from '@/design-system/tokens';
+import { estilos } from '@/design-system/estilos';
+import { ItemLista } from '@/design-system/ItemLista';
+import { Tela } from '@/design-system/Tela';
 
 interface PerfilResposta {
   nome: string;
@@ -18,11 +23,13 @@ interface PerfilResposta {
 
 export default function PerfilCandidato() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { accessToken } = useAuth();
   const [nome, setNome] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [mensagem, setMensagem] = useState('');
+  const [erro, setErro] = useState(false);
 
   async function carregar() {
     const perfil = await api<PerfilResposta>('/candidatos/me', {}, accessToken);
@@ -33,41 +40,43 @@ export default function PerfilCandidato() {
 
   async function salvar() {
     try {
-      await api('/candidatos/me', {
-        method: 'PUT',
-        body: JSON.stringify({
-          nome,
-          whatsapp: whatsapp.trim() ? whatsapp : null,
-          linkedinUrl: linkedinUrl.trim() ? linkedinUrl : null,
-        }),
-      }, accessToken);
+      await api(
+        '/candidatos/me',
+        {
+          method: 'PUT',
+          body: JSON.stringify({
+            nome,
+            whatsapp: whatsapp.trim() ? whatsapp : null,
+            linkedinUrl: linkedinUrl.trim() ? linkedinUrl : null,
+          }),
+        },
+        accessToken,
+      );
+      setErro(false);
       setMensagem(t('candidato.perfilSalvo'));
-    } catch (erro) {
-      setMensagem(erro instanceof ErroApi && erro.codigo === 'LINKEDIN_INVALIDO' ? t('candidato.linkedinInvalido') : t('comum.erro'));
+    } catch (falha) {
+      setErro(true);
+      setMensagem(falha instanceof ErroApi && falha.codigo === 'LINKEDIN_INVALIDO' ? t('candidato.linkedinInvalido') : t('comum.erro'));
     }
   }
 
   return (
-    <View style={styles.tela}>
-      <Text style={styles.titulo}>{t('candidato.perfil')}</Text>
-      <Button label={t('candidato.carregar')} onPress={() => void carregar()} />
+    <Tela comAbas teclado>
+      <Cabecalho titulo={t('candidato.perfil')} subtitulo={t('candidato.texto')} />
+      <Button label={t('candidato.carregar')} variante="secundario" onPress={() => void carregar()} />
       <Campo label={t('onboarding.nome')} value={nome} onChangeText={setNome} />
       <Campo label={t('candidato.whatsapp')} value={whatsapp} onChangeText={setWhatsapp} autoCapitalize="none" />
       <Campo label={t('candidato.linkedin')} value={linkedinUrl} onChangeText={setLinkedinUrl} autoCapitalize="none" />
-      <Text style={styles.ajuda}>{t('candidato.linkedinAjuda')}</Text>
-      {mensagem ? <Text style={styles.mensagem}>{mensagem}</Text> : null}
+      <Text style={estilos.legenda}>{t('candidato.linkedinAjuda')}</Text>
+      {mensagem ? <Banner tipo={erro ? 'erro' : 'ok'} texto={mensagem} /> : null}
       <Button label={t('comum.salvar')} onPress={() => void salvar()} />
-      <Link href="/candidato/curriculo">{t('candidato.curriculo')}</Link>
-      <Link href="/candidato/habilidades">{t('candidato.habilidades')}</Link>
-      <Link href="/candidato/privacidade">{t('candidato.privacidade')}</Link>
-      <Link href="/candidato/dados">{t('candidato.dados')}</Link>
-    </View>
+      <ItemLista titulo={t('candidato.curriculo')} onPress={() => router.push('/candidato/curriculo')} />
+      <ItemLista titulo={t('candidato.habilidades')} onPress={() => router.push('/candidato/habilidades')} />
+      <ItemLista titulo={t('candidato.privacidade')} onPress={() => router.push('/candidato/privacidade')} />
+      <ItemLista titulo={t('candidato.dados')} onPress={() => router.push('/candidato/dados')} />
+      <ItemLista titulo={t('notificacoes.preferencias')} onPress={() => router.push('/candidato/notificacoes-preferencias')} />
+      <Text style={estilos.legenda}>{t('visao.trocar')}</Text>
+      <TrocaVisao />
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, padding: spacing.lg, backgroundColor: colors.background, gap: spacing.sm },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text },
-  ajuda: { color: colors.textMuted },
-  mensagem: { color: colors.text },
-});

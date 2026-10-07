@@ -1,3 +1,5 @@
+import type { TextStyle, ViewStyle } from 'react-native';
+
 export const colors = {
   primary: '#2563EB',
   onPrimary: '#FFFFFF',
@@ -21,3 +23,32 @@ export const spacing = {
   lg: 24,
   xl: 32,
 };
+
+export const radius = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  pill: 999,
+};
+
+export const toque = {
+  minAltura: 48,
+};
+
+export const tipo = {
+  titulo: { fontSize: 28, fontWeight: '700', lineHeight: 34 },
+  secao: { fontSize: 20, fontWeight: '700', lineHeight: 26 },
+  corpo: { fontSize: 16, fontWeight: '400', lineHeight: 22 },
+  destaque: { fontSize: 16, fontWeight: '600', lineHeight: 22 },
+  legenda: { fontSize: 13, fontWeight: '500', lineHeight: 18 },
+} satisfies Record<string, TextStyle>;
+
+export const elevacao = {
+  cartao: {
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+} satisfies Record<string, ViewStyle>;

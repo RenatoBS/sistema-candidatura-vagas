@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { Button } from '@/design-system/Button';
+import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
-import { colors, spacing } from '@/design-system/tokens';
+import { Cartao } from '@/design-system/Cartao';
+import { EstadoVazio } from '@/design-system/EstadoVazio';
+import { estilos } from '@/design-system/estilos';
+import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
 import { usePermissao } from '@/hooks/usePermissao';
 
@@ -22,11 +26,7 @@ export default function MembrosScreen() {
   const empresaId = sessao?.empresaAtivaId ?? '';
   const pode = usePermissao('gerenciar_membros', empresaId);
   const [email, setEmail] = useState('');
-  const consulta = useConsulta(
-    ['membros'],
-    () => api<Membro[]>(`/empresas/${empresaId}/membros`, {}, accessToken),
-    empresaId,
-  );
+  const consulta = useConsulta(['membros'], () => api<Membro[]>(`/empresas/${empresaId}/membros`, {}, accessToken), empresaId);
 
   async function convidar(papel: 'RECRUTADOR' | 'AVALIADOR') {
     await api(
@@ -37,25 +37,30 @@ export default function MembrosScreen() {
     await consulta.refetch();
   }
 
-  if (!pode) return <Text style={styles.texto}>{t('comum.erro')}</Text>;
+  if (!pode) {
+    return (
+      <Tela>
+        <Cabecalho titulo={t('empresa.membros')} voltar />
+        <EstadoVazio titulo={t('comum.erro')} />
+      </Tela>
+    );
+  }
+
+  const membros = consulta.data ?? [];
 
   return (
-    <View style={styles.tela}>
-      <Text style={styles.titulo}>{t('empresa.membros')}</Text>
-      {(consulta.data ?? []).map((membro) => (
-        <Text key={membro.id} style={styles.texto}>
-          {membro.papeis.join(', ')} · {membro.status}
-        </Text>
+    <Tela teclado>
+      <Cabecalho titulo={t('empresa.membros')} voltar />
+      {membros.length === 0 ? <EstadoVazio titulo={t('admin.vazia')} /> : null}
+      {membros.map((membro) => (
+        <Cartao key={membro.id}>
+          <Text style={estilos.tituloItem}>{membro.papeis.join(', ')}</Text>
+          <Text style={estilos.mudo}>{membro.status}</Text>
+        </Cartao>
       ))}
-      <Campo label={t('auth.email')} value={email} onChangeText={setEmail} autoCapitalize="none" />
+      <Campo label={t('auth.email')} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
       <Button label={t('empresa.papelRecrutador')} onPress={() => void convidar('RECRUTADOR')} />
-      <Button label={t('empresa.papelAvaliador')} onPress={() => void convidar('AVALIADOR')} />
-    </View>
+      <Button label={t('empresa.papelAvaliador')} variante="secundario" onPress={() => void convidar('AVALIADOR')} />
+    </Tela>
   );
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, padding: spacing.lg, backgroundColor: colors.background },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
-  texto: { color: colors.text, marginBottom: spacing.sm },
-});

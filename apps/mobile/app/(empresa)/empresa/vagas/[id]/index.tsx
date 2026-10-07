@@ -1,14 +1,19 @@
-import { Link, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Text } from 'react-native';
 
 import { api, ErroApi } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
 import { Banner } from '@/design-system/Banner';
 import { Button } from '@/design-system/Button';
+import { Cabecalho } from '@/design-system/Cabecalho';
 import { Campo } from '@/design-system/Campo';
-import { colors, spacing } from '@/design-system/tokens';
+import { Cartao } from '@/design-system/Cartao';
+import { Chip } from '@/design-system/Chip';
+import { estilos } from '@/design-system/estilos';
+import { ItemLista } from '@/design-system/ItemLista';
+import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
 import { usePermissao } from '@/hooks/usePermissao';
 
@@ -35,16 +40,13 @@ interface VagaEmpresa {
 
 export default function VagaEmpresaScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { sessao, accessToken } = useAuth();
   const empresaId = sessao?.empresaAtivaId ?? sessao?.empresas[0]?.empresaId ?? '';
   const podeEditar = usePermissao('criar_vaga', empresaId);
   const podePublicar = usePermissao('publicar_vaga', empresaId);
-  const vaga = useConsulta(
-    ['vaga', id ?? ''],
-    () => api<VagaEmpresa>(`/empresas/${empresaId}/vagas/${id}`, {}, accessToken),
-    empresaId,
-  );
+  const vaga = useConsulta(['vaga', id ?? ''], () => api<VagaEmpresa>(`/empresas/${empresaId}/vagas/${id}`, {}, accessToken), empresaId);
   const [pergunta, setPergunta] = useState('');
   const [prazo, setPrazo] = useState('');
   const [motivo, setMotivo] = useState('');
@@ -64,34 +66,20 @@ export default function VagaEmpresaScreen() {
   const etapa = dados?.processo?.etapas[0];
 
   return (
-    <ScrollView style={styles.tela} contentContainerStyle={styles.conteudo}>
-      <Text style={styles.titulo}>{dados?.titulo ?? t('vaga.detalhe')}</Text>
+    <Tela teclado>
+      <Cabecalho titulo={dados?.titulo ?? t('vaga.detalhe')} voltar />
       {erro ? <Banner tipo="erro" texto={erro} /> : null}
-      <View style={styles.bloco}>
-        <Link href={`/empresa/vagas/${id}/candidatos`} style={styles.link}>
-          Ver candidatos da vaga
-        </Link>
-        <Link href={`/empresa/vagas/${id}/sugestoes`} style={styles.link}>
-          Ver sugestões de match
-        </Link>
-        <Link href={`/empresa/vagas/${id}/triagens`} style={styles.link}>
-          {t('vaga.triagens')}
-        </Link>
-        <Link href={`/empresa/vagas/${id}/voz`} style={styles.link}>
-          {t('vaga.voz')}
-        </Link>
-        <Link href={`/empresa/vagas/${id}/ranking`} style={styles.link}>
-          {t('vaga.ranking')}
-        </Link>
-      </View>
-      <Text style={styles.texto}>
-        {t('vaga.status')}: {dados?.status ?? '—'}
-      </Text>
-      <Text style={styles.texto}>
+      <ItemLista titulo={t('vaga.verCandidatos')} onPress={() => router.push(`/empresa/vagas/${id}/candidatos`)} />
+      <ItemLista titulo={t('vaga.verSugestoes')} onPress={() => router.push(`/empresa/vagas/${id}/sugestoes`)} />
+      <ItemLista titulo={t('vaga.triagens')} onPress={() => router.push(`/empresa/vagas/${id}/triagens`)} />
+      <ItemLista titulo={t('vaga.voz')} onPress={() => router.push(`/empresa/vagas/${id}/voz`)} />
+      <ItemLista titulo={t('vaga.ranking')} onPress={() => router.push(`/empresa/vagas/${id}/ranking`)} />
+      <Chip texto={`${t('vaga.status')}: ${dados?.status ?? '—'}`} />
+      <Text style={estilos.mudo}>
         {t('vaga.ate')}: {dados?.prazoInscricoesBrasilia ?? '—'}
       </Text>
       {podeEditar && dados?.status === 'RASCUNHO' ? (
-        <View style={styles.bloco}>
+        <Cartao>
           <Button label={t('vaga.processo')} onPress={() => void agir(`/vagas/${id}/processo`, 'PUT', processoPadrao())} />
           <Campo label={t('vaga.pergunta')} value={pergunta} onChangeText={setPergunta} />
           {etapa ? (
@@ -100,20 +88,28 @@ export default function VagaEmpresaScreen() {
               onPress={() => void agir(`/vagas/${id}/etapas/${etapa.id}/perguntas`, 'POST', { enunciado: pergunta }).then(() => setPergunta(''))}
             />
           ) : null}
-          {etapa ? <Button label={t('vaga.sugerir')} variante="secundario" onPress={() => void agir(`/vagas/${id}/etapas/${etapa.id}/perguntas/sugestoes`, 'POST')} /> : null}
-        </View>
+          {etapa ? (
+            <Button
+              label={t('vaga.sugerir')}
+              variante="secundario"
+              onPress={() => void agir(`/vagas/${id}/etapas/${etapa.id}/perguntas/sugestoes`, 'POST')}
+            />
+          ) : null}
+        </Cartao>
       ) : null}
       {etapa?.perguntas.map((item) => (
-        <Text key={item.id} style={styles.texto}>
-          {item.enunciado} ({item.tempoLimiteEfetivoSegundos}s)
-        </Text>
+        <Cartao key={item.id}>
+          <Text style={estilos.corpo}>
+            {item.enunciado} ({item.tempoLimiteEfetivoSegundos}s)
+          </Text>
+        </Cartao>
       ))}
       {etapa?.sugestoes.map((item) => (
-        <View key={item.id} style={styles.bloco}>
-          <Text style={styles.texto}>{item.enunciado}</Text>
+        <Cartao key={item.id}>
+          <Text style={estilos.corpo}>{item.enunciado}</Text>
           <Button label={t('vaga.aceitar')} onPress={() => void agir(`/perguntas/${item.id}/aceitar`, 'POST', {})} />
           <Button label={t('vaga.descartar')} variante="secundario" onPress={() => void agir(`/perguntas/${item.id}/descartar`, 'POST')} />
-        </View>
+        </Cartao>
       ))}
       <Campo label={t('vaga.prazo')} value={prazo} onChangeText={setPrazo} placeholder={t('vaga.prazoAjuda')} autoCapitalize="none" />
       {dados?.status === 'RASCUNHO' ? (
@@ -134,7 +130,7 @@ export default function VagaEmpresaScreen() {
         <Button label={t('vaga.fechar')} variante="perigo" onPress={() => void agir(`/vagas/${id}/fechar`, 'POST', { motivo })} />
       ) : null}
       <Button label={t('vaga.duplicar')} variante="secundario" onPress={() => void agir(`/vagas/${id}/duplicar`, 'POST')} />
-    </ScrollView>
+    </Tela>
   );
 }
 
@@ -148,12 +144,3 @@ function processoPadrao() {
     ],
   };
 }
-
-const styles = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: colors.background },
-  conteudo: { padding: spacing.lg, gap: spacing.sm },
-  titulo: { fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
-  texto: { color: colors.text },
-  bloco: { gap: spacing.sm, marginTop: spacing.sm },
-  link: { color: colors.primary, fontSize: 16 },
-});

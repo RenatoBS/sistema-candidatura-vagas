@@ -1,55 +1,48 @@
-import { Link } from 'expo-router';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { Text } from 'react-native';
+
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
-import { colors, spacing } from '@/design-system/tokens';
+import { Banner } from '@/design-system/Banner';
+import { Cabecalho } from '@/design-system/Cabecalho';
+import { Cartao } from '@/design-system/Cartao';
+import { EstadoVazio } from '@/design-system/EstadoVazio';
+import { estilos } from '@/design-system/estilos';
+import { Tela } from '@/design-system/Tela';
 import { useConsulta } from '@/hooks/useConsulta';
-type V = { id: string; titulo: string; habilidadesEmComum?: string[] };
+
+type Vaga = { id: string; titulo: string; habilidadesEmComum?: string[] };
+
 export default function Recomendadas() {
+  const { t } = useTranslation();
+  const router = useRouter();
   const { accessToken } = useAuth();
-  const q = useConsulta<{ vagas: V[]; visivelParaMatch: boolean }>(['recomendadas'], () =>
-    api<{ vagas: V[]; visivelParaMatch: boolean }>(
-      '/candidatos/me/vagas-recomendadas',
-      {},
-      accessToken,
-    ),
+  const q = useConsulta<{ vagas: Vaga[]; visivelParaMatch: boolean }>(['recomendadas'], () =>
+    api<{ vagas: Vaga[]; visivelParaMatch: boolean }>('/candidatos/me/vagas-recomendadas', {}, accessToken),
   );
-  if (q.isLoading) return <ActivityIndicator style={s.estado} color={colors.primary} />;
-  if (q.isError) return <Text style={s.x}>Não foi possível carregar as recomendações.</Text>;
+  const vagas = q.data?.vagas ?? [];
+
   return (
-    <ScrollView style={s.tela} contentContainerStyle={s.c}>
-      <Text style={s.t}>Vagas recomendadas</Text>
-      {!q.data?.visivelParaMatch ? (
-        <Text style={s.x}>
-          Ative a visibilidade para match em Privacidade para receber recomendações.
-        </Text>
+    <Tela>
+      <Cabecalho titulo={t('candidato.recomendadas')} voltar />
+      {q.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
+      {q.isError ? <EstadoVazio titulo={t('candidato.recomendadasErro')} /> : null}
+      {q.data && !q.data.visivelParaMatch ? <Banner tipo="aviso" texto={t('candidato.recomendadasPrivacidade')} /> : null}
+      {!q.isLoading && !q.isError && q.data?.visivelParaMatch && vagas.length === 0 ? (
+        <EstadoVazio titulo={t('candidato.recomendadasVazias')} />
       ) : null}
-      {(q.data?.vagas ?? []).length === 0 && q.data?.visivelParaMatch ? (
-        <Text style={s.x}>Nenhuma vaga recomendada no momento.</Text>
-      ) : null}
-      {(q.data?.vagas ?? []).map((v) => (
-        <View style={s.card} key={v.id}>
-          <Text style={s.t2}>{v.titulo}</Text>
-          <Text style={s.x}>
+      {vagas.map((v) => (
+        <Cartao key={v.id} onPress={() => router.push(`/candidato/vagas/${v.id}`)}>
+          <Text style={estilos.tituloItem}>{v.titulo}</Text>
+          <Text style={estilos.mudo}>
             {v.habilidadesEmComum?.length
-              ? `Habilidades em comum: ${v.habilidadesEmComum.join(', ')}`
-              : 'Veja os detalhes desta vaga.'}
+              ? `${t('candidato.habilidadesComum')}: ${v.habilidadesEmComum.join(', ')}`
+              : t('candidato.semDetalhe')}
           </Text>
-          <Link href={`/candidato/vagas/${v.id}`} style={s.link}>
-            Ver vaga
-          </Link>
-        </View>
+          <Text style={estilos.legenda}>{t('candidato.verVaga')}</Text>
+        </Cartao>
       ))}
-    </ScrollView>
+    </Tela>
   );
 }
-const s = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: colors.background },
-  c: { padding: spacing.lg, gap: spacing.md },
-  t: { fontSize: 22, fontWeight: '700', color: colors.text },
-  t2: { fontWeight: '700', color: colors.text },
-  x: { color: colors.text },
-  link: { color: colors.primary },
-  card: { backgroundColor: colors.surface, padding: spacing.md, gap: spacing.sm },
-  estado: { flex: 1 },
-});
