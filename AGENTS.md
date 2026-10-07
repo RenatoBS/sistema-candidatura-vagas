@@ -84,7 +84,7 @@ pnpm --filter @scv/mobile dev
 ## Proibições
 
 - **Nunca** commitar segredos (`.env`, tokens, chaves).
-- **Nunca** fazer merge em `main` (somente Renato).
+- **Nunca** fazer merge em `main` sem autorização do Renato. O Renato autorizou, em 2026-10-06, o merge automático por **squash** com a CI verde no handoff das Fases 7 a 10 (ver `docs/plano-restante.md`). Fora dessa autorização, o merge continua só com o Renato. Nunca force-push na `main`.
 - **Nunca** alterar migrações já aplicadas em produção.
 - **Nunca** usar credenciais de produção.
 - **Nunca** incluir PII em logs ou fixtures.
