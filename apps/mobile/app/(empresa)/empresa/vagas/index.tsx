@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
@@ -12,6 +12,7 @@ import { Chip } from '@/design-system/Chip';
 import { EstadoVazio } from '@/design-system/EstadoVazio';
 import { estilos } from '@/design-system/estilos';
 import { Tela } from '@/design-system/Tela';
+import { colors, spacing, tipo } from '@/design-system/tokens';
 import { useConsulta } from '@/hooks/useConsulta';
 import { useEmpresaAtiva } from '@/hooks/useEmpresaAtiva';
 
@@ -42,16 +43,17 @@ export default function VagasEmpresaScreen() {
 
   return (
     <Tela comAbas>
-      <Cabecalho titulo={t('empresa.vagas')} />
+      <Cabecalho titulo={t('empresa.vagas')} subtitulo="Crie oportunidades e acompanhe cada etapa do processo." />
       {desconectada ? <Banner tipo="aviso" texto={t('whatsapp.banner')} /> : null}
       <Button label={t('vaga.nova')} onPress={() => router.push('/empresa/vagas/nova')} />
+      {!vagas.isLoading && !vagas.isError ? <View style={styles.secao}><Text style={styles.secaoTitulo}>Vagas publicadas</Text><Text style={styles.contador}>{lista.length} {lista.length === 1 ? 'vaga' : 'vagas'}</Text></View> : null}
       {vagas.isLoading ? <EstadoVazio titulo={t('comum.carregando')} /> : null}
       {vagas.isError ? <EstadoVazio titulo={t('comum.erro')} /> : null}
       {!vagas.isLoading && !vagas.isError && lista.length === 0 ? <EstadoVazio titulo={t('vaga.vazia')} /> : null}
       {lista.map((vaga) => (
         <Cartao key={vaga.id} onPress={() => router.push(`/empresa/vagas/${vaga.id}`)}>
           <Text style={estilos.tituloItem}>{vaga.titulo}</Text>
-          <Chip texto={vaga.status} />
+          <Chip texto={vaga.status} tom={vaga.status === 'PUBLICADA' ? 'sucesso' : 'aviso'} />
           {vaga.prazoInscricoesBrasilia ? (
             <Text style={estilos.legenda}>
               {t('vaga.ate')}: {vaga.prazoInscricoesBrasilia}
@@ -62,3 +64,9 @@ export default function VagasEmpresaScreen() {
     </Tela>
   );
 }
+
+const styles = StyleSheet.create({
+  secao: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.xs },
+  secaoTitulo: { ...tipo.destaque, color: colors.text },
+  contador: { ...tipo.legenda, color: colors.textMuted },
+});
