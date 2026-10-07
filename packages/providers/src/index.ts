@@ -15,6 +15,8 @@ export type {
 
 export { criarSttProvider, FakeSttProvider, OpenAiWhisperStt } from './stt';
 export type { ResultadoStt, SttProvider } from './stt';
+export { ConversorAudioFake, FfmpegConversor } from './conversor-audio';
+export type { ConversorAudio } from './conversor-audio';
 export { normalizarWebhookUazapi } from './uazapi-webhook';
 export type { MensagemWhatsappEntrada } from './uazapi-webhook';
 
