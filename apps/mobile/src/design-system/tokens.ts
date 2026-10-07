@@ -1,5 +1,14 @@
 import type { TextStyle, ViewStyle } from 'react-native';
 
+/** Cores do chat de desenvolvimento, no visual de uma conversa. */
+export const chat = {
+  fundo: '#ECE5DD',
+  cabecalho: '#075E54',
+  recebida: '#FFFFFF',
+  enviada: '#DCF8C6',
+  textoCabecalho: '#FFFFFF',
+};
+
 export const colors = {
   primary: '#3E54D3',
   primaryStrong: '#293AA8',

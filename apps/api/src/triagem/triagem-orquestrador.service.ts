@@ -19,17 +19,20 @@ import {
 
 import type { Relogio } from '../auth/auth.service';
 import { CandidaturaStateMachine } from '../candidaturas/candidatura-state-machine';
+import type { ConfiguracaoApp } from '../configuracao';
 import { ErroAplicacao } from '../erros';
 import { FILA_TRIAGEM_RETRY, type FilaTriagem } from '../fila/fila-triagem';
 import type { EntrevistaRegistro, StatusEntrevista } from '../repositorio/entrevistas-tipos';
 import type { PerfilCandidato, Repositorio, RespostaSensivel } from '../repositorio/tipos';
-import { FILA_TRIAGEM, RELOGIO, REPOSITORIO, TRAVA_ENTREVISTA } from '../tokens';
+import { CONFIG, FILA_TRIAGEM, RELOGIO, REPOSITORIO, TRAVA_ENTREVISTA } from '../tokens';
 import { EnviadorWhatsapp, type ResultadoEnvio } from './enviador-whatsapp';
 import { AvaliacaoTriagemService } from './triagem-avaliacao.service';
 import { TriagemRetryService } from './triagem-retry.service';
 
 const SISTEMA = { sistema: true as const };
 const FILA_STT = 'stt-transcricao';
+const MENSAGEM_FIM_SIMULADOR =
+  'Recebemos suas respostas da triagem. A empresa vai analisar o que você contou. Obrigado por participar.';
 
 function suspensa(status: string): boolean {
   return status === 'SUSPENSA_PAUSA' || status === 'SUSPENSA_INSTANCIA';
@@ -75,6 +78,7 @@ export class TriagemOrquestradorService {
     @Inject(CandidaturaStateMachine) private readonly candidaturas: CandidaturaStateMachine,
     @Inject(FILA_TRIAGEM) private readonly fila: FilaTriagem,
     @Inject(TRAVA_ENTREVISTA) private readonly trava: TravaEntrevista,
+    @Inject(CONFIG) private readonly config: ConfiguracaoApp,
   ) {}
 
   async iniciar(candidaturaId: string): Promise<Record<string, unknown>> {
@@ -208,6 +212,15 @@ export class TriagemOrquestradorService {
     if (indice >= perguntas.length - 1) {
       await this.repo.atualizarEntrevista(entrevista.id, { status: 'CONCLUIDA', perguntaAtual: indice }, SISTEMA);
       await this.concluirCandidatura(entrevista);
+      if (perfil && this.config.simuladorEntrevista) {
+        const reacao = await this.reacaoSimulada(entrevista.id);
+        await this.enviador.enviar({
+          empresaId: entrevista.empresaId,
+          candidatoId: perfil.id,
+          numero: perfil.whatsapp,
+          texto: reacao ? `${reacao}\n\n${MENSAGEM_FIM_SIMULADOR}` : MENSAGEM_FIM_SIMULADOR,
+        });
+      }
       if (perfil) await this.promover(perfil.id, entrevista.empresaId);
       return { status: 'CONCLUIDA' };
     }
@@ -604,12 +617,25 @@ export class TriagemOrquestradorService {
       ordem: indice + 1,
       total: perguntas.length,
     });
+    const reacao = indice > 0 ? await this.reacaoSimulada(entrevista.id) : null;
     await this.enviador.enviar({
       empresaId: entrevista.empresaId,
       candidatoId: perfil.id,
       numero: perfil.whatsapp,
-      texto: fluxo.texto,
+      texto: reacao ? `${reacao}\n\n${fluxo.texto}` : fluxo.texto,
     });
+  }
+
+  /** Comentário da avaliação falsa, só no simulador. Não inclui a nota numérica. */
+  private async reacaoSimulada(entrevistaId: string): Promise<string | null> {
+    if (!this.config.simuladorEntrevista) return null;
+    const respostas = await this.repo.listarRespostasEntrevista(entrevistaId, SISTEMA);
+    const anterior = [...respostas].reverse().find((item) => (item.transcricao ?? item.textoOriginal ?? '').trim());
+    if (!anterior) return null;
+    const avaliacoes = await this.repo.listarAvaliacoes(anterior.id, SISTEMA);
+    const ia = avaliacoes.find((item) => item.avaliador === 'IA');
+    const texto = ia?.justificativa?.trim();
+    return texto || null;
   }
 
   private async pendenteRecente(entrevista: EntrevistaRegistro, janelaSegundos: number): Promise<RespostaSensivel | null> {

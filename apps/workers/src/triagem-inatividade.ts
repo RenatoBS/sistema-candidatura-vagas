@@ -13,7 +13,7 @@ export function agendarInatividade(entrevistaId: string, ultimaInteracaoEm: Date
     name: 'abandonar',
     data: { entrevistaId, ultimaInteracaoEm: iso },
     options: {
-      jobId: `inatividade:${entrevistaId}:${iso}`,
+      jobId: `inatividade:${entrevistaId}:${iso}`.replaceAll(':', '-'),
       removeOnComplete: 100,
     },
   };

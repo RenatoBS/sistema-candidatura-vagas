@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { api } from '@/api/cliente';
 import { Button } from '@/design-system/Button';
 import { Marca } from '@/design-system/Marca';
 import { Tela } from '@/design-system/Tela';
@@ -11,6 +13,13 @@ import { colors, radius, spacing, tipo } from '@/design-system/tokens';
 export default function HomeScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const [simulador, setSimulador] = useState(false);
+
+  useEffect(() => {
+    void api<{ ativo: boolean }>('/dev/simulador/status')
+      .then(() => setSimulador(true))
+      .catch(() => setSimulador(false));
+  }, []);
 
   return (
     <Tela centralizar rolar={false}>
@@ -31,6 +40,9 @@ export default function HomeScreen() {
       <View style={styles.acoes}>
         <Button label={t('home.entrar')} onPress={() => router.push('/login')} />
         <Button label={t('home.cadastrar')} variante="secundario" onPress={() => router.push('/cadastro')} />
+        {simulador ? (
+          <Button label={t('simulador.abrir')} variante="texto" onPress={() => router.push('/dev/simulador-whatsapp')} />
+        ) : null}
       </View>
     </Tela>
   );

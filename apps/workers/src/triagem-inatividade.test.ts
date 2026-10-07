@@ -6,7 +6,7 @@ import { agendarInatividade, processarJobInatividade } from './triagem-inativida
 describe('job de inatividade da triagem', () => {
   it('usa jobId determinístico com a última interação', () => {
     const job = agendarInatividade('entrevista-1', new Date('2026-10-09T12:00:00.000Z'));
-    assert.equal(job.options.jobId, 'inatividade:entrevista-1:2026-10-09T12:00:00.000Z');
+    assert.equal(job.options.jobId, 'inatividade-entrevista-1-2026-10-09T12-00-00.000Z');
   });
 
   it('processa por rota interna com fetch injetado', async () => {

@@ -99,7 +99,7 @@ export default function VagaEmpresaScreen() {
       </Text>
       {editavel && semProcesso && dados ? (
         <Button
-          label={t('vaga.processo')}
+          label={process.env.EXPO_PUBLIC_LEGENDAS_DEMO === 'true' ? t('vaga.processoCurto') : t('vaga.processo')}
           desabilitado={ocupado}
           onPress={() => void agir(`/vagas/${id}/processo`, 'PUT', processoPadrao())}
         />
@@ -204,11 +204,13 @@ export default function VagaEmpresaScreen() {
 }
 
 function processoPadrao() {
+  // A gravação do demo usa menos perguntas. O padrão do produto continua 5 e 5.
+  const curto = process.env.EXPO_PUBLIC_LEGENDAS_DEMO === 'true';
   return {
     tempoPadraoPorPergunta: 180,
     etapas: [
-      { ordem: 1, tipo: 'TRIAGEM_WHATSAPP', numeroPerguntas: 5 },
-      { ordem: 2, tipo: 'ENTREVISTA_VOZ', numeroPerguntas: 5 },
+      { ordem: 1, tipo: 'TRIAGEM_WHATSAPP', numeroPerguntas: curto ? 3 : 5 },
+      { ordem: 2, tipo: 'ENTREVISTA_VOZ', numeroPerguntas: curto ? 1 : 5 },
       { ordem: 3, tipo: 'REVISAO_HUMANA', numeroPerguntas: 0 },
     ],
   };

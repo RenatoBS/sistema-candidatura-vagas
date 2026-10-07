@@ -74,6 +74,44 @@ describe('isolamento multi-tenant RLS (F2-10)', () => {
     await prisma.$disconnect();
   });
 
+  it('job de sistema lê processo, etapa e empresa de outro tenant', async () => {
+    const admin = createPrisma(MIGRATION_DATABASE_URL);
+    const processo = await admin.processoSeletivo.findFirst({ where: { empresaId: empresaBId } });
+    assert.ok(processo);
+    const etapa = await admin.etapa.upsert({
+      where: { processoId_ordem: { processoId: processo.id, ordem: 1 } },
+      update: {},
+      create: {
+        processoId: processo.id,
+        ordem: 1,
+        tipo: 'TRIAGEM_WHATSAPP',
+        numeroPerguntas: 3,
+      },
+    });
+    await admin.$disconnect();
+
+    const prisma = createPrisma(RLS_DATABASE_URL);
+    await setSessionContext(prisma, { empresaId: empresaAId, sistema: true });
+
+    const processos = await prisma.processoSeletivo.findMany({ where: { empresaId: empresaBId } });
+    assert.ok(processos.some((item) => item.id === processo.id));
+    const etapas = await prisma.etapa.findMany({ where: { id: etapa.id } });
+    assert.equal(etapas.length, 1);
+    const empresa = await prisma.empresa.findUnique({ where: { id: empresaBId } });
+    assert.ok(empresa);
+
+    await prisma.$disconnect();
+  });
+
+  it('membro da empresa A não lê o processo da empresa B', async () => {
+    const prisma = createPrisma(RLS_DATABASE_URL);
+    await setSessionContext(prisma, { empresaId: empresaAId, isAdmin: false });
+
+    const processos = await prisma.processoSeletivo.findMany({ where: { empresaId: empresaBId } });
+    assert.equal(processos.length, 0);
+    await prisma.$disconnect();
+  });
+
   it('admin sem MFA não obtém bypass (0 linhas de outra empresa)', async () => {
     const prisma = createPrisma(RLS_DATABASE_URL);
     await setSessionContext(prisma, { empresaId: empresaAId, isAdmin: false });

@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { api } from '@/api/cliente';
 import { useAuth } from '@/auth/AuthContext';
+import { BotaoSair } from '@/componentes/BotaoSair';
 import { TrocaVisao } from '@/componentes/TrocaVisao';
 import { Banner } from '@/design-system/Banner';
 import { Cabecalho } from '@/design-system/Cabecalho';
@@ -51,6 +52,7 @@ export default function EmpresaHome() {
       <Text style={styles.secao}>Preferências</Text>
       <ItemLista titulo={t('empresa.preferencias')} icone="notifications-outline" onPress={() => router.push('/empresa/notificacoes-preferencias')} />
       <TrocaVisao />
+      <BotaoSair />
     </Tela>
   );
 }

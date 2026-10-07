@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { BotaoSair } from '@/componentes/BotaoSair';
 import { TrocaVisao } from '@/componentes/TrocaVisao';
 import { Cabecalho } from '@/design-system/Cabecalho';
 import { ItemLista } from '@/design-system/ItemLista';
@@ -23,6 +24,7 @@ export default function AdminHome() {
       <ItemLista titulo={t('admin.auditoria')} detalhe="Histórico de ações da plataforma" icone="receipt-outline" onPress={() => router.push('/admin/auditoria')} />
       <ItemLista titulo={t('admin.whatsapp')} detalhe="Status das instâncias conectadas" icone="logo-whatsapp" onPress={() => router.push('/admin/whatsapp')} />
       <TrocaVisao />
+      <BotaoSair />
     </Tela>
   );
 }

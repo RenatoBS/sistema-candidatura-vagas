@@ -280,6 +280,7 @@
     "obrigatoria": "Obrigatória",
     "salvar": "Salvar vaga",
     "processo": "Definir processo (5 perguntas)",
+    "processoCurto": "Definir processo (3 perguntas)",
     "pergunta": "Pergunta exigida",
     "adicionar": "Adicionar pergunta",
     "sugerir": "Sugerir perguntas com IA",
@@ -379,5 +380,34 @@
     "candidatoNovo": "Novo candidato",
     "matchForte": "Match forte",
     "conviteMatch": "Convite de match"
+  },
+  "legenda": {
+    "entrevista": "Entrevista simulada — triagem por WhatsApp",
+    "auditoria": "Admin — registro de auditoria",
+    "admin": "Admin — visão geral",
+    "resultado": "Empresa — resultado da entrevista",
+    "scores": "Empresa — candidatos e scores",
+    "publicar": "Empresa — publicar vaga",
+    "curriculo": "Candidato — currículo e resumo extraído",
+    "habilidades": "Candidato — editar habilidades",
+    "perfil": "Candidato — perfil",
+    "vagas": "Candidato — vagas",
+    "candidatura": "Candidato — candidatura",
+    "empresa": "Empresa",
+    "acesso": "Acesso"
+  },
+  "simulador": {
+    "titulo": "Simulador de WhatsApp",
+    "subtitulo": "Conversa de desenvolvimento. Nada é enviado à Uazapi.",
+    "desligado": "O simulador está desligado nesta API. Defina SIMULADOR_ENTREVISTA=true e reinicie.",
+    "telefone": "Telefone do candidato",
+    "iniciar": "Iniciar triagem",
+    "enviar": "Enviar",
+    "mensagem": "Mensagem",
+    "roteiro": "Resposta sugerida",
+    "avaliacao": "Avaliação registrada para a empresa",
+    "nota": "Nota {{n}}",
+    "aguardando": "Aguardando o entrevistador…",
+    "abrir": "Simulador de entrevista"
   }
 }

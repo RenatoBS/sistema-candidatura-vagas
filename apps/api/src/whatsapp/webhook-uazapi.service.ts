@@ -61,7 +61,8 @@ export class WebhookUazapiService {
         instanciaId: evento.instanciaWhatsappId,
         mensagem,
       },
-      chave,
+      // BullMQ rejeita jobId com ':' fora do formato de job repetível (3 segmentos).
+      chave.replaceAll(':', '-'),
     );
     return { status: 'recebido', eventoId: evento.id };
   }

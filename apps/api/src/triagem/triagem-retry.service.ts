@@ -187,7 +187,8 @@ export class TriagemRetryService {
     await this.fila.agendar({
       fila: FILA_INATIVIDADE,
       nome: 'avaliar',
-      jobId: `inatividade:${entrevista.id}:${iso}${sufixo}`,
+      // BullMQ só aceita ':' no formato de três segmentos; o ISO tem vários.
+      jobId: `inatividade:${entrevista.id}:${iso}${sufixo}`.replaceAll(':', '-'),
       delayMs: Math.max(0, delayMs),
       data: { entrevistaId: entrevista.id, ultimaInteracaoEm: iso },
     });
