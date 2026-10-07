@@ -28,12 +28,18 @@ import {
   relogioTeste,
   repositorioTeste,
   whatsappTeste,
+  filaWhatsappEntradaTeste,
 } from './ambiente-teste';
 import { AcessoSensivelService } from './auditoria/acesso-sensivel';
 import { AuditoriaService } from './auditoria/auditoria.service';
 import { AuthService, relogioSistema, type Relogio } from './auth/auth.service';
 import { MfaService } from './auth/mfa.service';
-import { ConsentimentoService, CurriculoService, LgpdService, PerfilService } from './candidatos/candidato.service';
+import {
+  ConsentimentoService,
+  CurriculoService,
+  LgpdService,
+  PerfilService,
+} from './candidatos/candidato.service';
 import { CandidaturaStateMachine } from './candidaturas/candidatura-state-machine';
 import { CandidaturasService } from './candidaturas/candidaturas.service';
 import type { ConfiguracaoApp } from './configuracao';
@@ -44,6 +50,7 @@ import { FilaCnpjBull } from './fila/fila-cnpj';
 import { FilaCurriculoBull } from './fila/fila-curriculo';
 import { FilaMatchBull, type FilaMatch } from './fila/fila-match';
 import { FilaVagasBull } from './fila/fila-vagas';
+import { FilaWhatsappEntradaBull } from './fila/fila-whatsapp-entrada';
 import { AuditoriaController } from './http/auditoria.controller';
 import { AuthController } from './http/auth.controller';
 import { AuthGuard } from './http/auth.guard';
@@ -73,6 +80,7 @@ import {
   FILA_CURRICULO,
   FILA_MATCH,
   FILA_VAGAS,
+  FILA_WHATSAPP_ENTRADA,
   FONTE_CNPJ,
   LLM,
   RELOGIO,
@@ -89,7 +97,8 @@ const configProvider: FactoryProvider = {
 const relogioProvider: FactoryProvider = {
   provide: RELOGIO,
   inject: [CONFIG],
-  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? relogioTeste : relogioSistema),
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? relogioTeste : relogioSistema,
 };
 
 const repositorioProvider: FactoryProvider<Repositorio> = {
@@ -102,7 +111,8 @@ const repositorioProvider: FactoryProvider<Repositorio> = {
 const emailProvider: FactoryProvider = {
   provide: EMAIL,
   inject: [CONFIG],
-  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? emailTeste : criarEmailProvider()),
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? emailTeste : criarEmailProvider(),
 };
 
 const fonteProvider: FactoryProvider = {
@@ -115,49 +125,63 @@ const fonteProvider: FactoryProvider = {
 const filaProvider: FactoryProvider = {
   provide: FILA_CNPJ,
   inject: [CONFIG],
-  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? filaCnpjTeste : new FilaCnpjBull()),
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? filaCnpjTeste : new FilaCnpjBull(),
 };
 
 const dnsProvider: FactoryProvider = {
   provide: DNS,
   inject: [CONFIG],
-  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? dnsTeste : new DnsNode()),
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? dnsTeste : new DnsNode(),
 };
 
 const armazenamentoProvider: FactoryProvider = {
   provide: ARMAZENAMENTO,
   inject: [CONFIG],
-  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? armazenamentoTeste : criarArmazenamentoS3()),
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? armazenamentoTeste : criarArmazenamentoS3(),
 };
 
 const antivirusProvider: FactoryProvider = {
   provide: ANTIVIRUS,
   inject: [CONFIG],
-  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? antivirusTeste : criarAntivirus()),
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? antivirusTeste : criarAntivirus(),
 };
 
 const filaCurriculoProvider: FactoryProvider = {
   provide: FILA_CURRICULO,
   inject: [CONFIG],
-  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? filaCurriculoTeste : new FilaCurriculoBull()),
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? filaCurriculoTeste : new FilaCurriculoBull(),
 };
 
 const filaVagasProvider: FactoryProvider = {
   provide: FILA_VAGAS,
   inject: [CONFIG],
-  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? filaVagasTeste : new FilaVagasBull()),
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? filaVagasTeste : new FilaVagasBull(),
 };
 
 const filaMatchProvider: FactoryProvider<FilaMatch> = {
   provide: FILA_MATCH,
   inject: [CONFIG],
-  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? filaMatchTeste : new FilaMatchBull()),
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? filaMatchTeste : new FilaMatchBull(),
+};
+const filaWhatsappEntradaProvider: FactoryProvider = {
+  provide: FILA_WHATSAPP_ENTRADA,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? filaWhatsappEntradaTeste : new FilaWhatsappEntradaBull(),
 };
 
 const embeddingsProvider: FactoryProvider<EmbeddingProvider> = {
   provide: EMBEDDINGS,
   inject: [CONFIG],
-  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? embeddingsTeste : criarEmbeddingProvider()),
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? embeddingsTeste : criarEmbeddingProvider(),
 };
 
 /** Push (F6-07) e e-mail (F6-08) substituem os no-ops quando existirem. */
@@ -204,6 +228,7 @@ const whatsappClienteProvider: FactoryProvider = {
     filaProvider,
     filaVagasProvider,
     filaMatchProvider,
+    filaWhatsappEntradaProvider,
     embeddingsProvider,
     canaisEntregaProvider,
     llmProvider,
@@ -215,13 +240,18 @@ const whatsappClienteProvider: FactoryProvider = {
     {
       provide: AuditoriaService,
       inject: [REPOSITORIO, RELOGIO],
-      useFactory: (repo: Repositorio, relogio: typeof relogioSistema) => new AuditoriaService(repo, relogio),
+      useFactory: (repo: Repositorio, relogio: typeof relogioSistema) =>
+        new AuditoriaService(repo, relogio),
     },
     {
       provide: AuthService,
       inject: [REPOSITORIO, EMAIL, CONFIG, RELOGIO],
-      useFactory: (repo: Repositorio, email: typeof emailTeste, config: ConfiguracaoApp, relogio: typeof relogioSistema) =>
-        new AuthService(repo, email, config, relogio),
+      useFactory: (
+        repo: Repositorio,
+        email: typeof emailTeste,
+        config: ConfiguracaoApp,
+        relogio: typeof relogioSistema,
+      ) => new AuthService(repo, email, config, relogio),
     },
     {
       provide: MfaService,
@@ -283,39 +313,62 @@ const whatsappClienteProvider: FactoryProvider = {
     {
       provide: ConsentimentoService,
       inject: [REPOSITORIO, RELOGIO],
-      useFactory: (repo: Repositorio, relogio: typeof relogioSistema) => new ConsentimentoService(repo, relogio),
+      useFactory: (repo: Repositorio, relogio: typeof relogioSistema) =>
+        new ConsentimentoService(repo, relogio),
     },
     {
       provide: LgpdService,
       inject: [REPOSITORIO, ARMAZENAMENTO, RELOGIO],
-      useFactory: (repo: Repositorio, armazenamento: typeof armazenamentoTeste, relogio: typeof relogioSistema) =>
-        new LgpdService(repo, armazenamento, relogio),
+      useFactory: (
+        repo: Repositorio,
+        armazenamento: typeof armazenamentoTeste,
+        relogio: typeof relogioSistema,
+      ) => new LgpdService(repo, armazenamento, relogio),
     },
     {
       provide: AcessoSensivelService,
       inject: [REPOSITORIO, AuditoriaService],
-      useFactory: (repo: Repositorio, auditoria: AuditoriaService) => new AcessoSensivelService(repo, auditoria),
+      useFactory: (repo: Repositorio, auditoria: AuditoriaService) =>
+        new AcessoSensivelService(repo, auditoria),
     },
     {
       provide: CandidaturaStateMachine,
       inject: [REPOSITORIO, RELOGIO],
-      useFactory: (repo: Repositorio, relogio: Relogio) => new CandidaturaStateMachine(repo, relogio),
+      useFactory: (repo: Repositorio, relogio: Relogio) =>
+        new CandidaturaStateMachine(repo, relogio),
     },
     {
       provide: NotificacoesService,
       inject: [REPOSITORIO, CANAIS_ENTREGA, CONFIG, RELOGIO],
-      useFactory: (repo: Repositorio, canais: CanalEntrega[], config: ConfiguracaoApp, relogio: Relogio) =>
-        new NotificacoesService(repo, canais, config, relogio),
+      useFactory: (
+        repo: Repositorio,
+        canais: CanalEntrega[],
+        config: ConfiguracaoApp,
+        relogio: Relogio,
+      ) => new NotificacoesService(repo, canais, config, relogio),
     },
     {
       provide: CandidaturasService,
       inject: [REPOSITORIO, CandidaturaStateMachine, RELOGIO, NotificacoesService],
-      useFactory: (repo: Repositorio, maquina: CandidaturaStateMachine, relogio: Relogio, notificacoes: NotificacoesService) =>
-        new CandidaturasService(repo, maquina, relogio, notificacoes),
+      useFactory: (
+        repo: Repositorio,
+        maquina: CandidaturaStateMachine,
+        relogio: Relogio,
+        notificacoes: NotificacoesService,
+      ) => new CandidaturasService(repo, maquina, relogio, notificacoes),
     },
     {
       provide: VagasService,
-      inject: [REPOSITORIO, AuditoriaService, FILA_VAGAS, LLM, CONFIG, RELOGIO, CandidaturaStateMachine, FILA_MATCH],
+      inject: [
+        REPOSITORIO,
+        AuditoriaService,
+        FILA_VAGAS,
+        LLM,
+        CONFIG,
+        RELOGIO,
+        CandidaturaStateMachine,
+        FILA_MATCH,
+      ],
       useFactory: (
         repo: Repositorio,
         auditoria: AuditoriaService,

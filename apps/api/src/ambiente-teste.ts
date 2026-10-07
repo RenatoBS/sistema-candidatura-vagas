@@ -14,6 +14,7 @@ import { FilaCnpjMemoria } from './fila/fila-cnpj';
 import { FilaCurriculoMemoria } from './fila/fila-curriculo';
 import { FilaMatchMemoria } from './fila/fila-match';
 import { FilaVagasMemoria } from './fila/fila-vagas';
+import { FilaWhatsappEntradaMemoria } from './fila/fila-whatsapp-entrada';
 import { CanalEntregaMemoria } from './notificacoes/canal-entrega';
 import { RepositorioMemoria } from './repositorio/memoria';
 
@@ -28,6 +29,7 @@ export const armazenamentoTeste = new ArmazenamentoMemoria();
 export const antivirusTeste = new AntivirusMock();
 export const filaVagasTeste = new FilaVagasMemoria();
 export const filaMatchTeste = new FilaMatchMemoria();
+export const filaWhatsappEntradaTeste = new FilaWhatsappEntradaMemoria();
 export const embeddingsTeste = new FakeEmbeddingProvider();
 export const pushTeste = new CanalEntregaMemoria('push');
 export const emailNotificacaoTeste = new CanalEntregaMemoria('email');
@@ -50,6 +52,7 @@ export function limparAmbienteTeste(): void {
   filaCurriculoTeste.limpar();
   filaVagasTeste.limpar();
   filaMatchTeste.limpar();
+  filaWhatsappEntradaTeste.limpar();
   embeddingsTeste.limpar();
   pushTeste.limpar();
   pushProviderTeste.limpar();

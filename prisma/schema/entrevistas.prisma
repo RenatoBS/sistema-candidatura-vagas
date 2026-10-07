@@ -198,6 +198,7 @@ model Resposta {
   statusTranscricao     StatusTranscricao  @default(PENDENTE)
   transcricao           String?            @db.Text
   confiancaTranscricao  Float?
+  revisaoHumanaNecessaria Boolean          @default(false)
   tempoUsado            Int?
   expirou               Boolean            @default(false)
   parcial               Boolean            @default(false)
@@ -212,6 +213,22 @@ model Resposta {
   @@index([empresaId])
   @@index([entrevistaId])
   @@map("respostas")
+}
+
+model EventoWhatsappEntrada {
+  id                   String   @id @default(uuid()) @db.Uuid
+  empresaId            String   @db.Uuid
+  instanciaWhatsappId  String   @db.Uuid
+  mensagemIdProvedor   String
+  tipo                 TipoMensagemWhatsapp
+  payloadNormalizado   Json
+  status               String   @default("RECEBIDO")
+  criadoEm             DateTime @default(now()) @db.Timestamptz
+  empresa              Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  instanciaWhatsapp   InstanciaWhatsapp @relation(fields: [instanciaWhatsappId], references: [id], onDelete: Cascade)
+  @@unique([instanciaWhatsappId, mensagemIdProvedor])
+  @@index([empresaId])
+  @@map("eventos_whatsapp_entrada")
 }
 
 model InstanciaWhatsapp {
@@ -229,6 +246,7 @@ model InstanciaWhatsapp {
 
   empresa   Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   mensagens MensagemWhatsapp[]
+  eventosWhatsapp EventoWhatsappEntrada[]
 
   @@map("instancias_whatsapp")
 }
