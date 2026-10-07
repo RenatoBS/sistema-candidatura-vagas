@@ -156,6 +156,22 @@
     "vazia": "Nenhuma vaga por aqui.",
     "status": "Status",
     "ate": "Inscrições até",
-    "detalhe": "Detalhe da vaga"
+    "detalhe": "Detalhe da vaga",
+    "triagens": "Triagens desta vaga"
+  },
+  "triagem": {
+    "titulo": "Triagens",
+    "vazia": "Nenhuma triagem por aqui.",
+    "detalhe": "Triagem",
+    "status": "Estado",
+    "retries": "Tentativas de contato",
+    "pergunta": "Pergunta atual",
+    "audio": "Ouvir áudio",
+    "motivo": "Motivo do acesso ao áudio",
+    "transcricao": "Transcrição",
+    "nota": "Nota",
+    "revisar": "Registrar revisão",
+    "justificativa": "Justificativa",
+    "origem": "Origem da nota"
   }
 }

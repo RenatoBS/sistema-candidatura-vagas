@@ -74,6 +74,9 @@ export default function VagaEmpresaScreen() {
         <Link href={`/empresa/vagas/${id}/sugestoes`} style={styles.link}>
           Ver sugestões de match
         </Link>
+        <Link href={`/empresa/vagas/${id}/triagens`} style={styles.link}>
+          {t('vaga.triagens')}
+        </Link>
       </View>
       <Text style={styles.texto}>
         {t('vaga.status')}: {dados?.status ?? '—'}
