@@ -12,9 +12,10 @@ interface CandidatoVaga {
 }
 export default function CandidatosDaVaga() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { accessToken } = useAuth();
+  const { accessToken, sessao } = useAuth();
+  const empresaId = sessao?.empresaAtivaId ?? sessao?.empresas[0]?.empresaId ?? '';
   const consulta = useConsulta<CandidatoVaga[]>(['candidatos-vaga', id ?? ''], () =>
-    api<CandidatoVaga[]>(`/vagas/${id}/candidaturas`, {}, accessToken),
+    api<CandidatoVaga[]>(`/vagas/${id}/candidaturas`, { headers: { 'x-empresa-id': empresaId } }, accessToken),
   );
   if (consulta.isLoading) return <ActivityIndicator style={styles.estado} color={colors.primary} />;
   if (consulta.isError)
