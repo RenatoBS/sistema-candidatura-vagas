@@ -16,12 +16,14 @@ import {
   armazenamentoTeste,
   dnsTeste,
   emailTeste,
+  emailNotificacaoTeste,
   embeddingsTeste,
   filaCnpjTeste,
   filaCurriculoTeste,
   filaMatchTeste,
   filaVagasTeste,
   fonteCnpjTeste,
+  pushTeste,
   relogioTeste,
   repositorioTeste,
   whatsappTeste,
@@ -47,15 +49,19 @@ import { AuthGuard } from './http/auth.guard';
 import { CandidatoController } from './http/candidatos.controller';
 import { EmpresasController } from './http/empresas.controller';
 import { MatchController } from './http/match.controller';
+import { NotificacoesController } from './http/notificacoes.controller';
 import { VagasController } from './http/vagas.controller';
 import { WhatsappController } from './http/whatsapp.controller';
 import { MatchService } from './match/match.service';
 import { MembrosService } from './membros/membros.service';
+import { CanalEntregaNoop, type CanalEntrega } from './notificacoes/canal-entrega';
+import { NotificacoesService } from './notificacoes/notificacoes.service';
 import { RepositorioPrisma } from './repositorio/prisma';
 import type { Repositorio } from './repositorio/tipos';
 import {
   ANTIVIRUS,
   ARMAZENAMENTO,
+  CANAIS_ENTREGA,
   CLIENTE_WHATSAPP,
   CONFIG,
   DNS,
@@ -152,6 +158,16 @@ const embeddingsProvider: FactoryProvider<EmbeddingProvider> = {
   useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? embeddingsTeste : criarEmbeddingProvider()),
 };
 
+/** Push (F6-07) e e-mail (F6-08) substituem os no-ops quando existirem. */
+const canaisEntregaProvider: FactoryProvider<CanalEntrega[]> = {
+  provide: CANAIS_ENTREGA,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory'
+      ? [pushTeste, emailNotificacaoTeste]
+      : [new CanalEntregaNoop('push'), new CanalEntregaNoop('email')],
+};
+
 const llmProvider: FactoryProvider = {
   provide: LLM,
   useFactory: () => criarLlmProvider(),
@@ -175,6 +191,7 @@ const whatsappClienteProvider: FactoryProvider = {
     CandidatoController,
     VagasController,
     MatchController,
+    NotificacoesController,
   ],
   providers: [
     configProvider,
@@ -186,6 +203,7 @@ const whatsappClienteProvider: FactoryProvider = {
     filaVagasProvider,
     filaMatchProvider,
     embeddingsProvider,
+    canaisEntregaProvider,
     llmProvider,
     dnsProvider,
     whatsappClienteProvider,
@@ -282,9 +300,16 @@ const whatsappClienteProvider: FactoryProvider = {
       useFactory: (repo: Repositorio, relogio: Relogio) => new CandidaturaStateMachine(repo, relogio),
     },
     {
+      provide: NotificacoesService,
+      inject: [REPOSITORIO, CANAIS_ENTREGA, CONFIG, RELOGIO],
+      useFactory: (repo: Repositorio, canais: CanalEntrega[], config: ConfiguracaoApp, relogio: Relogio) =>
+        new NotificacoesService(repo, canais, config, relogio),
+    },
+    {
       provide: CandidaturasService,
-      inject: [REPOSITORIO, CandidaturaStateMachine, RELOGIO],
-      useFactory: (repo: Repositorio, maquina: CandidaturaStateMachine, relogio: Relogio) => new CandidaturasService(repo, maquina, relogio),
+      inject: [REPOSITORIO, CandidaturaStateMachine, RELOGIO, NotificacoesService],
+      useFactory: (repo: Repositorio, maquina: CandidaturaStateMachine, relogio: Relogio, notificacoes: NotificacoesService) =>
+        new CandidaturasService(repo, maquina, relogio, notificacoes),
     },
     {
       provide: VagasService,

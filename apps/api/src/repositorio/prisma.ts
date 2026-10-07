@@ -3,6 +3,7 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import { ErroAplicacao } from '../erros';
 import { CandidaturasPrisma } from './candidaturas-prisma';
 import { MatchPrisma } from './match-prisma';
+import { NotificacoesPrisma } from './notificacoes-prisma';
 import type {
   AuditoriaRegistro,
   CandidatoRegistro,
@@ -12,12 +13,15 @@ import type {
   ConviteRegistro,
   CurriculoRegistro,
   EmpresaRegistro,
+  FiltroNotificacoes,
   HabilidadeCatalogo,
   HabilidadeDoCandidato,
   InstanciaRegistro,
   LinhaHabilidade,
   MembroRegistro,
+  NotificacaoNova,
   PerfilCandidato,
+  PreferenciaNotificacaoRegistro,
   RefreshRegistro,
   Repositorio,
   RespostaSensivel,
@@ -53,11 +57,13 @@ export class RepositorioPrisma implements Repositorio {
   private readonly vagasStore: VagasPrisma;
   private readonly candidaturasStore: CandidaturasPrisma;
   private readonly matchStore: MatchPrisma;
+  private readonly notificacoesStore: NotificacoesPrisma;
 
   constructor(private readonly prisma = new PrismaClient()) {
     this.vagasStore = new VagasPrisma(this.prisma, (ctx, fn) => this.comTenant(ctx, fn));
     this.candidaturasStore = new CandidaturasPrisma((ctx, fn) => this.comTenant(ctx, fn));
     this.matchStore = new MatchPrisma(this.prisma, (ctx, fn) => this.comTenant(ctx, fn));
+    this.notificacoesStore = new NotificacoesPrisma((ctx, fn) => this.comTenant(ctx, fn));
   }
 
   private async comTenant<T>(ctx: ContextoTenant, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
@@ -672,6 +678,42 @@ export class RepositorioPrisma implements Repositorio {
 
   listarSugestoesCandidato(candidatoId: string, ctx: ContextoTenant) {
     return this.matchStore.listarSugestoesCandidato(candidatoId, ctx);
+  }
+
+  buscarSugestao(id: string, ctx: ContextoTenant) {
+    return this.notificacoesStore.buscarSugestao(id, ctx);
+  }
+
+  marcarSugestaoNotificada(id: string, quando: Date, ctx: ContextoTenant) {
+    return this.notificacoesStore.marcarSugestaoNotificada(id, quando, ctx);
+  }
+
+  inserirNotificacaoUnica(dados: NotificacaoNova, ctx: ContextoTenant) {
+    return this.notificacoesStore.inserirNotificacaoUnica(dados, ctx);
+  }
+
+  agruparNotificacao(dados: NotificacaoNova, ctx: ContextoTenant) {
+    return this.notificacoesStore.agruparNotificacao(dados, ctx);
+  }
+
+  listarNotificacoes(filtro: FiltroNotificacoes, ctx: ContextoTenant) {
+    return this.notificacoesStore.listarNotificacoes(filtro, ctx);
+  }
+
+  marcarNotificacaoLida(id: string, usuarioId: string, quando: Date, ctx: ContextoTenant) {
+    return this.notificacoesStore.marcarNotificacaoLida(id, usuarioId, quando, ctx);
+  }
+
+  marcarTodasLidas(usuarioId: string, empresaId: string | undefined, quando: Date, ctx: ContextoTenant) {
+    return this.notificacoesStore.marcarTodasLidas(usuarioId, empresaId, quando, ctx);
+  }
+
+  listarPreferencias(usuarioId: string, empresaId: string, ctx: ContextoTenant) {
+    return this.notificacoesStore.listarPreferencias(usuarioId, empresaId, ctx);
+  }
+
+  salvarPreferencia(preferencia: PreferenciaNotificacaoRegistro, ctx: ContextoTenant) {
+    return this.notificacoesStore.salvarPreferencia(preferencia, ctx);
   }
 
   async buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null> {

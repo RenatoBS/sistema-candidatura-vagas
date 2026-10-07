@@ -2,7 +2,7 @@ import { Queue } from 'bullmq';
 
 export const FILA_EMBEDDINGS = 'embeddings';
 export const FILA_MATCH = 'match';
-/** Fila do serviço de notificações (F6-06), que ainda não tem consumidor. */
+/** Fila do serviço de notificações (F6-06); o worker chama `/interno/notificacoes/match-forte/:sugestaoId`. */
 export const FILA_NOTIFICACOES = 'notificacoes';
 export const EVENTO_MATCH_FORTE = 'match.forte';
 

@@ -3,6 +3,7 @@ import { CATALOGO_BASE } from '@scv/domain';
 import { ErroAplicacao } from '../erros';
 import { CandidaturasMemoria } from './candidaturas-memoria';
 import { MatchMemoria } from './match-memoria';
+import { NotificacoesMemoria } from './notificacoes-memoria';
 import type {
   AuditoriaRegistro,
   CandidatoRegistro,
@@ -12,12 +13,15 @@ import type {
   ConviteRegistro,
   CurriculoRegistro,
   EmpresaRegistro,
+  FiltroNotificacoes,
   HabilidadeCatalogo,
   HabilidadeDoCandidato,
   InstanciaRegistro,
   LinhaHabilidade,
   MembroRegistro,
+  NotificacaoNova,
   PerfilCandidato,
+  PreferenciaNotificacaoRegistro,
   RefreshRegistro,
   Repositorio,
   RespostaSensivel,
@@ -79,6 +83,10 @@ export class RepositorioMemoria implements Repositorio {
     vagas: () => this.vagasStore.vagas.values(),
     habilidadesVaga: (vagaId) => this.vagasStore.habilidadesVaga.filter((item) => item.vagaId === vagaId),
   });
+  readonly notificacoesStore = new NotificacoesMemoria({
+    sugestoes: this.matchStore.sugestoes,
+    empresaDaVaga: (vagaId) => this.vagasStore.vagas.get(vagaId)?.empresaId ?? null,
+  });
 
   limpar(): void {
     this.usuarios.clear();
@@ -100,6 +108,7 @@ export class RepositorioMemoria implements Repositorio {
     this.vagasStore.limpar();
     this.candidaturasStore.limpar();
     this.matchStore.limpar();
+    this.notificacoesStore.limpar();
   }
 
   async criarUsuario(dados: UsuarioRegistro): Promise<UsuarioRegistro> {
@@ -660,6 +669,42 @@ export class RepositorioMemoria implements Repositorio {
 
   listarSugestoesCandidato(candidatoId: string, ctx: ContextoTenant) {
     return this.matchStore.listarSugestoesCandidato(candidatoId, ctx);
+  }
+
+  buscarSugestao(id: string, ctx: ContextoTenant) {
+    return this.notificacoesStore.buscarSugestao(id, ctx);
+  }
+
+  marcarSugestaoNotificada(id: string, quando: Date, ctx: ContextoTenant) {
+    return this.notificacoesStore.marcarSugestaoNotificada(id, quando, ctx);
+  }
+
+  inserirNotificacaoUnica(dados: NotificacaoNova, ctx: ContextoTenant) {
+    return this.notificacoesStore.inserirNotificacaoUnica(dados, ctx);
+  }
+
+  agruparNotificacao(dados: NotificacaoNova, ctx: ContextoTenant) {
+    return this.notificacoesStore.agruparNotificacao(dados, ctx);
+  }
+
+  listarNotificacoes(filtro: FiltroNotificacoes, ctx: ContextoTenant) {
+    return this.notificacoesStore.listarNotificacoes(filtro, ctx);
+  }
+
+  marcarNotificacaoLida(id: string, usuarioId: string, quando: Date, ctx: ContextoTenant) {
+    return this.notificacoesStore.marcarNotificacaoLida(id, usuarioId, quando, ctx);
+  }
+
+  marcarTodasLidas(usuarioId: string, empresaId: string | undefined, quando: Date, ctx: ContextoTenant) {
+    return this.notificacoesStore.marcarTodasLidas(usuarioId, empresaId, quando, ctx);
+  }
+
+  listarPreferencias(usuarioId: string, empresaId: string, ctx: ContextoTenant) {
+    return this.notificacoesStore.listarPreferencias(usuarioId, empresaId, ctx);
+  }
+
+  salvarPreferencia(preferencia: PreferenciaNotificacaoRegistro, ctx: ContextoTenant) {
+    return this.notificacoesStore.salvarPreferencia(preferencia, ctx);
   }
 
   async buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null> {

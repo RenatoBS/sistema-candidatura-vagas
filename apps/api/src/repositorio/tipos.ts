@@ -13,6 +13,13 @@ import type {
   VagaSimilar,
 } from './match-tipos';
 import type {
+  FiltroNotificacoes,
+  NotificacaoNova,
+  NotificacaoRegistro,
+  PaginaNotificacoes,
+  PreferenciaNotificacaoRegistro,
+} from './notificacoes-tipos';
+import type {
   EtapaPerguntaRegistro,
   EtapaRegistro,
   EventoVagaRegistro,
@@ -37,6 +44,13 @@ export type {
   SugestaoMatchRegistro,
   VagaSimilar,
 } from './match-tipos';
+export type {
+  FiltroNotificacoes,
+  NotificacaoNova,
+  NotificacaoRegistro,
+  PaginaNotificacoes,
+  PreferenciaNotificacaoRegistro,
+} from './notificacoes-tipos';
 export type {
   EtapaPerguntaRegistro,
   EtapaRegistro,
@@ -412,4 +426,19 @@ export interface Repositorio {
   registrarSugestao(entrada: EntradaSugestaoMatch, ctx: ContextoTenant): Promise<ResultadoSugestaoMatch | null>;
   listarSugestoesVaga(vagaId: string, ctx: ContextoTenant): Promise<SugestaoMatchRegistro[]>;
   listarSugestoesCandidato(candidatoId: string, ctx: ContextoTenant): Promise<SugestaoMatchRegistro[]>;
+  buscarSugestao(id: string, ctx: ContextoTenant): Promise<SugestaoMatchRegistro | null>;
+  /** Grava `notificadoEm` só se ainda estiver vazio. */
+  marcarSugestaoNotificada(id: string, quando: Date, ctx: ContextoTenant): Promise<void>;
+  /** `null` quando a `chaveDedup` já existe (dedup) ou o contexto não permite. */
+  inserirNotificacaoUnica(dados: NotificacaoNova, ctx: ContextoTenant): Promise<NotificacaoRegistro | null>;
+  /** Upsert por `chaveDedup`: cria com `agrupadas = 1` ou incrementa, troca `dados` e volta a não lida. */
+  agruparNotificacao(dados: NotificacaoNova, ctx: ContextoTenant): Promise<NotificacaoRegistro | null>;
+  listarNotificacoes(filtro: FiltroNotificacoes, ctx: ContextoTenant): Promise<PaginaNotificacoes>;
+  marcarNotificacaoLida(id: string, usuarioId: string, quando: Date, ctx: ContextoTenant): Promise<NotificacaoRegistro | null>;
+  marcarTodasLidas(usuarioId: string, empresaId: string | undefined, quando: Date, ctx: ContextoTenant): Promise<number>;
+  listarPreferencias(usuarioId: string, empresaId: string, ctx: ContextoTenant): Promise<PreferenciaNotificacaoRegistro[]>;
+  salvarPreferencia(
+    preferencia: PreferenciaNotificacaoRegistro,
+    ctx: ContextoTenant,
+  ): Promise<PreferenciaNotificacaoRegistro | null>;
 }

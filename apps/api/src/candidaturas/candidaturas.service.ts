@@ -4,6 +4,7 @@ import { aceitaInscricoes, rotuloAmigavel, VERSAO_TERMOS_ATUAL, type TipoConsent
 
 import type { Relogio } from '../auth/auth.service';
 import { ErroAplicacao } from '../erros';
+import type { NotificacoesService } from '../notificacoes/notificacoes.service';
 import type { Repositorio } from '../repositorio/tipos';
 import { ctxDe, type SessaoRequest } from '../sessao';
 import { CandidaturaStateMachine } from './candidatura-state-machine';
@@ -11,7 +12,7 @@ import { CandidaturaStateMachine } from './candidatura-state-machine';
 export interface ConsentimentoEntrada { tipo: TipoConsentimento; concedido: boolean; versaoTermo: string }
 
 export class CandidaturasService {
-  constructor(private readonly repo: Repositorio, private readonly maquina: CandidaturaStateMachine, private readonly relogio: Relogio) {}
+  constructor(private readonly repo: Repositorio, private readonly maquina: CandidaturaStateMachine, private readonly relogio: Relogio, private readonly notificacoes?: NotificacoesService) {}
 
   async criar(sessao: SessaoRequest, vagaId: string, entradas: ConsentimentoEntrada[]) {
     const candidato = await this.repo.buscarCandidatoPorUsuario(sessao.usuario.id);
@@ -19,10 +20,11 @@ export class CandidaturasService {
     const vaga = await this.repo.buscarVaga(vagaId, { sistema: true });
     if (!vaga || !aceitaInscricoes(vaga, this.relogio.agora())) throw new ErroAplicacao('INSCRICOES_INDISPONIVEIS', 409, 'inscrições não disponíveis');
     if (!entradas.some((item) => item.tipo === 'TERMOS' && item.concedido)) throw new ErroAplicacao('CONSENTIMENTO_OBRIGATORIO', 400, 'consentimento de termos obrigatório');
-    const candidatura = await this.maquina.criar({ empresaId: vaga.empresaId, vagaId, candidatoId: candidato.id, origem: 'DIRETA' }, { tipo: 'candidatarDireta', vagaAceitaInscricoes: true }, { autorId: candidato.id }, { sistema: true });
+    const candidatura = await this.maquina.criar({ empresaId: vaga.empresaId, vagaId, candidatoId: candidato.id, origem: 'DIRETA' }, { tipo: 'candidatarDireta', vagaAceitaInscricoes: true }, { autorId: candidato.id }, { empresaId: vaga.empresaId });
     for (const entrada of entradas) {
       await this.repo.registrarConsentimento({ id: randomUUID(), candidatoId: candidato.id, candidaturaId: candidatura.id, tipo: entrada.tipo, concedido: entrada.concedido, versaoTermo: entrada.versaoTermo || VERSAO_TERMOS_ATUAL, criadoEm: this.relogio.agora() });
     }
+    await this.notificacoes?.candidatoNovo(candidatura);
     return this.dto(candidatura);
   }
 

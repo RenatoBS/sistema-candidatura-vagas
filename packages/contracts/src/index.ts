@@ -54,6 +54,12 @@ export type {
   VagaRecomendadaDto,
   VagasRecomendadasResponse,
 } from './match';
+export {
+  preferenciasNotificacaoSchema,
+  TIPOS_NOTIFICACAO_EMPRESA,
+  type NotificacaoDto,
+  type NotificacoesResponse,
+} from './notificacoes';
 export { openApi, openApiFase3, openApiFase4, openApiFase6Match, type CaminhoApi } from './openapi';
 export {
   atualizarVagaSchema,
