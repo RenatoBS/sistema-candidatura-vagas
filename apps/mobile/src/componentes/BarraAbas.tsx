@@ -34,7 +34,9 @@ export function BarraAbas({ grupo }: { grupo: GrupoAbas }) {
             onPress={() => router.push(aba.href)}
             style={styles.item}
           >
-            <Ionicons name={ICONES[aba.icone]} size={22} color={selecionada ? colors.primary : colors.textMuted} />
+            <View style={[styles.icone, selecionada ? styles.iconeAtivo : null]}>
+              <Ionicons name={ICONES[aba.icone]} size={21} color={selecionada ? colors.primary : colors.textMuted} />
+            </View>
             <Text style={[styles.rotulo, selecionada ? styles.rotuloAtivo : null]}>{t(aba.rotuloKey)}</Text>
           </Pressable>
         );
@@ -49,9 +51,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.surface,
-    paddingTop: spacing.sm,
+    paddingTop: 6,
   },
-  item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xs, minHeight: 48 },
-  rotulo: { ...tipo.legenda, color: colors.textMuted },
+  item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1, minHeight: 52 },
+  icone: { width: 38, height: 28, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
+  iconeAtivo: { backgroundColor: colors.primarySoft },
+  rotulo: { ...tipo.legenda, fontSize: 11, lineHeight: 15, color: colors.textMuted },
   rotuloAtivo: { color: colors.primary },
 });
