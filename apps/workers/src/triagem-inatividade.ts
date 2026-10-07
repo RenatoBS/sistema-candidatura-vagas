@@ -28,5 +28,6 @@ export async function processarJobInatividade(
     `/interno/triagem/entrevistas/${job.data.entrevistaId}/abandonar-inatividade`,
     fetchImpl,
     env,
+    { ultimaInteracaoEm: job.data.ultimaInteracaoEm },
   );
 }

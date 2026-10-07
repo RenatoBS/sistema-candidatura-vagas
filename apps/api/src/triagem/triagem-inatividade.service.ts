@@ -1,7 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   avaliarInatividade,
+  inatividadeDaPolitica,
+  lerContexto,
+  mensagemTriagem,
   POLITICA_INATIVIDADE_PADRAO,
+  politicaTriagemEfetiva,
+  prazoInatividade,
   registrarAceiteTentativa,
   registrarPrimeiraResposta,
   type PoliticaInatividade,
@@ -10,8 +15,11 @@ import {
 import type { Relogio } from '../auth/auth.service';
 import { CandidaturaStateMachine } from '../candidaturas/candidatura-state-machine';
 import { ErroAplicacao } from '../erros';
+import type { EntrevistaRegistro } from '../repositorio/entrevistas-tipos';
 import type { Repositorio } from '../repositorio/tipos';
-import { RELOGIO, REPOSITORIO } from '../tokens';
+import { AVALIADOR_TRIAGEM, RELOGIO, REPOSITORIO } from '../tokens';
+import { EnviadorWhatsapp } from './enviador-whatsapp';
+import { TriagemRetryService } from './triagem-retry.service';
 
 export interface AvaliadorTriagem {
   avaliarParcial(entrevistaId: string): Promise<void>;
@@ -30,7 +38,9 @@ export class TriagemInatividadeService {
     @Inject(REPOSITORIO) private readonly repo: Repositorio,
     @Inject(CandidaturaStateMachine) private readonly candidaturas: CandidaturaStateMachine,
     @Inject(RELOGIO) private readonly relogio: Relogio,
-    @Inject(AvaliadorTriagemNoop) private readonly avaliador: AvaliadorTriagem,
+    @Inject(AVALIADOR_TRIAGEM) private readonly avaliador: AvaliadorTriagem,
+    @Inject(EnviadorWhatsapp) private readonly enviador: EnviadorWhatsapp,
+    @Inject(TriagemRetryService) private readonly retries: TriagemRetryService,
   ) {}
 
   async registrarPrimeiraResposta(entrevistaId: string, agora = this.relogio.agora()) {
@@ -70,19 +80,27 @@ export class TriagemInatividadeService {
 
   async abandonarPorInatividade(
     entrevistaId: string,
-    politica: PoliticaInatividade = POLITICA_INATIVIDADE_PADRAO,
+    politica?: PoliticaInatividade,
     agora = this.relogio.agora(),
-  ): Promise<{ abandonada: boolean; motivo: string }> {
+    ultimaInteracaoEsperada?: string,
+  ): Promise<{ abandonada: boolean; motivo: string; lembrete?: boolean }> {
     const entrevista = await this.repo.buscarEntrevista(entrevistaId, { sistema: true });
     if (!entrevista)
       throw new ErroAplicacao('ENTREVISTA_NAO_ENCONTRADA', 404, 'entrevista não encontrada');
+    if (
+      ultimaInteracaoEsperada &&
+      entrevista.ultimaInteracaoEm?.toISOString() !== ultimaInteracaoEsperada
+    ) {
+      return { abandonada: false, motivo: 'interação desatualizada' };
+    }
     if (entrevista.status === 'ABANDONADA') return { abandonada: false, motivo: 'já abandonada' };
     if (!entrevista.iniciadaEm || !STATUS_ABANDONAVEL.has(entrevista.status)) {
       return { abandonada: false, motivo: 'entrevista não está aguardando resposta' };
     }
-    if (avaliarInatividade(entrevista, agora, politica) !== 'ABANDONAR') {
-      return { abandonada: false, motivo: 'prazo não vencido' };
-    }
+    const efetiva = politica ?? (await this.politicaDa(entrevista));
+    const acao = avaliarInatividade(entrevista, agora, efetiva);
+    if (acao === 'LEMBRETE') return this.enviarLembrete(entrevista, agora, efetiva);
+    if (acao !== 'ABANDONAR') return { abandonada: false, motivo: 'prazo não vencido' };
 
     const atualizada = await this.repo.atualizarEntrevista(
       entrevista.id,
@@ -101,5 +119,57 @@ export class TriagemInatividadeService {
     );
     await this.avaliador.avaliarParcial(entrevista.id);
     return { abandonada: true, motivo: 'prazo de inatividade vencido' };
+  }
+
+  private async politicaDa(entrevista: EntrevistaRegistro): Promise<PoliticaInatividade> {
+    const candidatura = await this.repo.buscarCandidatura(entrevista.candidaturaId, { sistema: true });
+    const processo = candidatura
+      ? await this.repo.buscarProcessoPorVaga(candidatura.vagaId, { sistema: true })
+      : null;
+    if (!processo?.politicaRetry) return POLITICA_INATIVIDADE_PADRAO;
+    return inatividadeDaPolitica(politicaTriagemEfetiva(processo.politicaRetry));
+  }
+
+  private async enviarLembrete(
+    entrevista: EntrevistaRegistro,
+    agora: Date,
+    politica: PoliticaInatividade,
+  ): Promise<{ abandonada: boolean; motivo: string; lembrete?: boolean }> {
+    const contexto = lerContexto(entrevista.contexto);
+    if (contexto.lembreteInatividadeEm) return { abandonada: false, motivo: 'lembrete já enviado' };
+    const candidatura = await this.repo.buscarCandidatura(entrevista.candidaturaId, { sistema: true });
+    const vaga = candidatura ? await this.repo.buscarVaga(candidatura.vagaId, { sistema: true }) : null;
+    const empresa = await this.repo.buscarEmpresaPorId(entrevista.empresaId, { sistema: true });
+    const perfil = candidatura ? await this.perfil(candidatura.candidatoId) : null;
+    let motivo = 'lembrete enviado';
+    if (vaga && empresa && perfil?.whatsapp) {
+      const envio = await this.enviador.enviar({
+        empresaId: entrevista.empresaId,
+        candidatoId: perfil.id,
+        numero: perfil.whatsapp,
+        texto: mensagemTriagem('lembrete_inatividade', {
+          nomeVaga: vaga.titulo,
+          nomeEmpresa: empresa.nomeFantasia,
+        }).texto,
+      });
+      if (!envio.ok) motivo = envio.motivo;
+    }
+    await this.repo.atualizarEntrevista(
+      entrevista.id,
+      { contexto: { ...contexto, lembreteInatividadeEm: agora.toISOString() } },
+      { sistema: true },
+    );
+    const prazo = prazoInatividade(entrevista, politica);
+    if (prazo) {
+      const vigente = await this.repo.buscarEntrevista(entrevista.id, { sistema: true });
+      if (vigente) await this.retries.agendarInatividade(vigente, prazo.getTime() - agora.getTime(), ':prazo');
+    }
+    return { abandonada: false, motivo, lembrete: motivo === 'lembrete enviado' };
+  }
+
+  private async perfil(candidatoId: string) {
+    const candidato = await this.repo.buscarCandidatoPorId(candidatoId);
+    if (!candidato) return null;
+    return this.repo.obterPerfil(candidato.usuarioId);
   }
 }

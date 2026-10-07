@@ -32,6 +32,8 @@ import {
   repositorioTeste,
   whatsappTeste,
   filaWhatsappEntradaTeste,
+  filaTriagemTeste,
+  limitadorEnvioTeste,
   deduplicadorWebhookTeste,
   whatsappMensagensTeste,
   sttTeste,
@@ -56,6 +58,7 @@ import { EmpresasService } from './empresas/empresas.service';
 import { FilaCnpjBull } from './fila/fila-cnpj';
 import { FilaCurriculoBull } from './fila/fila-curriculo';
 import { FilaMatchBull, type FilaMatch } from './fila/fila-match';
+import { FilaTriagemBull } from './fila/fila-triagem';
 import { FilaVagasBull } from './fila/fila-vagas';
 import { DeduplicadorWebhookRedis, FilaWhatsappEntradaBull } from './fila/fila-whatsapp-entrada';
 import { AuditoriaController } from './http/auditoria.controller';
@@ -89,6 +92,11 @@ import {
   FILA_MATCH,
   FILA_VAGAS,
   FILA_WHATSAPP_ENTRADA,
+  FILA_TRIAGEM,
+  LIMITADOR_ENVIO,
+  ALEATORIO,
+  TRAVA_ENTREVISTA,
+  AVALIADOR_TRIAGEM,
   DEDUPLICADOR_WEBHOOK,
   WHATSAPP_MENSAGENS,
   STT_PROVIDER,
@@ -98,11 +106,15 @@ import {
   RELOGIO,
   REPOSITORIO,
 } from './tokens';
+import { EnviadorWhatsapp } from './triagem/enviador-whatsapp';
+import { LimitadorEnvioMemoria } from './triagem/limitador-envio';
 import { TranscricaoService } from './triagem/transcricao.service';
-import {
-  AvaliadorTriagemNoop,
-  TriagemInatividadeService,
-} from './triagem/triagem-inatividade.service';
+import { AvaliacaoTriagemService } from './triagem/triagem-avaliacao.service';
+import { TriagemConsultaService } from './triagem/triagem-consulta.service';
+import { TriagemInatividadeService } from './triagem/triagem-inatividade.service';
+import { TriagemMonitorService } from './triagem/triagem-monitor.service';
+import { TriagemOrquestradorService, TravaEntrevistaMemoria } from './triagem/triagem-orquestrador.service';
+import { TriagemRetryService } from './triagem/triagem-retry.service';
 import { VagasService } from './vagas/vagas.service';
 import { WebhookUazapiService } from './whatsapp/webhook-uazapi.service';
 import { WhatsappService } from './whatsapp/whatsapp.service';
@@ -243,6 +255,31 @@ const llmProvider: FactoryProvider = {
   useFactory: () => criarLlmProvider(),
 };
 
+const filaTriagemProvider: FactoryProvider = {
+  provide: FILA_TRIAGEM,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? filaTriagemTeste : new FilaTriagemBull(),
+};
+
+const limitadorProvider: FactoryProvider = {
+  provide: LIMITADOR_ENVIO,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) =>
+    config.authStore === 'memory' ? limitadorEnvioTeste : new LimitadorEnvioMemoria(),
+};
+
+const aleatorioProvider: FactoryProvider = {
+  provide: ALEATORIO,
+  inject: [CONFIG],
+  useFactory: (config: ConfiguracaoApp) => (config.authStore === 'memory' ? () => 0.5 : Math.random),
+};
+
+const travaProvider: FactoryProvider = {
+  provide: TRAVA_ENTREVISTA,
+  useFactory: () => new TravaEntrevistaMemoria(),
+};
+
 const whatsappClienteProvider: FactoryProvider = {
   provide: CLIENTE_WHATSAPP,
   inject: [CONFIG],
@@ -279,9 +316,19 @@ const whatsappClienteProvider: FactoryProvider = {
     mensagensWhatsappProvider,
     sttProvider,
     conversorAudioProvider,
+    filaTriagemProvider,
+    limitadorProvider,
+    aleatorioProvider,
+    travaProvider,
     TranscricaoService,
+    EnviadorWhatsapp,
+    AvaliacaoTriagemService,
+    { provide: AVALIADOR_TRIAGEM, useExisting: AvaliacaoTriagemService },
+    TriagemRetryService,
+    TriagemMonitorService,
+    TriagemOrquestradorService,
     TriagemInatividadeService,
-    AvaliadorTriagemNoop,
+    TriagemConsultaService,
     embeddingsProvider,
     canaisEntregaProvider,
     llmProvider,
@@ -338,13 +385,13 @@ const whatsappClienteProvider: FactoryProvider = {
     },
     {
       provide: WhatsappService,
-      inject: [REPOSITORIO, CLIENTE_WHATSAPP, CONFIG, RELOGIO],
+      inject: [REPOSITORIO, CLIENTE_WHATSAPP, CONFIG, TriagemMonitorService],
       useFactory: (
         repo: Repositorio,
         cliente: typeof whatsappTeste,
         config: ConfiguracaoApp,
-        relogio: typeof relogioSistema,
-      ) => new WhatsappService(repo, cliente, config, relogio),
+        monitor: TriagemMonitorService,
+      ) => new WhatsappService(repo, cliente, config, monitor),
     },
     {
       provide: PerfilService,
@@ -421,6 +468,7 @@ const whatsappClienteProvider: FactoryProvider = {
         RELOGIO,
         CandidaturaStateMachine,
         FILA_MATCH,
+        TriagemRetryService,
       ],
       useFactory: (
         repo: Repositorio,
@@ -431,7 +479,9 @@ const whatsappClienteProvider: FactoryProvider = {
         relogio: Relogio,
         candidaturas: CandidaturaStateMachine,
         filaMatch: FilaMatch,
-      ) => new VagasService(repo, auditoria, fila, llm, config, relogio, candidaturas, filaMatch),
+        retries: TriagemRetryService,
+      ) =>
+        new VagasService(repo, auditoria, fila, llm, config, relogio, candidaturas, filaMatch, retries),
     },
     {
       provide: MatchService,

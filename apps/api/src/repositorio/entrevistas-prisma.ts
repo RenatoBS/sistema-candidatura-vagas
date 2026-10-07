@@ -1,9 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
+import { lerContexto } from '@scv/domain';
 
 import { ErroAplicacao } from '../erros';
 import type { EntrevistaRegistro } from './entrevistas-tipos';
 import type { ContextoTenant } from './tipos';
+
+function jsonContexto(valor: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(valor ?? {})) as Prisma.InputJsonValue;
+}
 
 type Tx = Prisma.TransactionClient;
 
@@ -14,7 +19,12 @@ export class EntrevistasPrisma {
 
   async criar(dados: EntrevistaRegistro, ctx: ContextoTenant): Promise<EntrevistaRegistro> {
     try {
-      return await this.com(ctx, (tx) => tx.entrevista.create({ data: dados }));
+      const criada = await this.com(ctx, (tx) =>
+        tx.entrevista.create({
+          data: { ...dados, contexto: jsonContexto(dados.contexto) },
+        }),
+      );
+      return this.registro(criada);
     } catch (erro) {
       if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === 'P2002')
         throw new ErroAplicacao(
@@ -26,18 +36,20 @@ export class EntrevistasPrisma {
     }
   }
 
-  buscar(id: string, ctx: ContextoTenant): Promise<EntrevistaRegistro | null> {
-    return this.com(ctx, (tx) => tx.entrevista.findUnique({ where: { id } }));
+  async buscar(id: string, ctx: ContextoTenant): Promise<EntrevistaRegistro | null> {
+    const row = await this.com(ctx, (tx) => tx.entrevista.findUnique({ where: { id } }));
+    return row ? this.registro(row) : null;
   }
 
-  buscarPorCandidaturaEtapa(
+  async buscarPorCandidaturaEtapa(
     candidaturaId: string,
     etapaId: string,
     ctx: ContextoTenant,
   ): Promise<EntrevistaRegistro | null> {
-    return this.com(ctx, (tx) =>
+    const row = await this.com(ctx, (tx) =>
       tx.entrevista.findUnique({ where: { candidaturaId_etapaId: { candidaturaId, etapaId } } }),
     );
+    return row ? this.registro(row) : null;
   }
 
   async atualizar(
@@ -47,18 +59,26 @@ export class EntrevistasPrisma {
     esperadoAtualizadoEm?: Date,
   ): Promise<EntrevistaRegistro | null> {
     return this.com(ctx, async (tx) => {
-      const data = { ...patch };
+      const data: Prisma.EntrevistaUpdateManyMutationInput = {
+        ...(patch as Prisma.EntrevistaUpdateManyMutationInput),
+        ...(patch.contexto ? { contexto: jsonContexto(patch.contexto) } : {}),
+      };
       delete data.id;
       const result = await tx.entrevista.updateMany({
         where: { id, ...(esperadoAtualizadoEm ? { atualizadoEm: esperadoAtualizadoEm } : {}) },
         data,
       });
       return result.count ? tx.entrevista.findUnique({ where: { id } }) : null;
-    });
+    }).then((row) => (row ? this.registro(row) : null));
   }
 
-  listar(ctx: ContextoTenant): Promise<EntrevistaRegistro[]> {
-    return this.com(ctx, (tx) => tx.entrevista.findMany({ orderBy: { criadoEm: 'asc' } }));
+  async listar(ctx: ContextoTenant): Promise<EntrevistaRegistro[]> {
+    const rows = await this.com(ctx, (tx) => tx.entrevista.findMany({ orderBy: { criadoEm: 'asc' } }));
+    return rows.map((row) => this.registro(row));
+  }
+
+  private registro(row: { contexto: Prisma.JsonValue } & Record<string, unknown>): EntrevistaRegistro {
+    return { ...(row as unknown as EntrevistaRegistro), contexto: lerContexto(row.contexto) };
   }
 
   async marcarRespostasParciais(entrevistaId: string, ctx: ContextoTenant): Promise<void> {
@@ -86,6 +106,7 @@ export class EntrevistasPrisma {
             tipo: 'TEXTO_WHATSAPP',
             statusTranscricao: 'PENDENTE',
             parcial: true,
+            revisaoHumanaNecessaria: true,
           },
         });
       }

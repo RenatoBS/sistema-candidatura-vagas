@@ -183,6 +183,7 @@ export interface PerfilCandidato {
   nome: string;
   whatsapp: string | null;
   whatsappVerificado: boolean;
+  whatsappVerificadoEm?: Date | null;
   linkedinUrl: string | null;
   perfil: Record<string, unknown>;
   visivelParaMatch: boolean;
@@ -288,6 +289,9 @@ export interface RespostaSensivel {
   id: string;
   empresaId: string;
   entrevistaId?: string;
+  etapaPerguntaId?: string;
+  tipo?: 'AUDIO_WHATSAPP' | 'TEXTO_WHATSAPP' | 'VOZ_TEMPO_REAL';
+  textoOriginal?: string | null;
   audioUrl: string | null;
   transcricao: string | null;
   mensagemIdProvedor?: string | null;
@@ -296,6 +300,30 @@ export interface RespostaSensivel {
   statusTranscricao?: 'PENDENTE' | 'PROCESSANDO' | 'CONCLUIDA' | 'FALHA';
   revisaoHumanaNecessaria?: boolean;
   parcial?: boolean;
+  expirou?: boolean;
+  tempoUsado?: number | null;
+  criadoEm?: Date;
+}
+
+export interface AvaliacaoRegistro {
+  id: string;
+  respostaId: string;
+  avaliador: 'IA' | 'HUMANO';
+  nota: number;
+  criterios: Record<string, unknown>;
+  justificativa: string | null;
+  modelo: string | null;
+  versaoPrompt: string | null;
+  criadoEm: Date;
+}
+
+export interface QuedaInstanciaRegistro {
+  id: string;
+  empresaId: string;
+  instanciaWhatsappId: string;
+  inicioEm: Date;
+  fimEm: Date | null;
+  notificadaEm: Date | null;
 }
 
 export interface VinculoUsuario {
@@ -415,6 +443,27 @@ export interface Repositorio {
     registro: EventoWhatsappEntradaRegistro,
     ctx: ContextoTenant,
   ): Promise<EventoWhatsappEntradaRegistro | null>;
+  buscarEventoWhatsappEntrada(
+    id: string,
+    ctx: ContextoTenant,
+  ): Promise<EventoWhatsappEntradaRegistro | null>;
+  atualizarEventoWhatsappEntrada(
+    id: string,
+    status: StatusEventoWhatsapp,
+    ctx: ContextoTenant,
+  ): Promise<void>;
+  buscarPerfilPorWhatsapp(numero: string): Promise<PerfilCandidato | null>;
+  listarUsuariosPorPapel(papel: PapelGlobal): Promise<UsuarioRegistro[]>;
+  criarResposta(resposta: RespostaSensivel): Promise<void>;
+  buscarRespostaPorMensagem(
+    mensagemIdProvedor: string,
+    ctx: ContextoTenant,
+  ): Promise<RespostaSensivel | null>;
+  salvarAvaliacao(avaliacao: AvaliacaoRegistro, ctx: ContextoTenant): Promise<void>;
+  listarAvaliacoes(respostaId: string, ctx: ContextoTenant): Promise<AvaliacaoRegistro[]>;
+  registrarQueda(queda: QuedaInstanciaRegistro, ctx: ContextoTenant): Promise<void>;
+  quedaAberta(instanciaId: string, ctx: ContextoTenant): Promise<QuedaInstanciaRegistro | null>;
+  encerrarQuedasAbertas(instanciaId: string, fimEm: Date, ctx: ContextoTenant): Promise<void>;
   pausarVagasPublicadas(empresaId: string, quando: Date, ctx: ContextoTenant): Promise<number>;
   buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null>;
   listarRespostasEntrevista(entrevistaId: string, ctx: ContextoTenant): Promise<RespostaSensivel[]>;

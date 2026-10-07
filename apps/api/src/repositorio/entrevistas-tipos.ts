@@ -1,3 +1,5 @@
+import type { ContextoEntrevista } from '@scv/domain';
+
 export type CanalEntrevista = 'WHATSAPP' | 'VOZ_TEMPO_REAL';
 export type StatusEntrevista =
   | 'AGENDADA'
@@ -36,6 +38,7 @@ export interface EntrevistaRegistro {
   aceiteTentativaEm: Date | null;
   excecaoConcedida: boolean;
   encerrarAoFim: boolean;
+  contexto?: ContextoEntrevista;
   criadoEm: Date;
   atualizadoEm: Date;
 }

@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { ErroAplicacao } from '../erros';
 import type { EntrevistaRegistro } from './entrevistas-tipos';
 import type { ContextoTenant, Repositorio } from './tipos';
@@ -73,8 +75,28 @@ export class EntrevistasMemoria {
   ): Promise<void> {
     const entrevista = await this.buscar(entrevistaId, ctx);
     if (!entrevista) return;
-    for (const resposta of await repo.listarRespostasEntrevista(entrevistaId, ctx)) {
-      await repo.guardarResposta({ ...resposta, parcial: true });
+    const existentes = await repo.listarRespostasEntrevista(entrevistaId, ctx);
+    for (const resposta of existentes) {
+      await repo.guardarResposta({ ...resposta, parcial: true, revisaoHumanaNecessaria: true });
+    }
+    const respondidas = new Set(existentes.map((resposta) => resposta.etapaPerguntaId));
+    for (const vinculo of await repo.listarVinculosEtapa(entrevista.etapaId, ctx)) {
+      if (respondidas.has(vinculo.id)) continue;
+      await repo.guardarResposta({
+        id: randomUUID(),
+        empresaId: entrevista.empresaId,
+        entrevistaId,
+        etapaPerguntaId: vinculo.id,
+        tipo: 'TEXTO_WHATSAPP',
+        textoOriginal: null,
+        audioUrl: null,
+        transcricao: null,
+        statusTranscricao: 'PENDENTE',
+        revisaoHumanaNecessaria: true,
+        parcial: true,
+        expirou: false,
+        tempoUsado: null,
+      });
     }
   }
 }

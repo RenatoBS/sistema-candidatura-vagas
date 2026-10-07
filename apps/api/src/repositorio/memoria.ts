@@ -8,6 +8,7 @@ import { MatchMemoria } from './match-memoria';
 import { NotificacoesMemoria } from './notificacoes-memoria';
 import type {
   AuditoriaRegistro,
+  AvaliacaoRegistro,
   CandidatoRegistro,
   CodigoMfaRegistro,
   ConsentimentoRegistro,
@@ -24,6 +25,7 @@ import type {
   MembroRegistro,
   NotificacaoNova,
   PerfilCandidato,
+  QuedaInstanciaRegistro,
   PreferenciaNotificacaoRegistro,
   RefreshRegistro,
   Repositorio,
@@ -48,6 +50,7 @@ function perfilInicial(candidato: CandidatoRegistro): PerfilCandidato {
     nome: candidato.nome,
     whatsapp: null,
     whatsappVerificado: false,
+    whatsappVerificadoEm: null,
     linkedinUrl: null,
     perfil: {},
     // Q17 (provisória): opt-in, igual ao padrão da coluna no banco.
@@ -111,6 +114,8 @@ export class RepositorioMemoria implements Repositorio {
   instancias = new Map<string, InstanciaRegistro>();
   eventosWhatsappEntrada = new Map<string, EventoWhatsappEntradaRegistro>();
   respostas = new Map<string, RespostaSensivel>();
+  avaliacoes = new Map<string, AvaliacaoRegistro>();
+  quedas = new Map<string, QuedaInstanciaRegistro>();
   readonly entrevistasStore = new EntrevistasMemoria();
   readonly vagasStore = new VagasMemoria();
   readonly candidaturasStore = new CandidaturasMemoria();
@@ -144,6 +149,8 @@ export class RepositorioMemoria implements Repositorio {
     this.instancias.clear();
     this.eventosWhatsappEntrada.clear();
     this.respostas.clear();
+    this.avaliacoes.clear();
+    this.quedas.clear();
     this.entrevistasStore.limpar();
     this.vagasStore.limpar();
     this.candidaturasStore.limpar();
@@ -581,6 +588,85 @@ export class RepositorioMemoria implements Repositorio {
       payloadNormalizado: { ...registro.payloadNormalizado },
     });
     return { ...registro, payloadNormalizado: { ...registro.payloadNormalizado } };
+  }
+
+  async buscarEventoWhatsappEntrada(
+    id: string,
+    ctx: ContextoTenant,
+  ): Promise<EventoWhatsappEntradaRegistro | null> {
+    const evento = [...this.eventosWhatsappEntrada.values()].find((item) => item.id === id);
+    if (!evento || !visivel(ctx, evento.empresaId)) return null;
+    return { ...evento, payloadNormalizado: { ...evento.payloadNormalizado } };
+  }
+
+  async atualizarEventoWhatsappEntrada(
+    id: string,
+    status: EventoWhatsappEntradaRegistro['status'],
+    ctx: ContextoTenant,
+  ): Promise<void> {
+    const evento = await this.buscarEventoWhatsappEntrada(id, ctx);
+    if (!evento) return;
+    const chave = `${evento.instanciaWhatsappId}:${evento.mensagemIdProvedor}`;
+    this.eventosWhatsappEntrada.set(chave, { ...evento, status });
+  }
+
+  async buscarPerfilPorWhatsapp(numero: string): Promise<PerfilCandidato | null> {
+    const digitos = numero.replace(/\D/g, '');
+    const perfil = [...this.candidatos.values()].find(
+      (item) => (item.whatsapp ?? '').replace(/\D/g, '') === digitos,
+    );
+    return perfil ? { ...perfil, perfil: { ...perfil.perfil } } : null;
+  }
+
+  async listarUsuariosPorPapel(papel: UsuarioRegistro['papeisGlobais'][number]): Promise<UsuarioRegistro[]> {
+    return [...this.usuarios.values()]
+      .filter((usuario) => usuario.papeisGlobais.includes(papel))
+      .map((usuario) => ({ ...usuario, papeisGlobais: [...usuario.papeisGlobais] }));
+  }
+
+  async criarResposta(resposta: RespostaSensivel): Promise<void> {
+    await this.guardarResposta(resposta);
+  }
+
+  async buscarRespostaPorMensagem(
+    mensagemIdProvedor: string,
+    ctx: ContextoTenant,
+  ): Promise<RespostaSensivel | null> {
+    const resposta = [...this.respostas.values()].find(
+      (item) => item.mensagemIdProvedor === mensagemIdProvedor,
+    );
+    if (!resposta || !visivel(ctx, resposta.empresaId)) return null;
+    return { ...resposta };
+  }
+
+  async salvarAvaliacao(avaliacao: AvaliacaoRegistro, _ctx: ContextoTenant): Promise<void> {
+    this.avaliacoes.set(avaliacao.id, { ...avaliacao, criterios: { ...avaliacao.criterios } });
+  }
+
+  async listarAvaliacoes(respostaId: string, _ctx: ContextoTenant): Promise<AvaliacaoRegistro[]> {
+    return [...this.avaliacoes.values()]
+      .filter((item) => item.respostaId === respostaId)
+      .map((item) => ({ ...item, criterios: { ...item.criterios } }));
+  }
+
+  async registrarQueda(queda: QuedaInstanciaRegistro, ctx: ContextoTenant): Promise<void> {
+    if (!visivel(ctx, queda.empresaId)) throw new ErroAplicacao('SEM_PERMISSAO', 403, 'sem permissão');
+    this.quedas.set(queda.id, { ...queda });
+  }
+
+  async quedaAberta(instanciaId: string, ctx: ContextoTenant): Promise<QuedaInstanciaRegistro | null> {
+    const queda = [...this.quedas.values()].find(
+      (item) => item.instanciaWhatsappId === instanciaId && !item.fimEm && visivel(ctx, item.empresaId),
+    );
+    return queda ? { ...queda } : null;
+  }
+
+  async encerrarQuedasAbertas(instanciaId: string, fimEm: Date, ctx: ContextoTenant): Promise<void> {
+    for (const queda of this.quedas.values()) {
+      if (queda.instanciaWhatsappId === instanciaId && !queda.fimEm && visivel(ctx, queda.empresaId)) {
+        queda.fimEm = fimEm;
+      }
+    }
   }
 
   async listarInstancias(ctx: ContextoTenant): Promise<InstanciaRegistro[]> {

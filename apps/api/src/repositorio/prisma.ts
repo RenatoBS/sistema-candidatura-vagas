@@ -8,6 +8,7 @@ import { MatchPrisma } from './match-prisma';
 import { NotificacoesPrisma } from './notificacoes-prisma';
 import type {
   AuditoriaRegistro,
+  AvaliacaoRegistro,
   CandidatoRegistro,
   CodigoMfaRegistro,
   ConsentimentoRegistro,
@@ -24,6 +25,7 @@ import type {
   MembroRegistro,
   NotificacaoNova,
   PerfilCandidato,
+  QuedaInstanciaRegistro,
   PreferenciaNotificacaoRegistro,
   RefreshRegistro,
   Repositorio,
@@ -383,6 +385,7 @@ export class RepositorioPrisma implements Repositorio {
         nome: perfil.nome,
         whatsapp: perfil.whatsapp,
         whatsappVerificado: perfil.whatsappVerificado,
+        whatsappVerificadoEm: perfil.whatsappVerificadoEm ?? null,
         linkedinUrl: perfil.linkedinUrl,
         visivelParaMatch: perfil.visivelParaMatch,
         perfil: json(perfil.perfil),
@@ -647,6 +650,135 @@ export class RepositorioPrisma implements Repositorio {
     }
   }
 
+  async buscarEventoWhatsappEntrada(
+    id: string,
+    ctx: ContextoTenant,
+  ): Promise<EventoWhatsappEntradaRegistro | null> {
+    const evento = await this.comTenant(ctx, (tx) => tx.eventoWhatsappEntrada.findUnique({ where: { id } }));
+    if (!evento) return null;
+    return {
+      id: evento.id,
+      empresaId: evento.empresaId,
+      instanciaWhatsappId: evento.instanciaWhatsappId,
+      mensagemIdProvedor: evento.mensagemIdProvedor,
+      tipo: evento.tipo === 'MENU' ? 'BOTAO' : evento.tipo,
+      payloadNormalizado: objeto(evento.payloadNormalizado),
+      status: evento.status,
+      criadoEm: evento.criadoEm,
+    };
+  }
+
+  async atualizarEventoWhatsappEntrada(
+    id: string,
+    status: EventoWhatsappEntradaRegistro['status'],
+    ctx: ContextoTenant,
+  ): Promise<void> {
+    await this.comTenant(ctx, (tx) => tx.eventoWhatsappEntrada.updateMany({ where: { id }, data: { status } }));
+  }
+
+  async buscarPerfilPorWhatsapp(numero: string): Promise<PerfilCandidato | null> {
+    const digitos = numero.replace(/\D/g, '');
+    const candidato = await this.prisma.candidato.findFirst({
+      where: { OR: [{ whatsapp: `+${digitos}` }, { whatsapp: digitos }] },
+    });
+    return candidato ? this.perfil(candidato) : null;
+  }
+
+  async listarUsuariosPorPapel(papel: UsuarioRegistro['papeisGlobais'][number]): Promise<UsuarioRegistro[]> {
+    const usuarios = await this.prisma.usuario.findMany({ where: { papeisGlobais: { has: papel } } });
+    return usuarios.map((usuario) => this.usuario(usuario));
+  }
+
+  async criarResposta(resposta: RespostaSensivel): Promise<void> {
+    await this.comTenant({ empresaId: resposta.empresaId, sistema: true }, (tx) =>
+      tx.resposta.create({
+        data: {
+          id: resposta.id,
+          empresaId: resposta.empresaId,
+          entrevistaId: resposta.entrevistaId ?? '',
+          etapaPerguntaId: resposta.etapaPerguntaId ?? '',
+          tipo: resposta.tipo ?? 'TEXTO_WHATSAPP',
+          textoOriginal: resposta.textoOriginal ?? null,
+          audioUrl: resposta.audioUrl,
+          duracaoSegundos: resposta.duracaoSegundos ?? null,
+          statusTranscricao: resposta.statusTranscricao ?? 'PENDENTE',
+          transcricao: resposta.transcricao,
+          confiancaTranscricao: resposta.confiancaTranscricao ?? null,
+          revisaoHumanaNecessaria: resposta.revisaoHumanaNecessaria ?? false,
+          mensagemIdProvedor: resposta.mensagemIdProvedor ?? null,
+          tempoUsado: resposta.tempoUsado ?? null,
+          expirou: resposta.expirou ?? false,
+          parcial: resposta.parcial ?? false,
+        },
+      }),
+    );
+  }
+
+  async buscarRespostaPorMensagem(
+    mensagemIdProvedor: string,
+    ctx: ContextoTenant,
+  ): Promise<RespostaSensivel | null> {
+    return this.comTenant(ctx, (tx) => tx.resposta.findFirst({ where: { mensagemIdProvedor } }));
+  }
+
+  async salvarAvaliacao(avaliacao: AvaliacaoRegistro, ctx: ContextoTenant): Promise<void> {
+    await this.comTenant(ctx, (tx) =>
+      tx.avaliacao.create({
+        data: {
+          id: avaliacao.id,
+          respostaId: avaliacao.respostaId,
+          avaliador: avaliacao.avaliador,
+          nota: avaliacao.nota,
+          criterios: json(avaliacao.criterios),
+          justificativa: avaliacao.justificativa,
+          modelo: avaliacao.modelo,
+          versaoPrompt: avaliacao.versaoPrompt,
+          criadoEm: avaliacao.criadoEm,
+        },
+      }),
+    );
+  }
+
+  async listarAvaliacoes(respostaId: string, ctx: ContextoTenant): Promise<AvaliacaoRegistro[]> {
+    const itens = await this.comTenant(ctx, (tx) =>
+      tx.avaliacao.findMany({
+        where: { respostaId },
+        orderBy: { criadoEm: 'asc' },
+      }),
+    );
+    return itens.map((item) => ({
+      id: item.id,
+      respostaId: item.respostaId,
+      avaliador: item.avaliador,
+      nota: item.nota,
+      criterios: objeto(item.criterios),
+      justificativa: item.justificativa,
+      modelo: item.modelo,
+      versaoPrompt: item.versaoPrompt,
+      criadoEm: item.criadoEm,
+    }));
+  }
+
+  async registrarQueda(queda: QuedaInstanciaRegistro, ctx: ContextoTenant): Promise<void> {
+    await this.comTenant(ctx, (tx) => tx.quedaInstanciaWhatsapp.create({ data: queda }));
+  }
+
+  async quedaAberta(instanciaId: string, ctx: ContextoTenant): Promise<QuedaInstanciaRegistro | null> {
+    const queda = await this.comTenant(ctx, (tx) =>
+      tx.quedaInstanciaWhatsapp.findFirst({ where: { instanciaWhatsappId: instanciaId, fimEm: null } }),
+    );
+    return queda;
+  }
+
+  async encerrarQuedasAbertas(instanciaId: string, fimEm: Date, ctx: ContextoTenant): Promise<void> {
+    await this.comTenant(ctx, (tx) =>
+      tx.quedaInstanciaWhatsapp.updateMany({
+        where: { instanciaWhatsappId: instanciaId, fimEm: null },
+        data: { fimEm },
+      }),
+    );
+  }
+
   async listarInstancias(ctx: ContextoTenant): Promise<InstanciaRegistro[]> {
     const itens = await this.comTenant(ctx, (tx) => tx.instanciaWhatsapp.findMany());
     return itens.map((item) => this.instancia(item));
@@ -895,26 +1027,8 @@ export class RepositorioPrisma implements Repositorio {
     return this.notificacoesStore.salvarPreferencia(preferencia, ctx);
   }
 
-  async buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null> {
-    const resposta = await this.comTenant(ctx, (tx) =>
-      tx.resposta.findUnique({
-        where: { id },
-        select: {
-          id: true,
-          empresaId: true,
-          entrevistaId: true,
-          audioUrl: true,
-          transcricao: true,
-          mensagemIdProvedor: true,
-          duracaoSegundos: true,
-          confiancaTranscricao: true,
-          statusTranscricao: true,
-          revisaoHumanaNecessaria: true,
-          parcial: true,
-        },
-      }),
-    );
-    return resposta;
+  buscarResposta(id: string, ctx: ContextoTenant): Promise<RespostaSensivel | null> {
+    return this.comTenant(ctx, (tx) => tx.resposta.findUnique({ where: { id } }));
   }
 
   async guardarResposta(resposta: RespostaSensivel): Promise<void> {
@@ -930,33 +1044,16 @@ export class RepositorioPrisma implements Repositorio {
           statusTranscricao: resposta.statusTranscricao,
           revisaoHumanaNecessaria: resposta.revisaoHumanaNecessaria,
           parcial: resposta.parcial,
+          textoOriginal: resposta.textoOriginal,
+          expirou: resposta.expirou,
+          tempoUsado: resposta.tempoUsado,
         },
       }),
     );
   }
 
-  listarRespostasEntrevista(
-    entrevistaId: string,
-    ctx: ContextoTenant,
-  ): Promise<RespostaSensivel[]> {
-    return this.comTenant(ctx, async (tx) =>
-      tx.resposta.findMany({
-        where: { entrevistaId },
-        select: {
-          id: true,
-          empresaId: true,
-          entrevistaId: true,
-          audioUrl: true,
-          transcricao: true,
-          mensagemIdProvedor: true,
-          duracaoSegundos: true,
-          confiancaTranscricao: true,
-          statusTranscricao: true,
-          revisaoHumanaNecessaria: true,
-          parcial: true,
-        },
-      }),
-    );
+  listarRespostasEntrevista(entrevistaId: string, ctx: ContextoTenant): Promise<RespostaSensivel[]> {
+    return this.comTenant(ctx, (tx) => tx.resposta.findMany({ where: { entrevistaId } }));
   }
 
   criarEntrevista(dados: EntrevistaRegistro, ctx: ContextoTenant) {
@@ -1048,6 +1145,7 @@ export class RepositorioPrisma implements Repositorio {
     nome: string;
     whatsapp: string | null;
     whatsappVerificado: boolean;
+    whatsappVerificadoEm: Date | null;
     linkedinUrl: string | null;
     perfil: Prisma.JsonValue;
     visivelParaMatch: boolean;
@@ -1058,6 +1156,7 @@ export class RepositorioPrisma implements Repositorio {
       nome: candidato.nome,
       whatsapp: candidato.whatsapp,
       whatsappVerificado: candidato.whatsappVerificado,
+      whatsappVerificadoEm: candidato.whatsappVerificadoEm,
       linkedinUrl: candidato.linkedinUrl,
       perfil: objeto(candidato.perfil),
       visivelParaMatch: candidato.visivelParaMatch,

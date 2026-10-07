@@ -158,6 +158,7 @@ model Entrevista {
   aceiteTentativaEm    DateTime?        @db.Timestamptz
   excecaoConcedida     Boolean          @default(false)
   encerrarAoFim        Boolean          @default(false)
+  contexto             Json             @default("{}")
   criadoEm             DateTime         @default(now()) @db.Timestamptz
   atualizadoEm         DateTime         @updatedAt @db.Timestamptz
 
@@ -256,8 +257,26 @@ model InstanciaWhatsapp {
   empresa   Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   mensagens MensagemWhatsapp[]
   eventosWhatsapp EventoWhatsappEntrada[]
+  quedas    QuedaInstanciaWhatsapp[]
 
   @@map("instancias_whatsapp")
+}
+
+model QuedaInstanciaWhatsapp {
+  id                  String    @id @default(uuid()) @db.Uuid
+  empresaId           String    @db.Uuid
+  instanciaWhatsappId String    @db.Uuid
+  inicioEm            DateTime  @db.Timestamptz
+  fimEm               DateTime? @db.Timestamptz
+  notificadaEm        DateTime? @db.Timestamptz
+  criadoEm            DateTime  @default(now()) @db.Timestamptz
+
+  empresa           Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  instanciaWhatsapp InstanciaWhatsapp @relation(fields: [instanciaWhatsappId], references: [id], onDelete: Cascade)
+
+  @@index([empresaId])
+  @@index([instanciaWhatsappId])
+  @@map("quedas_instancia_whatsapp")
 }
 
 model MensagemWhatsapp {
