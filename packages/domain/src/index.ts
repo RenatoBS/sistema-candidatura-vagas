@@ -113,6 +113,24 @@ export {
   type ResultadoMatch,
 } from './match';
 export {
+  agrupavel,
+  algumCanal,
+  canaisEfetivos,
+  chaveDedup,
+  decidirAgrupamento,
+  inicioJanela,
+  JANELA_AGRUPAMENTO_MINUTOS_PADRAO,
+  limiarPreferenciaValido,
+  MINIMO_RESUMO_PADRAO,
+  PREFERENCIA_PADRAO,
+  vagaNotificavel,
+  type CanaisNotificacao,
+  type DecisaoAgrupamento,
+  type EntradaChaveDedup,
+  type PreferenciaCanais,
+  type TipoNotificacaoEmpresa,
+} from './notificacao';
+export {
   baixaConfiancaOcr,
   classificarPaginas,
   LIMIAR_CONFIANCA_OCR,
