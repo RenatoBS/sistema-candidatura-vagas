@@ -93,6 +93,15 @@ export {
   type LinhaHabilidade,
   type OrigemHabilidade,
 } from './habilidades';
+export {
+  anosDeExperiencia,
+  comporResumoCurriculo,
+  extrairEstruturaCurriculo,
+  resumoDeTextoLivre,
+  separarSecoesCurriculo,
+  type SecaoCurriculo,
+  type SecoesCurriculo,
+} from './resumo-curriculo';
 export { contemRanking, emailAnonimizado, NOME_TITULAR_EXCLUIDO } from './lgpd';
 export { interpretarLinkedinUrl, type LeituraLinkedin } from './linkedin';
 export {

@@ -1,7 +1,10 @@
 import {
+  comporResumoCurriculo,
   dadosCurriculoVazios,
+  extrairEstruturaCurriculo,
   habilidadesCitadasNoTexto,
   normalizarNomeHabilidade,
+  resumoDeTextoLivre,
   type DadosCurriculo,
   type ItemCatalogo,
 } from '@scv/domain';
@@ -47,17 +50,25 @@ export class ExtratorEstruturadoMock implements ExtratorEstruturadoCurriculo {
         if (nome) dados.habilidades.push({ nome, nivel: 3 });
       }
     }
-    if (!dados.resumo) {
-      const solta = linhas.find((linha) => !linha.includes(':'));
-      dados.resumo = (solta ?? linhas[0] ?? '').slice(0, 280);
-    }
+    const lido = extrairEstruturaCurriculo(texto);
+    if (!dados.resumo) dados.resumo = lido.resumo;
+    if (dados.experiencias.length === 0) dados.experiencias = lido.experiencias;
+    if (dados.formacao.length === 0) dados.formacao = lido.formacao;
+    if (dados.idiomas.length === 0) dados.idiomas = lido.idiomas;
     const vistas = new Set(dados.habilidades.map((item) => normalizarNomeHabilidade(item.nome)));
+    for (const lida of lido.habilidades) {
+      const chave = normalizarNomeHabilidade(lida.nome);
+      if (vistas.has(chave)) continue;
+      vistas.add(chave);
+      dados.habilidades.push(lida);
+    }
     for (const citada of habilidadesCitadasNoTexto(texto, catalogo)) {
       const chave = normalizarNomeHabilidade(citada.nome);
       if (vistas.has(chave)) continue;
       vistas.add(chave);
       dados.habilidades.push(citada);
     }
+    if (!dados.resumo) dados.resumo = comporResumoCurriculo(dados) || resumoDeTextoLivre(texto);
     return dados;
   }
 }
