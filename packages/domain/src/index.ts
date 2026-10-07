@@ -3,8 +3,25 @@
  * Auth, papéis, verificação de empresa e CNPJ local entram na Fase 3.
  */
 
-export const DOMAIN_PACKAGE_VERSION = '0.4.0';
+export const DOMAIN_PACKAGE_VERSION = '0.5.0';
 
+export {
+  candidaturaTerminal,
+  COMANDO_POR_EFEITO_VAGA,
+  criarCandidatura,
+  ESTADOS_TERMINAIS_CANDIDATURA,
+  rotuloAmigavel,
+  STATUS_CANDIDATURA,
+  transicionarCandidatura,
+  type ComandoCandidatura,
+  type ComandoCriacaoCandidatura,
+  type ComandoEfeitoVaga,
+  type ErroTransicaoCandidatura,
+  type EstadoCandidatura,
+  type ResultadoTransicaoCandidatura,
+  type StatusCandidatura,
+  type TipoComandoCandidatura,
+} from './candidatura';
 export {
   cnpjDigitosValidos,
   normalizarRazaoSocial,

@@ -1,6 +1,6 @@
 {
   "name": "@scv/domain",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Regras puras de domínio: score, máquinas de estado, políticas",
   "main": "./dist/index.js",
