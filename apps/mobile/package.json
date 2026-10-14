@@ -41,12 +41,12 @@
     "react-native-web": "~0.19.13"
   },
   "devDependencies": {
-    "@babel/core": "^7.26.10",
+    "@babel/core": "^8.0.7",
     "@scv/config": "workspace:*",
     "@types/react": "~18.3.18",
-    "babel-preset-expo": "~12.0.9",
-    "eslint": "^9.22.0",
+    "babel-preset-expo": "~58.0.12",
+    "eslint": "^10.12.0",
     "tsx": "^4.19.3",
-    "typescript": "^5.8.2"
+    "typescript": "^7.0.2"
   }
 }
